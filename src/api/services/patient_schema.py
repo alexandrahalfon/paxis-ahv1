@@ -1369,4 +1369,38 @@ SCHEMA_STATEMENTS: List[str] = [
     ALTER TABLE patient_state_snapshots
         ADD COLUMN IF NOT EXISTS source_revision BIGINT;
     """,
+
+    # ── Verified physician-patient authorization (added 2026-08-12,
+    # convergence Sprint C item 14) ────────────────────────────────────
+    # patient_care_team_links.status ('active'/'revoked') already existed,
+    # but a patient could add ANY physician_id to their care team directly
+    # from POST /patient/care-team with zero verification that UUID
+    # belongs to a real, consenting clinician — see
+    # patient_records.add_care_team_member()'s own docstring: "for a
+    # care-team member who has no chart on their end at all". Nothing
+    # should treat that self-report alone as authorization to read
+    # canonical patient state. link_status distinguishes "the patient
+    # claims this link" (invited) from "the named physician's own account
+    # confirmed it" (verified) — see patient_care_team_service.py's
+    # verify_link()/authorize_physician_patient_access(). The existing
+    # legacy invite/claim flow (patient_link_service.py) already performs
+    # real identity confirmation on both sides, so links created through
+    # that path (sync_legacy_link()) are marked verified automatically;
+    # only the direct patient-self-report path starts at 'invited'.
+    """
+    ALTER TABLE patient_care_team_links
+        ADD COLUMN IF NOT EXISTS link_status TEXT NOT NULL DEFAULT 'invited';
+    ALTER TABLE patient_care_team_links
+        ADD COLUMN IF NOT EXISTS verified_physician_user_id UUID;
+    ALTER TABLE patient_care_team_links
+        ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+    ALTER TABLE patient_care_team_links
+        ADD COLUMN IF NOT EXISTS granted_by TEXT;
+    ALTER TABLE patient_care_team_links
+        ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '[]'::jsonb;
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS patient_care_team_links_verified_idx
+        ON patient_care_team_links (patient_profile_id, verified_physician_user_id, status, link_status);
+    """,
 ]

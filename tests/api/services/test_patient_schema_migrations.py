@@ -41,6 +41,7 @@ REVISION_FILES = [
     ("0002_phase1_finalization.py", 18),
     ("0003_evidence_versioning_and_debug_trace.py", 7),
     ("0004_state_revision_freshness.py", 2),
+    ("0005_verified_physician_authorization.py", 2),
 ]
 
 
