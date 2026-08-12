@@ -90,6 +90,9 @@ class ChatResult:
     known_facts: Dict[str, Any] = field(default_factory=dict)
     retrieval_used: bool = False
     used_web_search: bool = False
+    # Bare UUID, safe to log/return — the trace content itself lives only
+    # in query_debug_traces, never here. See retrieval_debug_trace.py.
+    trace_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -99,6 +102,7 @@ class ChatResult:
             "sources": self.sources,
             "offer_escalation": self.offer_escalation,
             "conversation_id": self.conversation_id,
+            "trace_id": self.trace_id,
             "known_facts": self.known_facts,
             "retrieval_used": self.retrieval_used,
             "used_web_search": self.used_web_search,
@@ -334,6 +338,23 @@ class PatientChatService:
         # 2. What do we already know about them?
         facts = await self.known_facts_for(patient_user_id, conversation_facts)
 
+        # Debug trace, accumulated across every stage below and persisted
+        # at the end regardless of which retrieval path was taken — see
+        # evidence/retrieval_debug_trace.py. Resolution failure (no
+        # profile yet, DB unreachable) degrades to no trace, never to a
+        # failed answer.
+        trace = None
+        try:
+            from src.api.services.patient.patient_profile_service import (
+                get_patient_profile_service,
+            )
+            profile = await get_patient_profile_service().get_by_user(patient_user_id)
+            if profile:
+                from src.api.services.evidence.retrieval_debug_trace import TraceBuilder
+                trace = TraceBuilder(patient_profile_id=profile["id"], question=message)
+        except Exception:
+            logger.warning("[PatientChat] trace setup failed (continuing without)", exc_info=True)
+
         # 3. Expand their words into clinical vocabulary for retrieval.
         vocab = expand_patient_language(message)
         query = vocab.expanded_query
@@ -372,6 +393,14 @@ class PatientChatService:
             packet = build_packet(message, context, ranked, safety_category=tri.category)
             evidence_block = to_prompt_block(packet)
             sources = to_sources(packet)
+
+            if trace:
+                trace.set_intent(intent, {"boost_terms": plan.boost_terms})
+                trace.set_routing(plan.collections)
+                trace.set_context(context.get("retrieval_features", {}))
+                trace.set_candidates(candidates)
+                trace.set_ranked(ranked)
+                trace.set_packet(packet)
         except Exception as e:
             logger.warning("[PatientChat] multi-corpus retrieval failed, falling back: %s", e)
 
@@ -450,7 +479,12 @@ class PatientChatService:
             user_content += (
                 f"\n\nRelevant information from {origin}. Use it to inform your "
                 "answer, but translate it into plain language and do not quote "
-                "statistics at this individual:\n" + evidence_block
+                "statistics at this individual:\n" + evidence_block +
+                "\n\nWhen you make a claim drawn from the numbered passages above, "
+                "cite it inline using its number in brackets, e.g. [1] or [2] — "
+                "matching the numbers shown, not a new numbering of your own. Do not "
+                "cite a number for something drawn only from what the patient told you "
+                "or from their record; citations are for the passages above only."
             )
         messages.append({"role": "user", "content": user_content})
 
@@ -468,6 +502,33 @@ class PatientChatService:
         except Exception as e:
             logger.exception("[PatientChat] generation failed")
             raise RuntimeError("generation_failed") from e
+
+        # 6b. Grounding validation — did the answer actually cite the
+        # evidence it was given, per evidence/grounding_validator.py.
+        # Recorded and logged, not (yet) a hard gate: this is the first
+        # rollout of citation-checking into a live prompt that, until
+        # this change, never asked the model for numbered citations at
+        # all. Once real-traffic data shows the false-positive rate on
+        # FORBIDDEN_PHRASES/citation compliance is low, promote this to
+        # blocking (retry once, or fall back to a no-citation-required
+        # answer shape) rather than just logging.
+        grounding_result = None
+        try:
+            from src.api.services.evidence.grounding_validator import validate as validate_grounding
+            grounding_result = validate_grounding(answer, {"evidence": sources})
+            if not grounding_result.valid:
+                logger.warning(
+                    "[PatientChat] grounding validation failed: %s", grounding_result.reasons
+                )
+        except Exception:
+            logger.warning("[PatientChat] grounding validation errored (continuing)", exc_info=True)
+
+        trace_id = None
+        if trace:
+            trace.set_answer(answer)
+            if grounding_result:
+                trace.set_grounding(grounding_result.to_dict())
+            trace_id = await trace.save()
 
         # 7. At most one follow-up, and only when it would change the answer.
         followup = None
@@ -492,6 +553,7 @@ class PatientChatService:
             known_facts={k: v for k, v in facts.items() if k != "physician_id"},
             retrieval_used=bool(sources),
             used_web_search=used_web,
+            trace_id=trace_id,
         )
 
         if persist:

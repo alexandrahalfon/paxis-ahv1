@@ -60,6 +60,29 @@ class RetrievalPlan:
     collections: List[str] = field(default_factory=list)
     boost_terms: List[str] = field(default_factory=list)
     hard_constraints: Dict[str, Any] = field(default_factory=dict)
+    # Structured patient values, one list per applicability_scorer.py
+    # component (cancer_types/treatment_modalities/regimens/drugs/
+    # symptoms/treatment_phase) — boost_terms is a flat bag of words for
+    # the embedding query text; this is the same information kept
+    # separated by axis so the scorer can match each component against
+    # the specific thing it's about instead of one blended term list.
+    patient_values: Dict[str, List[str]] = field(default_factory=dict)
+
+
+def _derive_treatment_phase(features: Dict[str, Any]) -> List[str]:
+    """Best-effort single-value 'phase' axis for applicability_scorer.py.
+    A direct nutrition-assessment care_phase (active_treatment/
+    survivorship/prevention — see nutrition_assessment_service.py's
+    VALID_CARE_PHASES, which shares its vocabulary with metadata_
+    classifier.py's VALID_PHASES) is preferred when present; otherwise
+    an active regimen/modality on the record is enough to infer
+    active_treatment. Anything else is left unspecified (empty list),
+    which the scorer treats as neutral rather than guessing."""
+    if features.get("nutrition_care_phase"):
+        return [features["nutrition_care_phase"]]
+    if features.get("active_chemotherapy") or features.get("treatment_modalities"):
+        return ["active_treatment"]
+    return []
 
 
 def build_plan(intent: str, retrieval_features: Dict[str, Any]) -> RetrievalPlan:
@@ -85,9 +108,19 @@ def build_plan(intent: str, retrieval_features: Dict[str, Any]) -> RetrievalPlan
     if features.get("comorbidities"):
         hard_constraints["comorbidities"] = features["comorbidities"]
 
+    patient_values: Dict[str, List[str]] = {
+        "cancer_types": list(features.get("cancer_types") or []),
+        "treatment_modalities": list(features.get("treatment_modalities") or []),
+        "regimens": [r for r in (features.get("regimens") or []) if r],
+        "drugs": list(features.get("active_agents") or []),
+        "symptoms": list(features.get("symptoms") or []),
+        "treatment_phase": _derive_treatment_phase(features),
+    }
+
     return RetrievalPlan(
         intent=intent,
         collections=collections,
         boost_terms=[t for t in dict.fromkeys(boost_terms) if t][:8],  # dedupe, cap
         hard_constraints=hard_constraints,
+        patient_values=patient_values,
     )

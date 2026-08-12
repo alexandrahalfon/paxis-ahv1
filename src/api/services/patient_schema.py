@@ -1320,4 +1320,29 @@ SCHEMA_STATEMENTS: List[str] = [
     CREATE INDEX IF NOT EXISTS evidence_chunk_registry_version_idx
         ON evidence_chunk_registry (evidence_document_version_id);
     """,
+
+    # ── Query debug traces (added 2026-08-12) ─────────────────────────
+    # One row per patient chat query, recording every stage of the
+    # retrieval/generation pipeline for debugging — see
+    # retrieval_debug_trace.py. Deliberately its own table rather than a
+    # generic application log line: the trace contains patient-derived
+    # content (state, retrieved passages, the generated answer), so it
+    # gets the same CASCADE-on-profile-delete privacy behavior as every
+    # other patient-owned table, and structured JSONB querying, instead
+    # of living in a log aggregator with a different (or no) retention/
+    # access policy. Generic application logs get only the trace id — see
+    # retrieval_debug_trace.py's module docstring.
+    """
+    CREATE TABLE IF NOT EXISTS query_debug_traces (
+        id UUID PRIMARY KEY,
+        patient_profile_id UUID NOT NULL
+            REFERENCES patient_profiles(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        trace JSONB NOT NULL
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS query_debug_traces_profile_idx
+        ON query_debug_traces (patient_profile_id, created_at DESC);
+    """,
 ]

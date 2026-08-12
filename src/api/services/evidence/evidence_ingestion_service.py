@@ -68,6 +68,26 @@ def content_hash_of(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 
+def unique_section_texts(chunks: List[Chunk]) -> Dict[str, str]:
+    """section_title -> text to classify, one entry per unique heading in
+    document order, first-seen wins. Pulled out as a pure function (no
+    OpenAI call, no I/O) so the section-grouping/dedup logic — the part
+    of chunk-level classification actually worth a regression test — is
+    directly testable against a list of Chunk objects. Prefers
+    parent_text (the section's full text) over an individual child
+    chunk's text so a long section classifies once against its complete
+    content rather than once per overlapping window. Headingless chunks
+    (section_title is None) are skipped: they fall back to the
+    document-level classification at the call site instead."""
+    out: Dict[str, str] = {}
+    for chunk in chunks:
+        title = chunk.section_title
+        if not title or title in out:
+            continue
+        out[title] = chunk.parent_text or chunk.text
+    return out
+
+
 class EvidenceIngestionService:
     def _retriever(self):
         from src.api.services.comprehensive_retrieval import get_comprehensive_retriever
@@ -87,6 +107,21 @@ class EvidenceIngestionService:
             vectors_config=VectorParams(size=settings.embed_dim, distance=Distance.COSINE),
         )
         logger.info("[EvidenceIngestion] created collection %s", collection_name)
+
+    async def _classify_sections(self, chunks: List[Chunk], doc_title: str) -> Dict[str, Dict[str, Any]]:
+        """Runs classify_content() once per unique section heading (see
+        unique_section_texts) and returns section_title -> applicability
+        dict. Sequential, not gathered in parallel: ingestion is a
+        background/CLI job, not a live user-facing request path, and
+        this keeps classification calls easy to rate-limit/log one at a
+        time rather than bursting one per section at once."""
+        out: Dict[str, Dict[str, Any]] = {}
+        for title, text in unique_section_texts(chunks).items():
+            result: ClassificationResult = await asyncio.to_thread(
+                classify_content, text, f"{doc_title} — {title}"
+            )
+            out[title] = result.to_dict()
+        return out
 
     # ── Public entry points ─────────────────────────────────────────
 
@@ -191,6 +226,14 @@ class EvidenceIngestionService:
         await self._ensure_collection(collection)
 
         # ── Classification ───────────────────────────────────────────
+        # Document-level: broad-context classification stored on
+        # evidence_documents.applicability, for the document record and
+        # any UI that shows "what is this source about" as a whole. It
+        # is NOT what gets attached to every chunk below — a page that
+        # covers diet AND medication AND emotional support would make
+        # every one of its chunks look applicable to all three axes if
+        # it were. Chunk-level classification (next) is what
+        # applicability_scorer.py actually reads at retrieval time.
         applicability = applicability_override
         if applicability is None:
             result: ClassificationResult = await asyncio.to_thread(
@@ -203,12 +246,31 @@ class EvidenceIngestionService:
         if not chunks:
             raise ValueError(f"{doc_key} produced no chunks after chunking")
 
+        # Section-level: one classify() call per unique section heading,
+        # not per chunk — a long section split into overlapping child
+        # windows (section_chunker.CHILD_MAX_CHARS) shares one
+        # classification of the section's full parent_text, since those
+        # children are all still "about" the same section. Headingless
+        # chunks (the PDF/no-sections fallback in section_chunker.py has
+        # no section_title) have no narrower unit to classify against
+        # and fall back to the document-level result above — the same
+        # degradation that already applied to every chunk before this
+        # change, so nothing regresses for PDFs.
+        section_applicability = (
+            {} if applicability_override is not None
+            else await self._classify_sections(chunks, doc.title)
+        )
+
         retriever = self._retriever()
         points: List[PointStruct] = []
         chunk_rows: List[Dict[str, Any]] = []
         for chunk in chunks:
             vector = await retriever._embed_async(chunk.text)
             point_id = stable_id("point", version_id, chunk.section_title or "", str(chunk.chunk_index))
+            chunk_applicability = (
+                section_applicability.get(chunk.section_title, applicability)
+                if chunk.section_title else applicability
+            )
             points.append(PointStruct(
                 id=point_id,
                 vector=vector,
@@ -224,7 +286,7 @@ class EvidenceIngestionService:
                         "source_name": source["name"], "url": url,
                         "authority_class": source["authority_class"],
                     },
-                    "applicability": applicability,
+                    "applicability": chunk_applicability,
                     "version_id": version_id,
                 },
             ))

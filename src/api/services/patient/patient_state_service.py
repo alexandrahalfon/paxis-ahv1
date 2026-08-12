@@ -55,6 +55,7 @@ from src.api.services.patient.tumor_profile_service import get_tumor_profile_ser
 from src.api.services.patient.symptom_observation_service import get_symptom_observation_service
 from src.api.services.patient.nutrition_assessment_service import get_nutrition_assessment_service
 from src.api.services.patient.care_team_instruction_service import get_care_team_instruction_service
+from src.api.services.patient.clinical_normalization import normalize_cancer_site
 
 
 def _age_from_dob(dob: Any) -> Optional[int]:
@@ -203,6 +204,7 @@ class PatientStateService:
             "active_treatment": [
                 {
                     "regimen": e.get("regimen"),
+                    "modality": e.get("modality"),
                     "line_of_therapy": e.get("line_of_therapy"),
                     "start_date": e.get("start_date"),
                     "agents": episode_agents.get(e.get("id"), []),
@@ -296,6 +298,18 @@ class PatientStateService:
             "active_agents": sorted({
                 a for t in (state.get("active_treatment") or []) for a in (t.get("agents") or [])
             }),
+            # Feeds applicability_scorer.py's modality/cancer components —
+            # canonical_cancer_type is already computed by
+            # diagnosis_service.add_diagnosis at write time; the fallback
+            # normalization here only covers legacy-chart diagnoses,
+            # which never went through that write path.
+            "treatment_modalities": sorted({
+                t.get("modality") for t in (state.get("active_treatment") or []) if t.get("modality")
+            }),
+            "cancer_types": sorted({
+                d.get("canonical_cancer_type") or normalize_cancer_site(d.get("cancer_site") or "").canonical
+                for d in diagnoses if d.get("cancer_site")
+            } - {None}),
             "symptoms": [s.get("name") for s in (state.get("active_symptoms") or []) if s.get("name")],
             "comorbidities": state.get("comorbidities") or [],
             "has_multiple_primaries": len([d for d in diagnoses if d.get("diagnosis_type") in ("primary", "second_primary")]) > 1,

@@ -734,3 +734,27 @@ async def deactivate_care_team_instruction(
     if not row:
         raise HTTPException(status_code=404, detail="Instruction not found")
     return {"success": True, "instruction": row}
+
+
+# ── Query debug traces ───────────────────────────────────────────────────
+# Deliberately scoped to the caller's own profile only — see
+# evidence/retrieval_debug_trace.py's PHI note. Doubles as both a
+# developer debugging tool during beta and the data source for a future
+# "what Paxis used" transparency panel (architecture review item 15):
+# a patient inspecting their own trace is a legitimate transparency
+# feature, not a privileged debug capability, since get_trace()/
+# list_traces_for_profile() are already scoped by patient_profile_id.
+
+@router.get("/debug/traces")
+async def list_query_traces(limit: int = 20, profile: dict = Depends(get_own_profile)):
+    from src.api.services.evidence.retrieval_debug_trace import list_traces_for_profile
+    return {"traces": await list_traces_for_profile(profile["id"], limit=min(max(limit, 1), 100))}
+
+
+@router.get("/debug/traces/{trace_id}")
+async def get_query_trace(trace_id: str, profile: dict = Depends(get_own_profile)):
+    from src.api.services.evidence.retrieval_debug_trace import get_trace
+    trace = await get_trace(trace_id, patient_profile_id=profile["id"])
+    if not trace:
+        raise HTTPException(status_code=404, detail="Trace not found")
+    return {"trace": trace}

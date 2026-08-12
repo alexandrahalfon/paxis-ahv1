@@ -17,7 +17,9 @@ import pytest
 from src.api.services.evidence.content_extractor import extract_html
 from src.api.services.evidence.section_chunker import chunk_document, Chunk
 from src.api.services.evidence.metadata_classifier import sanitize
-from src.api.services.evidence.evidence_ingestion_service import stable_id, content_hash_of
+from src.api.services.evidence.evidence_ingestion_service import (
+    stable_id, content_hash_of, unique_section_texts,
+)
 
 
 NCI_STYLE_HTML = b"""
@@ -147,6 +149,46 @@ class TestMetadataClassifierGrounding:
     def test_invalid_content_type_falls_back_to_patient_education(self):
         result = sanitize({"content_type": "not_a_real_type"})
         assert result.content_type == "patient_education"
+
+
+class TestUniqueSectionTexts:
+    """Chunk-level metadata classification (2026-08-12): each unique
+    section gets classified once, using the section's full parent_text
+    when a long section was split into overlapping child chunks, so
+    unrelated sections of one document don't inherit each other's
+    applicability tags (see evidence_ingestion_service.py's
+    _classify_sections)."""
+
+    def test_one_entry_per_unique_heading_from_real_document(self):
+        doc = extract_html(NCI_STYLE_HTML)
+        chunks = chunk_document(doc)
+        sections = unique_section_texts(chunks)
+        assert "Changes in Taste" in sections
+        assert "Things you can try" in sections
+        assert "metallic" in sections["Changes in Taste"].lower()
+
+    def test_split_children_of_one_section_collapse_to_one_entry(self):
+        long_text = "word " * 500  # forces child-window splitting
+        chunks = [
+            Chunk(text=f"Long Section\n{long_text[:1200]}", section_title="Long Section",
+                  chunk_index=0, parent_text=long_text),
+            Chunk(text=f"Long Section\n{long_text[1050:2250]}", section_title="Long Section",
+                  chunk_index=1, parent_text=long_text),
+        ]
+        sections = unique_section_texts(chunks)
+        assert list(sections.keys()) == ["Long Section"]
+        assert sections["Long Section"] == long_text  # classified against the FULL section
+
+    def test_headingless_chunks_are_skipped(self):
+        chunks = [Chunk(text="some fallback text", section_title=None, chunk_index=0)]
+        assert unique_section_texts(chunks) == {}
+
+    def test_first_seen_wins_for_duplicate_headings(self):
+        chunks = [
+            Chunk(text="A", section_title="Repeated", chunk_index=0, parent_text="first"),
+            Chunk(text="B", section_title="Repeated", chunk_index=1, parent_text="second"),
+        ]
+        assert unique_section_texts(chunks) == {"Repeated": "first"}
 
 
 class TestDeterministicIds:
