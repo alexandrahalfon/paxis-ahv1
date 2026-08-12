@@ -172,29 +172,61 @@ class TreatmentService:
             )
         return [row_to_dict(r) for r in rows]
 
-    async def list_agents(self, treatment_episode_id: str) -> List[Dict[str, Any]]:
+    async def list_agents(
+        self, treatment_episode_id: str, patient_profile_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """patient_profile_id is optional only for the internal call from
+        patient_state_service, which already scoped treatment_episode_id
+        to the profile it iterated from list_episodes(). Every route-level
+        caller MUST pass it — an unscoped query here would let one
+        patient read another patient's treatment agents by guessing an
+        episode_id (caught in Phase 0 authorization review; see
+        list_cycles below for the same fix)."""
         db = get_patient_db()
         await db.ensure_schema()
         pool = await db.get_pool()
         async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM treatment_agents WHERE treatment_episode_id = $1",
-                treatment_episode_id,
-            )
+            if patient_profile_id is not None:
+                rows = await conn.fetch(
+                    """
+                    SELECT ta.* FROM treatment_agents ta
+                      JOIN treatment_episodes te ON te.id = ta.treatment_episode_id
+                     WHERE ta.treatment_episode_id = $1 AND te.patient_profile_id = $2
+                    """,
+                    treatment_episode_id, patient_profile_id,
+                )
+            else:
+                rows = await conn.fetch(
+                    "SELECT * FROM treatment_agents WHERE treatment_episode_id = $1",
+                    treatment_episode_id,
+                )
         return [row_to_dict(r) for r in rows]
 
-    async def list_cycles(self, treatment_episode_id: str) -> List[Dict[str, Any]]:
+    async def list_cycles(
+        self, treatment_episode_id: str, patient_profile_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         db = get_patient_db()
         await db.ensure_schema()
         pool = await db.get_pool()
         async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT * FROM treatment_cycles WHERE treatment_episode_id = $1
-                 ORDER BY cycle_number NULLS LAST, cycle_date
-                """,
-                treatment_episode_id,
-            )
+            if patient_profile_id is not None:
+                rows = await conn.fetch(
+                    """
+                    SELECT tc.* FROM treatment_cycles tc
+                      JOIN treatment_episodes te ON te.id = tc.treatment_episode_id
+                     WHERE tc.treatment_episode_id = $1 AND te.patient_profile_id = $2
+                     ORDER BY tc.cycle_number NULLS LAST, tc.cycle_date
+                    """,
+                    treatment_episode_id, patient_profile_id,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT * FROM treatment_cycles WHERE treatment_episode_id = $1
+                     ORDER BY cycle_number NULLS LAST, cycle_date
+                    """,
+                    treatment_episode_id,
+                )
         return [row_to_dict(r) for r in rows]
 
 

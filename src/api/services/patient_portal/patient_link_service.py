@@ -20,11 +20,14 @@ inbox. Selecting a name is a request; only the physician can grant it.
 
 from __future__ import annotations
 
+import logging
 import secrets
 import uuid
 from typing import Any, Dict, List, Optional
 
 from src.api.services.patient_db import get_patient_db
+
+logger = logging.getLogger(__name__)
 
 
 # Unambiguous alphabet: no 0/O, no 1/I/L. Patients read these off a phone
@@ -199,7 +202,11 @@ class PatientLinkService:
                 legacy_patient_record_id=str(patient_record_id),
             )
         except Exception:
-            pass
+            logger.warning(
+                "[PatientLink] patient_profile sync failed after approve_link_request "
+                "for patient_user_id=%s (legacy link still succeeded)", patient_user_id,
+                exc_info=True,
+            )
 
         return {"request_id": request_id, "patient_id": patient_record_id, "status": "approved"}
 
@@ -276,7 +283,11 @@ class PatientLinkService:
                 legacy_patient_record_id=str(row["id"]),
             )
         except Exception:
-            pass
+            logger.warning(
+                "[PatientLink] patient_profile sync failed after claim_invite for "
+                "patient_user_id=%s (legacy link still succeeded)", patient_user_id,
+                exc_info=True,
+            )
 
         return {
             "patient_id": str(row["id"]),

@@ -59,6 +59,8 @@ uvicorn[standard]>=0.24.0
 # Database
 sqlalchemy>=2.0.0
 asyncpg>=0.30.0  # 0.30+ required for Python 3.13
+alembic>=1.13.0  # migrations for exueed-patients — see migrations/patients_db/README.md
+psycopg2-binary>=2.9.9  # sync driver for Alembic only; the app itself uses asyncpg
 
 # Testing
 pytest>=7.4.0

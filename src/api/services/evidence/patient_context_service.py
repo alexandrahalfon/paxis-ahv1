@@ -17,8 +17,11 @@ generation prompt itself still has the full patient message.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 INTENT_MEDICATION = "medication_explainer"
 INTENT_SYMPTOM = "symptom_management"
@@ -89,6 +92,10 @@ class PatientContextService:
                 "retrieval_features": features,
             }
         except Exception:
+            logger.warning(
+                "[PatientContext] context load failed for user %s, answering "
+                "without personalization", patient_user_id, exc_info=True,
+            )
             return {}
 
 

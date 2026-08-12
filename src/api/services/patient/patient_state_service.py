@@ -28,9 +28,12 @@ answerable, and the diff/change-detection layer described in the review
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from src.api.services.patient_db import get_patient_db
 from src.api.services.patient.patient_profile_service import get_patient_profile_service
@@ -74,6 +77,10 @@ class PatientStateService:
                 legacy["legacy_patient_record_id"], legacy["physician_id"]
             )
         except Exception:
+            logger.warning(
+                "[PatientState] legacy chart lookup failed for profile %s",
+                patient_profile_id, exc_info=True,
+            )
             return None
 
     async def build_state(
@@ -102,7 +109,7 @@ class PatientStateService:
         episode_agents: Dict[str, List[str]] = {}
         for ep in active_episodes:
             if ep.get("id"):
-                agents = await get_treatment_service().list_agents(ep["id"])
+                agents = await get_treatment_service().list_agents(ep["id"], patient_profile_id)
                 episode_agents[ep["id"]] = [a["agent_name"] for a in agents]
 
         if not episodes and legacy and legacy.get("treatment_history"):
@@ -134,7 +141,10 @@ class PatientStateService:
                 for e in entries
             ]
         except Exception:
-            pass
+            logger.warning(
+                "[PatientState] symptom lookup failed for profile %s, "
+                "continuing without active_symptoms", patient_profile_id, exc_info=True,
+            )
 
         state: Dict[str, Any] = {
             "as_of": _now_iso(),
@@ -191,6 +201,7 @@ class PatientStateService:
         try:
             from src.api.services.clinical_inference import run_inference
         except Exception:
+            logger.warning("[PatientState] clinical_inference unavailable, skipping derived flags", exc_info=True)
             run_inference = None
 
         narrative_parts: List[str] = []
@@ -249,7 +260,10 @@ class PatientStateService:
                 features["surgical_candidate"] = result.surgical_candidate
                 features["inferred_terms"] = result.inferred_terms.get("primary_cancer", [])
             except Exception:
-                pass
+                logger.warning(
+                    "[PatientState] run_inference failed for profile %s",
+                    state.get("patient_profile_id"), exc_info=True,
+                )
 
         return features
 

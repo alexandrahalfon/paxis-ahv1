@@ -267,7 +267,13 @@ async def add_cycle(episode_id: str, body: CycleBody, profile: dict = Depends(ge
 @router.get("/treatments/{episode_id}/agents")
 async def list_treatment_agents(episode_id: str, profile: dict = Depends(get_own_profile)):
     from src.api.services.patient.treatment_service import get_treatment_service
-    return {"agents": await get_treatment_service().list_agents(episode_id)}
+    return {"agents": await get_treatment_service().list_agents(episode_id, profile["id"])}
+
+
+@router.get("/treatments/{episode_id}/cycles")
+async def list_treatment_cycles(episode_id: str, profile: dict = Depends(get_own_profile)):
+    from src.api.services.patient.treatment_service import get_treatment_service
+    return {"cycles": await get_treatment_service().list_cycles(episode_id, profile["id"])}
 
 
 # ── Medications ──────────────────────────────────────────────────────────

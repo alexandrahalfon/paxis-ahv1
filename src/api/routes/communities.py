@@ -75,7 +75,14 @@ class ReportBody(BaseModel):
 
 
 class BlockBody(BaseModel):
-    blocked_user_id: str
+    # community_profile_id, not a real account user_id — the only
+    # identifier of another person a client ever legitimately has is the
+    # one returned on posts/comments (community_profile_id / handle).
+    # Accepting a raw user_id here would have let a client block (and,
+    # via ensure_profile, silently create a community_profile for)
+    # anyone whose real account id it obtained some other way, breaking
+    # the pseudonymity boundary this package's __init__ documents.
+    blocked_profile_id: str
 
 
 class UpdateHandleBody(BaseModel):
@@ -106,10 +113,8 @@ async def update_my_handle(body: UpdateHandleBody, profile: dict = Depends(get_o
 
 @router.post("/community/block")
 async def block_user(body: BlockBody, profile: dict = Depends(get_own_community_profile)):
-    from src.api.services.community.community_service import get_community_service
     from src.api.services.community.post_service import get_post_service
-    target = await get_community_service().ensure_profile(body.blocked_user_id)
-    return await get_post_service().block_user(profile["id"], target["id"])
+    return await get_post_service().block_user(profile["id"], body.blocked_profile_id)
 
 
 # ── Communities ──────────────────────────────────────────────────────────

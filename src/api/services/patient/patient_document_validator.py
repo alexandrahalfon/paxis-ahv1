@@ -18,9 +18,12 @@ confirming their own upload is not the same as clinical verification.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Dict, Optional
 
 from src.api.services.patient_db import get_patient_db
+
+logger = logging.getLogger(__name__)
 
 
 class PatientDocumentValidator:
@@ -139,7 +142,11 @@ class PatientDocumentValidator:
             from src.api.services.patient.patient_state_service import get_patient_state_service
             await get_patient_state_service().build_state(patient_profile_id)
         except Exception:
-            pass
+            logger.warning(
+                "[PatientDocValidator] state refresh failed after confirming document %s "
+                "(record was written; only the cached snapshot is stale until next rebuild)",
+                document_id, exc_info=True,
+            )
 
         return {"success": True, "written": written}
 
