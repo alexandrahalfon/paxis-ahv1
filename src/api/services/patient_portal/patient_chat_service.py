@@ -437,7 +437,17 @@ class PatientChatService:
             plan = build_plan(intent, context.get("retrieval_features", {}))
             candidates = await multi_corpus_retriever.search(query, plan)
             ranked = rank_evidence(candidates, plan)
-            packet = build_packet(message, context, ranked, safety_category=tri.category)
+            packet = build_packet(
+                message, context, ranked, safety_category=tri.category,
+                audience="patient",
+                retrieval_plan=plan,
+                # Stand-in for a real state-revision-scoped snapshot id
+                # until B7 (deterministic state freshness via revision
+                # counters) lands -- patient_profile_id is the closest
+                # thing that exists today to "which patient's state this
+                # packet was built from".
+                patient_snapshot_id=context.get("patient_profile_id"),
+            )
             evidence_block = to_prompt_block(packet)
             sources = to_sources(packet)
 

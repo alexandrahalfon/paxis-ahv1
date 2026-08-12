@@ -19,11 +19,29 @@ normalized text content, catching the case that chunk-identity dedup
 can't: the same passage genuinely appearing twice (e.g. surfaced by two
 different collections/searches), which chunk-identity dedup — correctly
 — does not consider a duplicate of itself.
+
+Shared-contract expansion (2026-08-12 convergence Sprint A item 2):
+build_packet()'s output is meant to become the ONLY input to medical
+generation on both the patient and (future) physician paths — see
+evidence_candidate.py's module docstring for the same convergence
+program. The new keyword-only parameters below (audience, query_analysis,
+patient_snapshot_id, selected_patient_context, retrieval_plan, pto_frame,
+safety_policy, interpretation_policies) are all additive and all
+optional: every existing call site (patient_chat_service.py, the legacy
+patient_query.py route) keeps working with zero changes, and gets sane
+defaults (audience="patient", everything else empty/None). Nothing
+downstream reads most of these fields yet — physician convergence
+(Sprint C) is what will actually populate query_analysis/pto_frame for a
+physician packet, and A3 (interpretation policies on patient labs) is
+what will populate interpretation_policies with real content. This
+commit only freezes the shape so those can be filled in later without
+another packet-shape change.
 """
 
 from __future__ import annotations
 
 import hashlib
+from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional
 
 
@@ -92,16 +110,54 @@ def _dedup_by_content(ranked_evidence: List[Dict[str, Any]]) -> List[Dict[str, A
     return out
 
 
+def _serialize_retrieval_plan(plan: Any) -> Optional[Dict[str, Any]]:
+    """retrieval_planner.RetrievalPlan is a dataclass; accept either that
+    or a plain dict so a caller doesn't need to import this module's
+    internals just to pass its plan through."""
+    if plan is None:
+        return None
+    if is_dataclass(plan) and not isinstance(plan, type):
+        return asdict(plan)
+    if isinstance(plan, dict):
+        return plan
+    return None
+
+
 def build_packet(
     question: str,
     patient_context: Optional[Dict[str, Any]],
     ranked_evidence: List[Dict[str, Any]],
     safety_category: str = "general",
+    *,
+    audience: str = "patient",
+    query_analysis: Optional[Dict[str, Any]] = None,
+    patient_snapshot_id: Optional[str] = None,
+    selected_patient_context: Optional[Dict[str, Any]] = None,
+    retrieval_plan: Any = None,
+    pto_frame: Optional[Dict[str, Any]] = None,
+    safety_policy: Optional[Dict[str, Any]] = None,
+    interpretation_policies: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     deduped = _dedup_by_content(ranked_evidence)
+    patient_context_summary = summarize_context(patient_context)
     return {
+        "audience": audience,
         "question": question,
-        "patient_context": summarize_context(patient_context),
+        "query_analysis": query_analysis or {},
+        "patient_snapshot_id": patient_snapshot_id,
+        "patient_context": patient_context_summary,
+        # Defaults to the same summary as patient_context today (there is
+        # only one context-selection mechanism on the patient path yet).
+        # A physician context selector (Sprint C item 13) will pass its
+        # own intent-filtered view here explicitly instead.
+        "selected_patient_context": (
+            selected_patient_context if selected_patient_context is not None
+            else patient_context_summary
+        ),
+        "retrieval_plan": _serialize_retrieval_plan(retrieval_plan),
+        "pto_frame": pto_frame,
+        "safety_policy": safety_policy or {},
+        "interpretation_policies": interpretation_policies or {},
         "evidence": [
             {
                 "source": e.get("source_key") or e.get("title"),

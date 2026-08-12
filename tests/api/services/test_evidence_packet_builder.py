@@ -174,6 +174,74 @@ class TestSummarizeContextCareTeamInstructions:
         ]
 
 
+class TestSharedPacketContractFields:
+    """2026-08-12 convergence Sprint A item 2: build_packet()'s output
+    expands toward the full shared EvidencePacket shape (audience,
+    query_analysis, patient_snapshot_id, selected_patient_context,
+    retrieval_plan, pto_frame, safety_policy, interpretation_policies),
+    all additive and defaulted so existing callers are unaffected."""
+
+    def test_defaults_when_nothing_new_is_passed(self):
+        packet = build_packet("Question", None, [_candidate()])
+        assert packet["audience"] == "patient"
+        assert packet["query_analysis"] == {}
+        assert packet["patient_snapshot_id"] is None
+        assert packet["retrieval_plan"] is None
+        assert packet["pto_frame"] is None
+        assert packet["safety_policy"] == {}
+        assert packet["interpretation_policies"] == {}
+        # selected_patient_context defaults to the same value as
+        # patient_context when nothing overrides it.
+        assert packet["selected_patient_context"] == packet["patient_context"]
+
+    def test_explicit_values_are_carried_through(self):
+        packet = build_packet(
+            "Question", None, [_candidate()],
+            audience="physician",
+            query_analysis={"intent": "therapy_selection"},
+            patient_snapshot_id="profile-123",
+            pto_frame={"axis": "biomarker"},
+            safety_policy={"tier": "strict"},
+            interpretation_policies={"anc": "exact_value_and_trend_only"},
+        )
+        assert packet["audience"] == "physician"
+        assert packet["query_analysis"] == {"intent": "therapy_selection"}
+        assert packet["patient_snapshot_id"] == "profile-123"
+        assert packet["pto_frame"] == {"axis": "biomarker"}
+        assert packet["safety_policy"] == {"tier": "strict"}
+        assert packet["interpretation_policies"] == {"anc": "exact_value_and_trend_only"}
+
+    def test_selected_patient_context_override_is_independent_of_patient_context(self):
+        packet = build_packet(
+            "Question", {"state": {"active_diagnosis": {"cancer_site": "lung"}}}, [_candidate()],
+            selected_patient_context={"only": "what physician context selector picked"},
+        )
+        assert packet["selected_patient_context"] == {"only": "what physician context selector picked"}
+        assert packet["patient_context"] == {"cancer_type": "lung"}
+        assert packet["selected_patient_context"] != packet["patient_context"]
+
+    def test_retrieval_plan_dataclass_is_serialized(self):
+        from src.api.services.evidence.retrieval_planner import RetrievalPlan
+        plan = RetrievalPlan(intent="medication_explainer", collections=["c1"], boost_terms=["x"])
+        packet = build_packet("Question", None, [_candidate()], retrieval_plan=plan)
+        assert packet["retrieval_plan"] == {
+            "intent": "medication_explainer", "collections": ["c1"], "boost_terms": ["x"],
+            "hard_constraints": {}, "patient_values": {},
+        }
+
+    def test_retrieval_plan_dict_passes_through_unchanged(self):
+        packet = build_packet("Question", None, [_candidate()], retrieval_plan={"collections": ["c1"]})
+        assert packet["retrieval_plan"] == {"collections": ["c1"]}
+
+    def test_existing_fields_unaffected(self):
+        """The pre-existing question/patient_context/evidence/safety
+        fields must be byte-identical to before this expansion."""
+        packet = build_packet("Question", None, [_candidate()], safety_category="distress")
+        assert packet["question"] == "Question"
+        assert packet["safety"] == {"category": "distress", "red_flags": []}
+        assert len(packet["evidence"]) == 1
+
+
 class TestBackwardCompatibleHelpers:
     """to_prompt_block()/to_sources() are read by patient_chat_service.py
     and the legacy patient_query.py route -- must keep working unchanged."""
