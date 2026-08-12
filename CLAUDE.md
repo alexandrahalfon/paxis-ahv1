@@ -26,6 +26,17 @@
 > instead** — it is code-verified as of 2026-08-08 and lists what actually
 > remains. Section 10 ("Do not change") below is still accurate and still
 > applies.
+>
+> **2026-08-12 update**: a separate, later 27-item patient/physician
+> convergence program (one canonical patient record + one shared
+> evidence/provenance/grounding layer, with audience-specific patient and
+> physician RAG policies) is also complete — see
+> `PHYSICIAN_BETA_DEPLOYMENT_GATE.md` for its full item list, test
+> coverage, and the deployment gate checklist for the new
+> `/api/physician-beta/*` routes it added (still off by default behind
+> `settings.physician_rag_beta_enabled`). Section 10's "do not change"
+> list is what that program built its physician-side legacy retrieval
+> adapter around, and remains accurate.
 
 ---
 
