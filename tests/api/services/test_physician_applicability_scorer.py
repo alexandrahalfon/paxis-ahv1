@@ -112,7 +112,7 @@ class TestBiomarkerConflictPenalty:
         )
         assert scored["incompatibility_reasons"]
         assert "biomarker_mismatch" in scored["incompatibility_reasons"][0]
-        assert scored["components"]["biomarker_conflict"] is True
+        assert scored["components"]["hard_incompatibility"] is True
 
     def test_conflict_penalizes_the_combined_score(self):
         conflicting = _candidate(

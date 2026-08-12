@@ -48,15 +48,41 @@ patient axis TERM the record already asserts appear literally in the
 chunk text. This is honest given the corpus's current state, not a
 placeholder pretending to be real classification.
 
-Incompatibility (Sprint C item 17 builds the full typed taxonomy on top
-of this): only ONE hard-mismatch penalty exists here so far —
-biomarker, mirroring applicability_scorer.py's own single modality-
-conflict penalty exactly (a named, non-overlapping, textually-
-uncorroborated mismatch on the single axis most likely to cause real
-clinical harm if ignored — recommending an EGFR-targeted therapy passage
-for a documented KRAS G12C patient). incompatibility_reasons here is a
-plain string list, same shape as the patient scorer's; C17 is what adds
-typed/structured reasons (hard vs. soft vs. unknown) on top.
+Incompatibility (2026-08-12, Sprint C item 17 — extends item 16's single
+biomarker-only penalty into the full typed taxonomy): incompatibility_
+details is a list of {type, severity, patient, evidence, reason} dicts,
+distinguishing hard incompatibility (a real exclusionary mismatch —
+penalizes the combined score, same 0.35 multiplicative penalty item 16
+introduced, now triggered by ANY hard finding rather than biomarker
+specifically), soft mismatch (informational, does not penalize the
+score — e.g. histology or prior-therapy differences that often still
+inform practice even when they don't match exactly), and unknown
+(trial_eligibility scoring specifically flags when a numeric eligibility
+bound — age range, ECOG ceiling — simply isn't reported by the evidence
+at all, which is a real "we can't confirm eligibility" gap worth
+surfacing, not silent neutrality). incompatibility_reasons (a flat
+string list, item 16's original shape) is now DERIVED from
+incompatibility_details rather than computed separately, so both stay
+in sync and both reflect the full detected set, not just biomarker.
+
+Detection mechanisms:
+  - Five axes (cancer_type_mismatch/hard, histology_mismatch/soft,
+    biomarker_mismatch/hard, prior_therapy_requirement_missing/soft,
+    organ_function_incompatible/hard) reuse the exact 0.0 signal
+    _set_match() already produces for a named, non-overlapping,
+    textually-uncorroborated mismatch on that component — no new
+    matching logic, just labeling what item 16 already detects.
+  - first_line_only_vs_previously_treated is a term-based heuristic over
+    patient_values["treatment_lines"]/meta["treatment_lines"] (e.g. the
+    patient's line is tagged "second_line"/"previously_treated" while
+    the evidence is tagged "first_line_only"). No real corpus tagging
+    exists yet to validate this against (documented, not pretended
+    otherwise) — same honesty convention as clinical_retrieval_adapter.py's
+    version_id/rrf_score gaps.
+  - trial_age_incompatible and ECOG_incompatible are dedicated numeric-
+    range checks: patient_values["age"]/["ecog"] (single values, not
+    lists — the one exception to every other axis's list-of-terms shape)
+    against meta["age_range"] ({"min","max"}) / meta["ecog_max"].
 
 Nothing calls score_candidate()/rank() here yet — same as every other
 Sprint C piece landing before Sprint C item 20's physician orchestrator
@@ -75,10 +101,41 @@ from src.api.services.physician.physician_context_service import (
 
 _GENERAL_CANCER_TOKEN = "all"
 
-# Applied multiplicatively to the combined score on a detected biomarker
-# conflict — see module docstring for why biomarker, specifically,
-# mirrors applicability_scorer.py's single modality-conflict penalty.
-_BIOMARKER_CONFLICT_PENALTY = 0.35
+# Applied multiplicatively to the combined score whenever ANY hard
+# incompatibility is detected (Sprint C item 17 generalizes this from
+# item 16's biomarker-only trigger) — see module docstring.
+_HARD_INCOMPATIBILITY_PENALTY = 0.35
+
+SEVERITY_HARD = "hard"
+SEVERITY_SOFT = "soft"
+SEVERITY_UNKNOWN = "unknown"
+
+# axis (a _COMPONENT_NAMES entry with a real _set_match() score) ->
+# (incompatibility type name, severity). The patient_values/meta dict
+# key for each axis is the axis name itself with an "s" plurally
+# adjusted where needed -- see _AXIS_TO_VALUES_KEY below.
+_AXIS_INCOMPATIBILITY: Dict[str, tuple] = {
+    "cancer": ("cancer_type_mismatch", SEVERITY_HARD),
+    "histology": ("histology_mismatch", SEVERITY_SOFT),
+    "biomarker": ("biomarker_mismatch", SEVERITY_HARD),
+    "prior_treatment": ("prior_therapy_requirement_missing", SEVERITY_SOFT),
+    "organ_function": ("organ_function_incompatible", SEVERITY_HARD),
+}
+
+_AXIS_TO_VALUES_KEY: Dict[str, str] = {
+    "cancer": "cancer_types", "histology": "histologies", "biomarker": "biomarkers",
+    "prior_treatment": "prior_treatments", "organ_function": "organ_functions",
+}
+
+# Term-based heuristic for first_line_only_vs_previously_treated -- see
+# module docstring for why this is a heuristic, not real corpus tagging.
+_SUBSEQUENT_LINE_TERMS = frozenset({
+    "second_line", "third_line", "subsequent_line", "previously_treated",
+    "post_progression", "2l", "3l", "relapsed", "refractory",
+})
+_FIRST_LINE_ONLY_TERMS = frozenset({
+    "first_line_only", "treatment_naive_only", "1l_only", "frontline_only",
+})
 
 _COMPONENT_NAMES = (
     "cancer", "histology", "stage", "biomarker", "treatment_line",
@@ -128,6 +185,92 @@ _DEFAULT_WEIGHTS: Dict[str, float] = {name: round(1.0 / len(_COMPONENT_NAMES), 6
 # Rounding 1/15 fifteen times won't sum to exactly 1.0 -- correct the
 # last component so weight normalization downstream can rely on it.
 _DEFAULT_WEIGHTS[_COMPONENT_NAMES[-1]] += 1.0 - sum(_DEFAULT_WEIGHTS.values())
+
+
+def _detect_incompatibilities(
+    patient_values: Dict[str, Any],
+    meta: Dict[str, Any],
+    text_lower: str,
+    components: Dict[str, Any],
+    intent: str,
+) -> List[Dict[str, Any]]:
+    """Returns the full typed incompatibility list (Sprint C item 17) —
+    see module docstring for each detection mechanism."""
+    details: List[Dict[str, Any]] = []
+
+    # ── Axis mismatches: reuse the 0.0 signal _set_match() already
+    # computed for each component above, just label what it means. ────
+    for axis, (type_name, severity) in _AXIS_INCOMPATIBILITY.items():
+        if components.get(axis) != 0.0:
+            continue
+        values_key = _AXIS_TO_VALUES_KEY[axis]
+        patient_terms = sorted({str(t) for t in (patient_values.get(values_key) or []) if t})
+        evidence_terms = sorted({str(t) for t in (meta.get(values_key) or []) if t})
+        details.append({
+            "type": type_name,
+            "severity": severity,
+            "patient": ", ".join(patient_terms) or None,
+            "evidence": ", ".join(evidence_terms) or None,
+            "reason": f"{type_name}: patient={patient_terms} evidence={evidence_terms}",
+        })
+
+    # ── Line-of-therapy direction heuristic ─────────────────────────────
+    patient_lines = {str(t).strip().lower() for t in (patient_values.get("treatment_lines") or []) if t}
+    evidence_lines = {str(t).strip().lower() for t in (meta.get("treatment_lines") or []) if t}
+    if (patient_lines & _SUBSEQUENT_LINE_TERMS) and (evidence_lines & _FIRST_LINE_ONLY_TERMS):
+        details.append({
+            "type": "first_line_only_vs_previously_treated",
+            "severity": SEVERITY_HARD,
+            "patient": ", ".join(sorted(patient_lines & _SUBSEQUENT_LINE_TERMS)),
+            "evidence": ", ".join(sorted(evidence_lines & _FIRST_LINE_ONLY_TERMS)),
+            "reason": (
+                "first_line_only_vs_previously_treated: patient is previously "
+                "treated but evidence population is first-line only"
+            ),
+        })
+
+    # ── Numeric eligibility bounds: age, ECOG. Only meaningful for
+    # trial_eligibility scoring -- an "unknown eligibility" note on every
+    # other intent would just be noise. ─────────────────────────────────
+    if intent == TRIAL_ELIGIBILITY:
+        patient_age = patient_values.get("age")
+        age_range = meta.get("age_range")
+        if patient_age is not None and isinstance(age_range, dict) and (
+            "min" in age_range or "max" in age_range
+        ):
+            lo, hi = age_range.get("min"), age_range.get("max")
+            if (lo is not None and patient_age < lo) or (hi is not None and patient_age > hi):
+                details.append({
+                    "type": "trial_age_incompatible",
+                    "severity": SEVERITY_HARD,
+                    "patient": str(patient_age),
+                    "evidence": f"{lo}-{hi}",
+                    "reason": f"trial_age_incompatible: patient age {patient_age} outside {lo}-{hi}",
+                })
+        elif patient_age is not None and age_range is None:
+            details.append({
+                "type": "trial_age_incompatible", "severity": SEVERITY_UNKNOWN,
+                "patient": str(patient_age), "evidence": None,
+                "reason": "trial_age_incompatible: evidence does not report an age eligibility range",
+            })
+
+        patient_ecog = patient_values.get("ecog")
+        ecog_max = meta.get("ecog_max")
+        if patient_ecog is not None and ecog_max is not None:
+            if patient_ecog > ecog_max:
+                details.append({
+                    "type": "ECOG_incompatible", "severity": SEVERITY_HARD,
+                    "patient": str(patient_ecog), "evidence": f"<= {ecog_max}",
+                    "reason": f"ECOG_incompatible: patient ECOG {patient_ecog} exceeds {ecog_max}",
+                })
+        elif patient_ecog is not None and ecog_max is None:
+            details.append({
+                "type": "ECOG_incompatible", "severity": SEVERITY_UNKNOWN,
+                "patient": str(patient_ecog), "evidence": None,
+                "reason": "ECOG_incompatible: evidence does not report an ECOG eligibility ceiling",
+            })
+
+    return details
 
 
 def _freshness_score(publication_date: Optional[str], as_of_year: int) -> float:
@@ -205,20 +348,6 @@ def score_candidate(
 
     freshness = _freshness_score(candidate.get("publication_date"), as_of_year)
 
-    patient_biomarkers = {str(b).strip().lower() for b in (patient_values.get("biomarkers") or []) if b}
-    candidate_biomarkers = {str(b).strip().lower() for b in (meta.get("biomarkers") or []) if b}
-    biomarker_conflict = bool(
-        patient_biomarkers and candidate_biomarkers
-        and not (patient_biomarkers & candidate_biomarkers)
-        and not any(b in text_lower for b in patient_biomarkers)
-    )
-    incompatibility_reasons: List[str] = []
-    if biomarker_conflict:
-        incompatibility_reasons.append(
-            f"biomarker_mismatch: patient={sorted(patient_biomarkers)} "
-            f"chunk={sorted(candidate_biomarkers)}"
-        )
-
     components = {
         "cancer": round(cancer, 4), "histology": round(histology, 4), "stage": round(stage, 4),
         "biomarker": round(biomarker, 4), "treatment_line": round(treatment_line, 4),
@@ -227,19 +356,29 @@ def score_candidate(
         "organ_function": round(organ_function, 4), "study_population": round(study_population, 4),
         "outcome": round(outcome, 4), "evidence_type": round(evidence_type_score, 4),
         "authority": round(authority, 4), "freshness": round(freshness, 4),
-        "biomarker_conflict": biomarker_conflict,
     }
+
+    incompatibility_details = _detect_incompatibilities(
+        patient_values, meta, text_lower, components, intent,
+    )
+    hard_incompatibility = any(d["severity"] == SEVERITY_HARD for d in incompatibility_details)
+    # Kept for any lightweight consumer that just wants a summary line
+    # per finding — now derived from incompatibility_details rather than
+    # computed separately, so the two never drift out of sync.
+    incompatibility_reasons: List[str] = [d["reason"] for d in incompatibility_details]
+    components["hard_incompatibility"] = hard_incompatibility
 
     weights = WEIGHTS_BY_PHYSICIAN_INTENT.get(intent, _DEFAULT_WEIGHTS)
     combined = sum(weights[name] * components[name] for name in _COMPONENT_NAMES)
-    if biomarker_conflict:
-        combined *= (1 - _BIOMARKER_CONFLICT_PENALTY)
+    if hard_incompatibility:
+        combined *= (1 - _HARD_INCOMPATIBILITY_PENALTY)
 
     out = dict(candidate)
     out.update({
         "applicability_score": round(combined, 4),
         "components": components,
         "incompatibility_reasons": incompatibility_reasons,
+        "incompatibility_details": incompatibility_details,
     })
     return out
 
