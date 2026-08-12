@@ -117,6 +117,15 @@ class Settings(BaseSettings):
     gcp_user_uploads_bucket: str = ""  # Separate bucket for user uploads
     gcp_project_id: str = ""
     auto_sync_gcp: bool = False
+    # Dedicated bucket for patient-uploaded documents (lab reports,
+    # pathology, imaging, ...) — see patient_document_storage.py. Kept
+    # separate from gcp_bucket_name/gcp_user_uploads_bucket on purpose:
+    # those hold published literature / study content with no PHI
+    # concerns; patient documents are PHI and should never share a
+    # bucket (or its IAM policy) with content that has different access-
+    # control and retention requirements. Empty (the default) falls back
+    # to local disk — see that module's docstring.
+    gcp_patient_documents_bucket: str = ""
     
     # Processing Configuration
     output_dir: str = "processed_documents"

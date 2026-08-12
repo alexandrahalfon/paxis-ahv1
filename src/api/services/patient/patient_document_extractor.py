@@ -92,7 +92,7 @@ class PatientDocumentExtractor:
 
     # ── OCR ──────────────────────────────────────────────────────────
 
-    def _ocr_pdf(self, path: str) -> str:
+    def _ocr_pdf(self, content: bytes, filename: str) -> str:
         """Mistral OCR for a PDF, same call shape as
         CompleteDocumentProcessor._extract_with_mistral_ocr — except that
         module's docstring itself notes cleanup "relatively unimportant"
@@ -100,17 +100,22 @@ class PatientDocumentExtractor:
         matters. The uploaded copy is deleted from Mistral's file store
         in a finally block, so it happens whether OCR succeeds or raises,
         rather than leaving a patient's uploaded document sitting on a
-        third-party file API indefinitely."""
+        third-party file API indefinitely.
+
+        Takes bytes directly rather than a local path (changed 2026-08-12
+        alongside patient_document_storage.py) — a document's storage_uri
+        can now be a GCS object, which has no local path to open at all;
+        the caller (extract_text) already fetched the bytes via that
+        module's read()."""
         client = self._mistral_client()
         if client is None:
             raise RuntimeError("Mistral OCR is not configured")
         from mistralai.models import DocumentURLChunk
 
-        with open(path, "rb") as f:
-            uploaded = client.files.upload(
-                file={"file_name": Path(path).name, "content": f.read()},
-                purpose="ocr",
-            )
+        uploaded = client.files.upload(
+            file={"file_name": filename, "content": content},
+            purpose="ocr",
+        )
         try:
             signed_url = client.files.get_signed_url(file_id=uploaded.id)
             ocr_response = client.ocr.process(
@@ -134,16 +139,16 @@ class PatientDocumentExtractor:
                     uploaded.id, e,
                 )
 
-    def _ocr_image(self, path: str) -> str:
+    def _ocr_image(self, content: bytes, filename: str) -> str:
         """Vision-model transcription for a phone photo. Uses the same
         pixtral chat-vision pattern as
-        CompleteDocumentProcessor._extract_with_pixtral."""
+        CompleteDocumentProcessor._extract_with_pixtral. Takes bytes
+        directly — see _ocr_pdf's docstring for why."""
         client = self._mistral_client()
         if client is None:
             raise RuntimeError("Mistral vision is not configured")
-        with open(path, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode("utf-8")
-        ext = Path(path).suffix.lstrip(".").lower() or "jpeg"
+        b64 = base64.b64encode(content).decode("utf-8")
+        ext = Path(filename).suffix.lstrip(".").lower() or "jpeg"
         response = client.chat.complete(
             model=settings.mistral_model,
             messages=[{
@@ -160,11 +165,21 @@ class PatientDocumentExtractor:
         )
         return response.choices[0].message.content or ""
 
-    def extract_text(self, storage_path: str, content_type: Optional[str] = None) -> str:
-        ext = Path(storage_path).suffix.lower()
+    async def extract_text(self, storage_uri: str, content_type: Optional[str] = None) -> str:
+        """Async now (changed 2026-08-12 alongside patient_document_
+        storage.py) — storage_uri may be a GCS object with no local path
+        to open directly, so the bytes are fetched through that module's
+        read(), which dispatches on the "gs://" prefix to handle both
+        GCS-backed and (pre-existing, still-supported) locally-stored
+        documents transparently."""
+        from src.api.services.patient import patient_document_storage
+
+        content = await patient_document_storage.read(storage_uri)
+        filename = storage_uri.rsplit("/", 1)[-1]
+        ext = Path(filename).suffix.lower()
         if ext in _IMAGE_EXTS or (content_type or "").startswith("image/"):
-            return self._ocr_image(storage_path)
-        return self._ocr_pdf(storage_path)
+            return self._ocr_image(content, filename)
+        return self._ocr_pdf(content, filename)
 
     # ── Classification + structured extraction ──────────────────────
 
@@ -224,7 +239,7 @@ class PatientDocumentExtractor:
             raise ValueError("Document not found")
 
         try:
-            raw_text = self.extract_text(doc["object_storage_uri"], doc.get("content_type"))
+            raw_text = await self.extract_text(doc["object_storage_uri"], doc.get("content_type"))
             document_type = self.classify(raw_text)
             fields = self.extract_fields(raw_text, document_type)
             confidence = 0.7 if fields else 0.0

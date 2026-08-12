@@ -10,22 +10,24 @@ or the literature corpus. See patient_document_extractor.py for the
 OCR/structuring step and patient_document_validator.py for the
 confirm-before-canonicalizing step this service defers to.
 
-Storage: local `patient_documents/` directory, mirroring
-UserUploadsService's `user_uploads/` convention, since GCS credentials
-(gcp_user_uploads_bucket) are optional/unset in most environments this
-runs in. Swapping to GCS later only touches _store_file below.
+Storage: GCS (settings.gcp_patient_documents_bucket) when configured,
+local `patient_documents/` directory as the fallback otherwise — see
+patient_document_storage.py for why patient documents get their own
+dedicated bucket setting rather than reusing the literature corpus's,
+and for how a document's object_storage_uri tells the two shapes apart
+with no migration needed for documents already stored locally before
+this change (2026-08-12 beta audit item 3, "not beta-safe for Cloud
+Run" — Cloud Run instances are ephemeral and don't share a filesystem).
 """
 
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from src.api.services.patient_db import get_patient_db
 from src.api.services.patient._common import row_to_dict
-
-_STORAGE_DIR = Path("patient_documents")
+from src.api.services.patient import patient_document_storage
 
 # Recognized so the classifier has a closed vocabulary to fall back to
 # rather than free text; see patient_document_extractor.classify().
@@ -36,18 +38,6 @@ DOCUMENT_TYPES = (
 
 
 class PatientDocumentService:
-    def _store_file(self, patient_profile_id: str, document_id: str, filename: str, content: bytes) -> str:
-        """Writes to local disk and returns the storage URI. Isolated so a
-        future GCS swap is a one-function change, matching the
-        object_storage_uri column's intent (not tied to 'local path')."""
-        _STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        safe_name = Path(filename or "upload").name
-        dest_dir = _STORAGE_DIR / patient_profile_id
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / f"{document_id}_{safe_name}"
-        dest.write_bytes(content)
-        return str(dest)
-
     async def create_document(
         self,
         patient_profile_id: str,
@@ -57,7 +47,9 @@ class PatientDocumentService:
         document_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         document_id = str(uuid.uuid4())
-        storage_uri = self._store_file(patient_profile_id, document_id, filename, content)
+        storage_uri = await patient_document_storage.store(
+            patient_profile_id, document_id, filename, content
+        )
 
         db = get_patient_db()
         await db.ensure_schema()
