@@ -19,6 +19,21 @@ from src.api.services.evidence.retrieval_planner import build_plan
 from src.api.services.evidence.patient_context_service import INTENT_NUTRITION
 
 
+@pytest.fixture(autouse=True)
+def _no_source_governance_db_call(monkeypatch):
+    """search() now calls enforce_source_governance() (2026-08-12
+    convergence Sprint B item 8), which hits a real Postgres connection
+    via source_registry.get_source_registry() -- not what this file's
+    tests (dedup/provenance) are about. Stub it to a pass-through here;
+    see test_source_governance.py / test_multi_corpus_retriever_source_
+    governance.py for coverage of the enforcement itself."""
+    import src.api.services.evidence.source_governance as sg
+
+    async def passthrough(candidates, *, audience="patient", intent=None):
+        return candidates
+    monkeypatch.setattr(sg, "enforce_source_governance", passthrough)
+
+
 def _point(point_id, doc_id, section_title, chunk_index, text, score=0.8,
            source_key="nci", source_name="National Cancer Institute",
            url="https://www.cancer.gov/nutrition", version_id="v1",
@@ -140,6 +155,94 @@ class TestSearchPreservesDistinctSectionsOfOneDocument:
         assert r["url"] == "https://www.cancer.gov/x"
         assert r["source_name"] == "National Cancer Institute"
         assert r["source_key"] == "nci"
+
+
+class TestSourceGovernanceWiring:
+    """2026-08-12 convergence Sprint B item 8: search() must actually
+    call enforce_source_governance() with the plan's intent and the
+    caller's audience, and must fail open (never drop every result) if
+    that call raises."""
+
+    @pytest.mark.asyncio
+    async def test_governance_is_called_with_audience_and_plan_intent(self, monkeypatch):
+        points = [_point("point-1", "doc-1", "Taste changes", 0, "Some passage.")]
+        fake_retriever = _FakeRetriever({"oncology_patient_education": points})
+        monkeypatch.setattr(mcr, "_retriever", lambda: fake_retriever)
+
+        captured = {}
+
+        import src.api.services.evidence.source_governance as sg
+
+        async def spy(candidates, *, audience="patient", intent=None):
+            captured["audience"] = audience
+            captured["intent"] = intent
+            return candidates
+        monkeypatch.setattr(sg, "enforce_source_governance", spy)
+
+        plan = build_plan(INTENT_NUTRITION, {})
+        plan.collections = ["oncology_patient_education"]
+
+        results = await mcr.search("query", plan, audience="physician")
+
+        assert captured["audience"] == "physician"
+        assert captured["intent"] == INTENT_NUTRITION
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_audience_defaults_to_patient(self, monkeypatch):
+        points = [_point("point-1", "doc-1", "Section", 0, "Text.")]
+        fake_retriever = _FakeRetriever({"oncology_patient_education": points})
+        monkeypatch.setattr(mcr, "_retriever", lambda: fake_retriever)
+
+        captured = {}
+        import src.api.services.evidence.source_governance as sg
+
+        async def spy(candidates, *, audience="patient", intent=None):
+            captured["audience"] = audience
+            return candidates
+        monkeypatch.setattr(sg, "enforce_source_governance", spy)
+
+        plan = build_plan(INTENT_NUTRITION, {})
+        plan.collections = ["oncology_patient_education"]
+        await mcr.search("query", plan)
+
+        assert captured["audience"] == "patient"
+
+    @pytest.mark.asyncio
+    async def test_governance_failure_fails_open_not_dropping_results(self, monkeypatch):
+        points = [_point("point-1", "doc-1", "Section", 0, "Text.")]
+        fake_retriever = _FakeRetriever({"oncology_patient_education": points})
+        monkeypatch.setattr(mcr, "_retriever", lambda: fake_retriever)
+
+        import src.api.services.evidence.source_governance as sg
+
+        async def failing(candidates, *, audience="patient", intent=None):
+            raise RuntimeError("registry unreachable")
+        monkeypatch.setattr(sg, "enforce_source_governance", failing)
+
+        plan = build_plan(INTENT_NUTRITION, {})
+        plan.collections = ["oncology_patient_education"]
+
+        results = await mcr.search("query", plan)
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_governance_filtering_actually_removes_candidates(self, monkeypatch):
+        points = [_point("point-1", "doc-1", "Section", 0, "Text.")]
+        fake_retriever = _FakeRetriever({"oncology_patient_education": points})
+        monkeypatch.setattr(mcr, "_retriever", lambda: fake_retriever)
+
+        import src.api.services.evidence.source_governance as sg
+
+        async def drop_everything(candidates, *, audience="patient", intent=None):
+            return []
+        monkeypatch.setattr(sg, "enforce_source_governance", drop_everything)
+
+        plan = build_plan(INTENT_NUTRITION, {})
+        plan.collections = ["oncology_patient_education"]
+
+        results = await mcr.search("query", plan)
+        assert results == []
 
 
 if __name__ == "__main__":

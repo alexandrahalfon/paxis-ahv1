@@ -113,7 +113,8 @@ def _candidate_identity(item: Dict[str, Any]) -> str:
 
 
 async def search(
-    query_text: str, plan: RetrievalPlan, top_k_per_collection: int = 6
+    query_text: str, plan: RetrievalPlan, top_k_per_collection: int = 6,
+    *, audience: str = "patient",
 ) -> List[Dict[str, Any]]:
     if not plan.collections:
         return []
@@ -137,4 +138,18 @@ async def search(
                 continue
             seen.add(key)
             merged.append(item)
+
+    # Source-governance enforcement (2026-08-12 convergence Sprint B item
+    # 8) — re-checks each candidate's registered source against the
+    # CURRENT registry state (active/patient_facing/allowed_intents), not
+    # just whatever tags were baked in at ingestion time. See
+    # source_governance.py's module docstring for exactly what's
+    # enforced and why this fails open on any error rather than dropping
+    # every result a registry lookup failure would otherwise cost.
+    try:
+        from src.api.services.evidence.source_governance import enforce_source_governance
+        merged = await enforce_source_governance(merged, audience=audience, intent=plan.intent)
+    except Exception as e:
+        logger.info("[MultiCorpusRetriever] source governance enforcement skipped (%s)", e)
+
     return merged
