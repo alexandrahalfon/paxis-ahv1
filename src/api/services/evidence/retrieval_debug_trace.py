@@ -59,17 +59,29 @@ _MAX_EVIDENCE_TEXT_CHARS = 600
 
 def _trim_candidate(c: Dict[str, Any]) -> Dict[str, Any]:
     return {
+        # Provenance (2026-08-12 beta audit items 6/7) — the same fields
+        # multi_corpus_retriever.py now attaches to every candidate and
+        # evidence_packet_builder.py carries into the packet; recorded
+        # here too so a trace alone is enough to audit which exact
+        # Qdrant point/document/version a candidate came from, without
+        # needing to cross-reference a separate log line.
+        "qdrant_point_id": c.get("qdrant_point_id"),
         "doc_id": c.get("doc_id"),
+        "version_id": c.get("version_id"),
         "collection": c.get("collection"),
         "title": c.get("title"),
         "section_title": c.get("section_title"),
+        "chunk_index": c.get("chunk_index"),
         "source_key": c.get("source_key"),
+        "source_name": c.get("source_name"),
+        "url": c.get("url"),
         "authority_class": c.get("authority_class"),
         "semantic_relevance": c.get("semantic_relevance", c.get("semantic_score")),
         "clinical_applicability": c.get("clinical_applicability"),
         "source_authority": c.get("source_authority"),
         "applicability_score": c.get("applicability_score"),
         "components": c.get("components"),  # itemized scorer components, when present
+        "incompatibility_reasons": c.get("incompatibility_reasons"),
         "text_preview": (c.get("text") or "")[:_MAX_EVIDENCE_TEXT_CHARS],
     }
 
@@ -114,10 +126,18 @@ class TraceBuilder:
                 {
                     "n": i + 1,
                     "source": e.get("source"),
+                    "qdrant_point_id": e.get("qdrant_point_id"),
+                    "document_id": e.get("document_id"),
+                    "version_id": e.get("version_id"),
+                    "section": e.get("section"),
+                    "url": e.get("url"),
                     "title": e.get("title"),
                     "role": e.get("role"),
                     "authority": e.get("authority"),
+                    "semantic_score": e.get("semantic_score"),
                     "applicability_score": e.get("applicability_score"),
+                    "score_components": e.get("score_components"),
+                    "incompatibility_reasons": e.get("incompatibility_reasons"),
                     "citation": e.get("citation"),
                     "text_preview": (e.get("text") or "")[:_MAX_EVIDENCE_TEXT_CHARS],
                 }

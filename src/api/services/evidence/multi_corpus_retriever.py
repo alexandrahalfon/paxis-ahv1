@@ -17,6 +17,19 @@ and is logged at info level, never raises. This is what keeps rewiring
 patient_chat_service onto this module a non-regression: with the new
 collections empty, results are exactly the literature-collection search
 it already did, just now correctly deduped and scored.
+
+Dedup identity (fixed 2026-08-12, beta audit item 6): candidates used to
+be deduped by doc_id alone, which collapsed every section of one
+document into a single candidate — an NCI nutrition page's "Taste
+changes" and "Appetite loss" sections are two independently useful
+passages, not duplicates of each other, and only one of them survived.
+Identity is now the exact Qdrant point id (unique per chunk by
+construction — see evidence_ingestion_service.stable_id("point", ...)),
+so distinct sections/chunks of the same document are preserved as
+distinct candidates. Near-duplicate CONTENT (the same passage surfacing
+twice, e.g. from two collections) is a different concern and is handled
+later, at evidence_packet_builder.build_packet() time — see that
+module's docstring.
 """
 
 from __future__ import annotations
@@ -50,8 +63,21 @@ async def _search_collection(vector: List[float], collection: str, limit: int) -
             if not text:
                 continue
             doc_meta = payload.get("doc_meta") or {}
+            point_id = getattr(p, "id", None)
             out.append({
+                # Provenance — see evidence_packet_builder.py and
+                # retrieval_debug_trace.py, which carry these through to
+                # the generation packet and the debug trace respectively.
+                # Everything here already exists on the Qdrant point/
+                # payload (evidence_ingestion_service.py's upsert); this
+                # is capturing it, not fetching anything new.
+                "qdrant_point_id": str(point_id) if point_id is not None else None,
                 "doc_id": payload.get("doc_id"),
+                "version_id": payload.get("version_id"),
+                "section_title": payload.get("section_title"),
+                "chunk_index": payload.get("chunk_index"),
+                "url": doc_meta.get("url"),
+                "source_name": doc_meta.get("source_name"),
                 "title": doc_meta.get("title") or payload.get("title") or "Source",
                 "text": text,
                 "citation": doc_meta.get("citation") or doc_meta.get("citation_string"),
@@ -68,6 +94,22 @@ async def _search_collection(vector: List[float], collection: str, limit: int) -
         # in one corpus must never fail the whole answer.
         logger.info("[MultiCorpusRetriever] %s unavailable (%s)", collection, e)
         return []
+
+
+def _candidate_identity(item: Dict[str, Any]) -> str:
+    """Dedup identity for merge() below — see the module docstring for
+    why this changed from doc_id alone. Prefers the exact Qdrant point
+    id (unique per chunk); falls back to a (doc_id, section_title,
+    chunk_index) composite for a candidate somehow missing its point id,
+    then to a text prefix as a last resort for anything from a corpus
+    that predates this payload shape entirely."""
+    point_id = item.get("qdrant_point_id")
+    if point_id:
+        return f"point:{point_id}"
+    doc_id = item.get("doc_id")
+    if doc_id:
+        return f"doc:{doc_id}|section:{item.get('section_title')}|chunk:{item.get('chunk_index')}"
+    return f"text:{(item.get('text') or '')[:80]}"
 
 
 async def search(
@@ -90,7 +132,7 @@ async def search(
     seen = set()
     for bucket in buckets:
         for item in bucket:
-            key = item.get("doc_id") or item["text"][:80]
+            key = _candidate_identity(item)
             if key in seen:
                 continue
             seen.add(key)

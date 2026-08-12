@@ -202,6 +202,30 @@ class TestModalityConflictPenalty:
         assert scored["components"]["modality_conflict"] is False
         assert scored["components"]["modality"] == 0.5  # unspecified -> neutral
 
+    def test_incompatibility_reasons_populated_on_conflict(self):
+        """Carried through to evidence_packet_builder.py/retrieval_debug_
+        trace.py (2026-08-12 beta audit) so a reviewer sees WHY a score
+        dropped, not just that it did."""
+        plan = self._plan()
+        scored = score_candidate(_candidate(
+            text="Targeted therapy options for EGFR-mutated tumors.",
+            semantic_score=0.75,
+            applicability_meta={"treatment_modalities": ["targeted_therapy"], "cancer_types": ["all"]},
+        ), plan)
+        assert scored["incompatibility_reasons"], "expected a non-empty reasons list on conflict"
+        assert "modality_mismatch" in scored["incompatibility_reasons"][0]
+        assert "chemotherapy" in scored["incompatibility_reasons"][0]
+        assert "targeted_therapy" in scored["incompatibility_reasons"][0]
+
+    def test_incompatibility_reasons_empty_when_no_conflict(self):
+        plan = self._plan()
+        scored = score_candidate(_candidate(
+            text="General information about managing side effects.",
+            semantic_score=0.75,
+            applicability_meta={"cancer_types": ["all"]},
+        ), plan)
+        assert scored["incompatibility_reasons"] == []
+
     def test_no_conflict_flagged_when_patient_modality_unspecified(self):
         plan = build_plan(INTENT_TREATMENT, {})
         scored = score_candidate(_candidate(

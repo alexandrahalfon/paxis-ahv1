@@ -6,10 +6,24 @@ in the architecture review section 28 — question + patient_context +
 ranked evidence + safety — instead of dropping the raw top-N chunks
 straight into the prompt. Gives the chat/tools layer one reproducible,
 loggable object per answer rather than an implicit string concatenation.
+
+Provenance + dedup (2026-08-12 beta audit items 6/7): each evidence entry
+now carries the full chain a citation needs to be auditable — Qdrant
+point id, document/version id, source key/name, section, chunk index,
+URL, itemized score components, and any incompatibility reasons
+(applicability_scorer.py) — not just source/title/role/authority/text/
+citation/year. multi_corpus_retriever.search() already dedupes by exact
+chunk identity (point id) so distinct sections of one document survive
+as distinct candidates; this module does a SEPARATE, later dedup pass by
+normalized text content, catching the case that chunk-identity dedup
+can't: the same passage genuinely appearing twice (e.g. surfaced by two
+different collections/searches), which chunk-identity dedup — correctly
+— does not consider a duplicate of itself.
 """
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Dict, List, Optional
 
 
@@ -39,27 +53,68 @@ def summarize_context(patient_context: Optional[Dict[str, Any]]) -> Dict[str, An
     return summary
 
 
+def _content_key(text: str) -> str:
+    """Hash of whitespace-normalized, lowercased text — identifies a
+    genuine duplicate PASSAGE regardless of which chunk/collection it
+    came from. Deliberately a different identity than
+    multi_corpus_retriever._candidate_identity (which is per-chunk, by
+    Qdrant point id) — see this module's docstring for why both exist."""
+    normalized = " ".join((text or "").split()).lower()
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _dedup_by_content(ranked_evidence: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Keeps the first (i.e. highest-ranked, since ranked_evidence is
+    already sorted by applicability_score descending) occurrence of each
+    distinct passage."""
+    seen: set = set()
+    out: List[Dict[str, Any]] = []
+    for e in ranked_evidence:
+        key = _content_key(e.get("text") or "")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(e)
+    return out
+
+
 def build_packet(
     question: str,
     patient_context: Optional[Dict[str, Any]],
     ranked_evidence: List[Dict[str, Any]],
     safety_category: str = "general",
 ) -> Dict[str, Any]:
+    deduped = _dedup_by_content(ranked_evidence)
     return {
         "question": question,
         "patient_context": summarize_context(patient_context),
         "evidence": [
             {
                 "source": e.get("source_key") or e.get("title"),
+                # Provenance — see module docstring. All sourced from
+                # what multi_corpus_retriever.py / applicability_scorer.py
+                # already attached to the candidate; nothing new fetched
+                # here.
+                "qdrant_point_id": e.get("qdrant_point_id"),
+                "document_id": e.get("doc_id"),
+                "version_id": e.get("version_id"),
+                "source_key": e.get("source_key"),
+                "source_name": e.get("source_name"),
+                "section": e.get("section_title"),
+                "chunk_index": e.get("chunk_index"),
+                "url": e.get("url"),
                 "title": e.get("title"),
                 "role": e.get("collection"),
                 "authority": e.get("authority_class") or "literature",
+                "semantic_score": e.get("semantic_relevance"),
                 "applicability_score": e.get("applicability_score"),
+                "score_components": e.get("components"),
+                "incompatibility_reasons": e.get("incompatibility_reasons") or [],
                 "text": e.get("text"),
                 "citation": e.get("citation"),
                 "year": e.get("year"),
             }
-            for e in ranked_evidence
+            for e in deduped
         ],
         "safety": {"category": safety_category, "red_flags": []},
     }

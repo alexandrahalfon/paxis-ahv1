@@ -162,6 +162,15 @@ def score_candidate(candidate: Dict[str, Any], plan: RetrievalPlan) -> Dict[str,
         and not (patient_modalities & candidate_modalities)
         and not any(m in text_lower for m in patient_modalities)
     )
+    # Human-readable form of the conflict, carried through to the
+    # evidence packet/debug trace (see evidence_packet_builder.py) —
+    # "score dropped" alone doesn't tell a reviewer why; this does.
+    incompatibility_reasons: List[str] = []
+    if modality_conflict:
+        incompatibility_reasons.append(
+            f"modality_mismatch: patient={sorted(patient_modalities)} "
+            f"chunk={sorted(candidate_modalities)}"
+        )
 
     authority_class = candidate.get("authority_class")
     authority = (
@@ -200,6 +209,7 @@ def score_candidate(candidate: Dict[str, Any], plan: RetrievalPlan) -> Dict[str,
         "source_authority": round(authority, 4),
         "applicability_score": round(combined, 4),
         "components": components,
+        "incompatibility_reasons": incompatibility_reasons,
     })
     return out
 
