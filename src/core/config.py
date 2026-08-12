@@ -42,6 +42,22 @@ class Settings(BaseSettings):
     qdrant_api_key: str = ""
     qdrant_collection: str = "exueed_kb_latest"
 
+    # Patient-facing evidence collections (Phase 3 of the patient-platform
+    # redesign — see evidence_sources registry in patient_db.py). Separate
+    # from qdrant_collection (the clinician-facing published-literature
+    # corpus, conceptually "oncology_clinical_literature") so a patient
+    # question can be answered from patient education / medication /
+    # guideline material without that material polluting clinician
+    # trial-matching search. All start empty: creating a named collection
+    # here is configuration, not content — see evidence/source_registry.py
+    # and evidence_ingestion_service.py for what actually populates one.
+    # multi_corpus_retriever.py degrades gracefully when a collection
+    # doesn't exist yet or has no points, so leaving these unpopulated
+    # does not regress the existing patient chat behavior.
+    qdrant_patient_education_collection: str = "oncology_patient_education"
+    qdrant_medication_collection: str = "oncology_medication_knowledge"
+    qdrant_guideline_collection: str = "oncology_clinical_guidelines"
+
         # PostgreSQL Configuration
     use_postgres_for_study_details: bool = True
     postgres_host: str = "34.21.60.224"

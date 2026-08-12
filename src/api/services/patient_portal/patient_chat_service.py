@@ -137,7 +137,9 @@ class PatientChatService:
             facts["physician_id"] = record["physician_id"]
 
             from src.api.services.patient_service import get_patient_service
-            full = await get_patient_service().get_patient_full(record["patient_id"])
+            full = await get_patient_service().get_patient_full(
+                record["patient_id"], record["physician_id"]
+            )
             if full:
                 dx = full.get("diagnosis") or {}
                 if dx.get("cancer_site"):
@@ -334,21 +336,66 @@ class PatientChatService:
 
         # 3. Expand their words into clinical vocabulary for retrieval.
         vocab = expand_patient_language(message)
+        query = vocab.expanded_query
 
-        # 4. Retrieve, seeding with known facts so a vague question still
-        #    lands somewhere useful for a linked patient.
-        seed = " ".join(
-            str(facts.get(k)) for k in ("cancer_type", "histology", "stage", "treatment")
-            if facts.get(k)
-        )
-        query = f"{seed} {vocab.expanded_query}".strip() if seed else vocab.expanded_query
-        corpus = await self._retrieve(query)
-        evidence_block, sources = self._evidence_block(corpus)
+        # 4. Patient-state-aware multi-corpus retrieval (Phase 4). Replaces
+        #    the old "concatenate known facts onto the query string" seed
+        #    below with structured selection: an intent label picks which
+        #    corpora to search (patient education / medication / guideline
+        #    / literature) and the patient's actual regimen/agents/symptoms
+        #    become soft boosts, not extra embedding text. See
+        #    evidence/retrieval_planner.py section 17 of the architecture
+        #    review for the worked example this replaced.
+        #
+        #    context carries patient_profile state independent of whether
+        #    a physician is linked — see patient/patient_state_service.py
+        #    (Phase 0/1) — so an unlinked patient who has entered or
+        #    uploaded their own data still gets personalized retrieval.
+        context: Dict[str, Any] = {}
+        evidence_block, sources, used_web = "", [], False
+        try:
+            from src.api.services.evidence.patient_context_service import (
+                get_patient_context_service, classify_intent,
+            )
+            from src.api.services.evidence.retrieval_planner import build_plan
+            from src.api.services.evidence import multi_corpus_retriever
+            from src.api.services.evidence.applicability_scorer import rank as rank_evidence
+            from src.api.services.evidence.evidence_packet_builder import (
+                build_packet, to_prompt_block, to_sources,
+            )
 
-        # Web fallback when the internal corpus came back empty. Only on a
-        # genuine miss, so the common case still costs one search and the
-        # ingested corpus (which is curated) stays the preferred source.
-        used_web = False
+            context = await get_patient_context_service().get_context(patient_user_id)
+            intent = classify_intent(message)
+            plan = build_plan(intent, context.get("retrieval_features", {}))
+            candidates = await multi_corpus_retriever.search(query, plan)
+            ranked = rank_evidence(candidates, plan)
+            packet = build_packet(message, context, ranked, safety_category=tri.category)
+            evidence_block = to_prompt_block(packet)
+            sources = to_sources(packet)
+        except Exception as e:
+            logger.warning("[PatientChat] multi-corpus retrieval failed, falling back: %s", e)
+
+        # Fall back to the plain literature-only search this replaced.
+        # Covers both an outright failure above and a genuine empty result
+        # — the new patient-education/medication/guideline collections
+        # start unpopulated in most deployments of this change (Phase 3),
+        # so this is the common path today, not a rare one. Seeding with
+        # known facts here (as the old code always did) still helps a
+        # vague question land somewhere useful for a linked patient.
+        if not sources:
+            seed = " ".join(
+                str(facts.get(k)) for k in ("cancer_type", "histology", "stage", "treatment")
+                if facts.get(k)
+            )
+            fallback_query = f"{seed} {query}".strip() if seed else query
+            corpus = await self._retrieve(fallback_query)
+            evidence_block, sources = self._evidence_block(corpus)
+
+        # PubMed stays the last resort, tried only after every internal
+        # corpus has had a chance — patient education, medication,
+        # guideline, then literature — per the fallback ordering in the
+        # architecture review section 27 ("don't use PubMed as the main
+        # patient-chat fallback").
         if not sources:
             web = await self._retrieve_web(query)
             if web:
@@ -369,6 +416,24 @@ class PatientChatService:
                     "Do not ask them to repeat information that is already listed here. "
                     "You may confirm it naturally in passing, but never present it as a "
                     "new finding or interpret it as a diagnosis."
+                )
+        elif context:
+            # Not linked to a physician, but this account has its own
+            # patient_profile data — self-entered or from a confirmed
+            # document upload (Phase 0/2). Same personalization, phrased
+            # as their own record rather than "their care team has".
+            try:
+                from src.api.services.evidence.evidence_packet_builder import summarize_context
+                ctx_summary = summarize_context(context)
+            except Exception:
+                ctx_summary = {}
+            if ctx_summary:
+                summary = ", ".join(f"{k}: {v}" for k, v in ctx_summary.items() if v)
+                system += (
+                    f"\n\nWhat this patient has recorded about their own situation: {summary}. "
+                    "Use this so your answer is about their situation rather than generic. "
+                    "Do not ask them to repeat information already listed here. Never present "
+                    "it as a new finding or interpret it as a diagnosis."
                 )
 
         messages = [{"role": "system", "content": system}]

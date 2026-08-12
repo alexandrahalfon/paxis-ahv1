@@ -136,11 +136,37 @@ class PatientToolsService:
             raise ValueError("Please enter a medication name.")
 
         chat = self._chat()
-
-        # Same retrieval as the chat: corpus first, PubMed if it misses.
         query = f"{med} treatment outcomes side effects mechanism"
-        corpus = await chat._retrieve(query, top_k=6)
-        block, sources = chat._evidence_block(corpus)
+
+        # Medication lookup prefers the medication-knowledge corpus
+        # (DailyMed/FDA/MedlinePlus/Chemocare, once ingested — Phase 3)
+        # over the general literature collection, per the architecture
+        # review section 36. Falls back to the plain literature search
+        # the same way patient_chat_service.answer() does when that
+        # corpus is empty or the import fails.
+        block, sources = "", []
+        try:
+            from src.api.services.evidence.retrieval_planner import build_plan
+            from src.api.services.evidence.patient_context_service import INTENT_MEDICATION
+            from src.api.services.evidence import multi_corpus_retriever
+            from src.api.services.evidence.applicability_scorer import rank as rank_evidence
+            from src.api.services.evidence.evidence_packet_builder import (
+                build_packet, to_prompt_block, to_sources,
+            )
+
+            plan = build_plan(INTENT_MEDICATION, {})
+            candidates = await multi_corpus_retriever.search(query, plan)
+            ranked = rank_evidence(candidates, plan)
+            packet = build_packet(query, {}, ranked)
+            block = to_prompt_block(packet)
+            sources = to_sources(packet)
+        except Exception as e:
+            logger.warning("[PatientTools] medication multi-corpus retrieval failed: %s", e)
+
+        if not sources:
+            corpus = await chat._retrieve(query, top_k=6)
+            block, sources = chat._evidence_block(corpus)
+
         used_web = False
         if not sources:
             web = await chat._retrieve_web(query, limit=5)

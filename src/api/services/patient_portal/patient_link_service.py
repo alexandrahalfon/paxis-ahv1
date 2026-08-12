@@ -185,6 +185,22 @@ class PatientLinkService:
                     """,
                     request_id, physician_id, patient_record_id,
                 )
+                patient_user_id = str(req["patient_user_id"])
+
+        # See claim_invite: same additive, non-fatal patient_profile /
+        # care-team sync, outside the transaction.
+        try:
+            from src.api.services.patient.patient_care_team_service import (
+                get_patient_care_team_service,
+            )
+            await get_patient_care_team_service().sync_legacy_link(
+                patient_user_id=patient_user_id,
+                physician_id=str(physician_id),
+                legacy_patient_record_id=str(patient_record_id),
+            )
+        except Exception:
+            pass
+
         return {"request_id": request_id, "patient_id": patient_record_id, "status": "approved"}
 
     async def decline_link_request(self, request_id: str, physician_id: str) -> bool:
@@ -244,11 +260,29 @@ class PatientLinkService:
                     """,
                     row["id"], patient_user_id,
                 )
-                return {
-                    "patient_id": str(row["id"]),
-                    "physician_id": str(row["physician_id"]),
-                    "status": "linked",
-                }
+
+        # Additive: also produces/updates a patient_profile + care-team
+        # link (Phase 0) alongside the legacy link above. Outside the
+        # transaction and non-fatal — the legacy link is the one existing
+        # features depend on; this is enrichment, not a requirement for
+        # claim_invite to succeed.
+        try:
+            from src.api.services.patient.patient_care_team_service import (
+                get_patient_care_team_service,
+            )
+            await get_patient_care_team_service().sync_legacy_link(
+                patient_user_id=patient_user_id,
+                physician_id=str(row["physician_id"]),
+                legacy_patient_record_id=str(row["id"]),
+            )
+        except Exception:
+            pass
+
+        return {
+            "patient_id": str(row["id"]),
+            "physician_id": str(row["physician_id"]),
+            "status": "linked",
+        }
 
     async def request_link(
         self,

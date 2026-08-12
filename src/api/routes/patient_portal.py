@@ -57,6 +57,11 @@ class EscalateBody(BaseModel):
     ai_draft_answer: Optional[str] = Field(default=None, max_length=8000)
     conversation_id: Optional[str] = None
     urgency: str = Field(default="routine", pattern="^(routine|soon|urgent)$")
+    # Phase 6: pick which care-team member to send this to, when the
+    # patient has more than one (medical oncology vs. radiation vs. PCP).
+    # Falls back to the legacy single linked physician when omitted, so
+    # existing frontend callers keep working unchanged.
+    physician_id: Optional[str] = None
 
 
 class RespondBody(BaseModel):
@@ -343,7 +348,27 @@ async def escalate(body: EscalateBody, current_user=Depends(require_patient)):
     )
     try:
         facts = await get_patient_chat_service().known_facts_for(current_user["id"])
-        if not facts.get("physician_id"):
+        target_physician_id = facts.get("physician_id")
+
+        if body.physician_id:
+            # Validate the requested target is actually one of this
+            # patient's active care-team members, so a client can't route
+            # a question to an arbitrary physician_id.
+            from src.api.services.patient.patient_profile_service import (
+                get_patient_profile_service,
+            )
+            from src.api.services.patient.patient_care_team_service import (
+                get_patient_care_team_service,
+            )
+            profile = await get_patient_profile_service().get_by_user(current_user["id"])
+            care_team = (
+                await get_patient_care_team_service().list_care_team(profile["id"])
+                if profile else []
+            )
+            if any(m["physician_id"] == body.physician_id for m in care_team):
+                target_physician_id = body.physician_id
+
+        if not target_physician_id:
             raise HTTPException(
                 status_code=400,
                 detail="Connect to your care team first so we know who to send this to.",
@@ -367,7 +392,7 @@ async def escalate(body: EscalateBody, current_user=Depends(require_patient)):
 
         return await get_escalation_service().create(
             patient_user_id=current_user["id"],
-            physician_id=facts["physician_id"],
+            physician_id=target_physician_id,
             question=body.question,
             ai_draft_answer=body.ai_draft_answer,
             patient_record_id=facts.get("patient_record_id"),

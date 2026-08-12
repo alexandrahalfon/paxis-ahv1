@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Health - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .pd-wrap { max-width: 1000px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .pd-head { display: flex; justify-content: space-between; align-items: flex-start;
+            flex-wrap: wrap; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
+        .pd-head h1 { font-size: 1.7rem; margin-bottom: var(--spacing-xs); }
+        .pd-head p { color: var(--gray-600); margin: 0; }
+        .pd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--spacing-md); }
+        .pd-card { padding: var(--spacing-lg); }
+        .pd-card h2 { font-size: 1rem; margin: 0 0 var(--spacing-md); display: flex; align-items: center; justify-content: space-between; }
+        .pd-card h2 a { font-size: 0.8rem; font-weight: 600; color: var(--primary); text-decoration: none; }
+        .pd-fact { display: flex; justify-content: space-between; gap: var(--spacing-sm);
+            padding: 0.4rem 0; border-bottom: 1px solid var(--gray-100); font-size: 0.9rem; }
+        .pd-fact:last-child { border-bottom: none; }
+        .pd-fact-label { color: var(--gray-500); }
+        .pd-fact-value { color: var(--gray-900); font-weight: 600; text-align: right; }
+        .pd-pill { display: inline-block; background: var(--gray-100); color: var(--gray-700);
+            font-size: 0.78rem; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 999px;
+            margin: 2px 4px 2px 0; }
+        .pd-pill.warn { background: #fef3c7; color: #92400e; }
+        .pd-empty { color: var(--gray-500); font-size: 0.88rem; padding: var(--spacing-sm) 0; }
+        .pd-actions { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; margin-top: var(--spacing-md); }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="pd-wrap">
+            <div class="pd-head">
+                <div>
+                    <h1>My health</h1>
+                    <p>Everything Paxis currently knows about your diagnosis, treatment, and record — built from what you've entered and confirmed from uploads.</p>
+                </div>
+                <button class="btn btn-outline btn-sm" id="pdRefresh">Refresh</button>
+            </div>
+
+            <div id="pdMsg" class="pd-empty is-hidden"></div>
+
+            <div class="pd-grid">
+                <div class="card pd-card">
+                    <h2>Diagnosis</h2>
+                    <div id="pdDiagnosis"><div class="pd-empty">Loading...</div></div>
+                </div>
+
+                <div class="card pd-card">
+                    <h2>Active treatment</h2>
+                    <div id="pdTreatment"><div class="pd-empty">Loading...</div></div>
+                </div>
+
+                <div class="card pd-card">
+                    <h2>Current medications</h2>
+                    <div id="pdMedications"><div class="pd-empty">Loading...</div></div>
+                </div>
+
+                <div class="card pd-card">
+                    <h2>Recent labs</h2>
+                    <div id="pdLabs"><div class="pd-empty">Loading...</div></div>
+                </div>
+
+                <div class="card pd-card">
+                    <h2>Comorbidities &amp; allergies</h2>
+                    <div id="pdConditions"><div class="pd-empty">Loading...</div></div>
+                </div>
+
+                <div class="card pd-card">
+                    <h2>Care team <a href="patient-connect.html">Manage</a></h2>
+                    <div id="pdCareTeam"><div class="pd-empty">Loading...</div></div>
+                </div>
+            </div>
+
+            <div class="pd-actions">
+                <a class="btn btn-primary btn-sm" href="patient-documents.html">Upload a document</a>
+                <a class="btn btn-outline btn-sm" href="patient-timeline.html">View full timeline</a>
+                <a class="btn btn-outline btn-sm" href="patient-qa.html">Ask a question</a>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('dashboard', 'patient');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var msg = document.getElementById('pdMsg');
+
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+        function headers() { return { 'Authorization': 'Bearer ' + token }; }
+        function show(text) { msg.classList.remove('is-hidden'); msg.textContent = text; }
+
+        if (!token) { show('Please log in to see your health record.'); return; }
+
+        async function load(refresh) {
+            try {
+                var res = await fetch(BASE + '/patient/state' + (refresh ? '?refresh=true' : ''), { headers: headers() });
+                if (!res.ok) throw new Error('Could not load your record');
+                var data = await res.json();
+                render(data.state || {}, data.retrieval_features || {});
+            } catch (e) {
+                show('Could not load your health record right now.');
+            }
+            loadCareTeam();
+        }
+
+        function render(state, features) {
+            var dx = state.active_diagnosis || {};
+            var dxEl = document.getElementById('pdDiagnosis');
+            if (dx.cancer_site || dx.stage || dx.histology) {
+                dxEl.innerHTML =
+                    fact('Site', dx.cancer_site) + fact('Histology', dx.histology) +
+                    fact('Stage', dx.stage) +
+                    (state.demographics && state.demographics.age ? fact('Age', state.demographics.age) : '');
+            } else {
+                dxEl.innerHTML = '<div class="pd-empty">Nothing recorded yet.</div>';
+            }
+
+            var tx = state.active_treatment || [];
+            var txEl = document.getElementById('pdTreatment');
+            if (tx.length) {
+                txEl.innerHTML = tx.map(function (t) {
+                    var agents = (t.agents || []).map(function (a) { return '<span class="pd-pill">' + esc(a) + '</span>'; }).join('');
+                    return '<div style="margin-bottom:var(--spacing-sm);"><strong>' + esc(t.regimen || 'Treatment') + '</strong>' +
+                        (t.line_of_therapy ? ' <span class="pd-pill">Line ' + esc(t.line_of_therapy) + '</span>' : '') +
+                        '<div style="margin-top:4px;">' + (agents || '<span class="pd-empty">No agents recorded</span>') + '</div></div>';
+                }).join('');
+            } else {
+                txEl.innerHTML = '<div class="pd-empty">No active treatment recorded.</div>';
+            }
+
+            var meds = state.active_medications || [];
+            var medEl = document.getElementById('pdMedications');
+            medEl.innerHTML = meds.length
+                ? meds.map(function (m) { return '<span class="pd-pill">' + esc(m.name) + '</span>'; }).join('')
+                : '<div class="pd-empty">None recorded.</div>';
+
+            var labs = state.recent_labs || {};
+            var labKeys = Object.keys(labs);
+            var labEl = document.getElementById('pdLabs');
+            labEl.innerHTML = labKeys.length
+                ? labKeys.map(function (k) {
+                    var v = labs[k];
+                    return fact(k, (v.value != null ? v.value : '?') + (v.unit ? ' ' + v.unit : ''));
+                }).join('')
+                : '<div class="pd-empty">No labs uploaded yet.</div>';
+
+            var condEl = document.getElementById('pdConditions');
+            var comorb = (state.comorbidities || []).map(function (c) { return '<span class="pd-pill">' + esc(c) + '</span>'; }).join('');
+            var allergies = (state.allergies || []).map(function (a) { return '<span class="pd-pill warn">' + esc(a) + '</span>'; }).join('');
+            condEl.innerHTML = (comorb || allergies)
+                ? comorb + allergies
+                : '<div class="pd-empty">None recorded.</div>';
+        }
+
+        function fact(label, value) {
+            if (!value && value !== 0) return '';
+            return '<div class="pd-fact"><span class="pd-fact-label">' + esc(label) + '</span>' +
+                '<span class="pd-fact-value">' + esc(value) + '</span></div>';
+        }
+
+        async function loadCareTeam() {
+            var el = document.getElementById('pdCareTeam');
+            try {
+                var res = await fetch(BASE + '/patient/care-team', { headers: headers() });
+                if (!res.ok) throw new Error();
+                var team = (await res.json()).care_team || [];
+                el.innerHTML = team.length
+                    ? team.map(function (m) {
+                        return '<div class="pd-fact"><span class="pd-fact-label">' + esc(m.role.replace(/_/g,' ')) + '</span>' +
+                            '<span class="pd-fact-value">' + (m.is_primary ? 'Primary' : 'Connected') + '</span></div>';
+                    }).join('')
+                    : '<div class="pd-empty">No care team connected yet.</div>';
+            } catch (e) {
+                el.innerHTML = '<div class="pd-empty">No care team connected yet.</div>';
+            }
+        }
+
+        document.getElementById('pdRefresh').addEventListener('click', function () { load(true); });
+        load(false);
+    })();
+    </script>
+</body>
+</html>

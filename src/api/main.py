@@ -37,6 +37,8 @@ from .routes.analytics_online import router as analytics_online_router  # Online
 from .routes.tumor_board import router as tumor_board_router  # Multi-agent Tumor Board
 from .routes.patient_cases import router as patient_cases_router  # Patient Cases (patient-centric pivot)
 from .routes.patient_portal import router as patient_portal_router  # Patient Portal (patient accounts + linking)
+from .routes.patient_records import router as patient_records_router  # Patient-owned longitudinal record (Phase 0-2)
+from .routes.communities import router as communities_router  # Community subsystem (Phase 7)
 
 
 class NoCacheHTMLMiddleware(BaseHTTPMiddleware):
@@ -92,6 +94,8 @@ app.include_router(analytics_online_router, prefix="/api", tags=["Analytics Onli
 app.include_router(tumor_board_router, prefix="/api", tags=["Tumor Board"])  # Multi-agent Tumor Board
 app.include_router(patient_cases_router, prefix="/api", tags=["Patient Cases"])  # Patient Cases
 app.include_router(patient_portal_router, prefix="/api", tags=["Patient Portal"])  # Patient Portal
+app.include_router(patient_records_router, prefix="/api", tags=["Patient Records"])  # Patient-owned record
+app.include_router(communities_router, prefix="/api", tags=["Communities"])  # Community subsystem
 
 @app.on_event("startup")
 async def warm_up():

@@ -123,6 +123,25 @@ async def register_patient(request: PatientRegisterRequest):
         logger.exception("[auth/register/patient] Failed creating user")
         raise HTTPException(status_code=500, detail=_SERVER_ERROR_MSG)
 
+    # Every patient account gets its own longitudinal profile immediately,
+    # independent of whether a clinician is ever connected — see
+    # patient_db.py's "Phase 0: patient-owned profile" comment for why
+    # this replaced the old "profile only exists if a physician created
+    # a chart" model. Non-fatal: a failure here must not block signup,
+    # since ensure_profile is idempotent and safe to retry from anywhere
+    # else in the app that assumes a profile exists.
+    try:
+        from src.api.services.patient.patient_profile_service import (
+            get_patient_profile_service,
+        )
+        await get_patient_profile_service().ensure_profile(
+            user_id=user["id"],
+            first_name=user.get("first_name"),
+            last_name=user.get("last_name"),
+        )
+    except Exception as e:
+        logger.warning("[auth/register/patient] profile creation failed: %s", e)
+
     if request.invite_code:
         try:
             from src.api.services.patient_portal.patient_link_service import (
