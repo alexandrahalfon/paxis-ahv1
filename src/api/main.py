@@ -39,6 +39,7 @@ from .routes.patient_cases import router as patient_cases_router  # Patient Case
 from .routes.patient_portal import router as patient_portal_router  # Patient Portal (patient accounts + linking)
 from .routes.patient_records import router as patient_records_router  # Patient-owned longitudinal record (Phase 0-2)
 from .routes.communities import router as communities_router  # Community subsystem (Phase 7)
+from .routes.physician_beta import router as physician_beta_router  # Physician RAG beta (convergence Sprint C item 21)
 
 
 class NoCacheHTMLMiddleware(BaseHTTPMiddleware):
@@ -96,6 +97,7 @@ app.include_router(patient_cases_router, prefix="/api", tags=["Patient Cases"]) 
 app.include_router(patient_portal_router, prefix="/api", tags=["Patient Portal"])  # Patient Portal
 app.include_router(patient_records_router, prefix="/api", tags=["Patient Records"])  # Patient-owned record
 app.include_router(communities_router, prefix="/api", tags=["Communities"])  # Community subsystem
+app.include_router(physician_beta_router, prefix="/api", tags=["Physician RAG Beta"])  # Physician RAG beta
 
 @app.on_event("startup")
 async def warm_up():

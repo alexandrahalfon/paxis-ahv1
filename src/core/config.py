@@ -173,6 +173,17 @@ class Settings(BaseSettings):
     # disabled for patient mode at first").
     patient_pubmed_fallback_enabled: bool = False
 
+    # Physician RAG beta (2026-08-12 convergence Sprint C item 21): gates
+    # the new /api/physician-beta/* routes -- physician_rag_orchestrator.py
+    # (item 20) is a brand-new pipeline running the legacy retriever
+    # through a not-yet-production-proven scorer/packet/grounding stack.
+    # Off by default so no deployment gets it just by upgrading; a
+    # deployment opts in explicitly once it's ready to beta-test this
+    # path. The existing physician-facing routes (query.py,
+    # patient_cases.py, etc.) are completely unaffected either way -- this
+    # only gates the new routes this item adds.
+    physician_rag_beta_enabled: bool = False
+
     @property
     def use_reconciled_structure(self) -> bool:
         """Read USE_RECONCILED_STRUCTURE from os.environ dynamically (no restart required)."""

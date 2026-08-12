@@ -114,6 +114,23 @@ class PhysicianAnswer:
     grounding_result: Optional[Dict[str, Any]] = None
     claim_result: Optional[Dict[str, Any]] = None
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Same shape/spirit as patient_chat_service.ChatResult.to_dict()
+        -- the route layer (Sprint C item 21) returns this directly.
+        `packet` is intentionally excluded from the default dict: it
+        carries full evidence text/scores meant for the trace/debug
+        surface, not the top-level API response body every caller gets
+        back. A caller that wants it can still read `.packet` off the
+        dataclass directly (e.g. a debug route)."""
+        return {
+            "answer": self.answer,
+            "sources_valid": self.sources_valid,
+            "authorized": self.authorized,
+            "query_analysis": self.query_analysis,
+            "sources": (self.packet or {}).get("evidence", []),
+            "retried_mechanical": self.retried_mechanical,
+        }
+
 
 async def _get_patient_state(patient_profile_id: str) -> Dict[str, Any]:
     """Fetches PatientState directly by patient_profile_id, using the
