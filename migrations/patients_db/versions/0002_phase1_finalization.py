@@ -6,12 +6,18 @@ Revision ID: 0002_phase1_finalization
 Revises: 0001_baseline
 Create Date: 2026-08-12
 
-upgrade() runs SCHEMA_STATEMENTS[92:] from
-src/api/services/patient_schema.py — everything appended after the
-baseline's 92 statements, i.e. exactly the "Phase 1 finalization" block
-that module's file documents. Same zero-duplication guarantee as
-0001_baseline: this migration and ensure_schema() execute the identical
-statement list, so they cannot drift apart.
+FROZEN_STATEMENTS below is a literal, historical snapshot of
+src/api/services/patient_schema.py SCHEMA_STATEMENTS[92:110] (exactly the
+18 "Phase 1 finalization" statements) as it stood when this revision was
+written — see 0001_baseline's docstring for why this is a frozen copy and
+not a live import. The previous version of this file computed
+`SCHEMA_STATEMENTS[92:]` (open-ended, not `[92:110]`) and asserted the
+result was 18 statements long; that assertion was already failing by the
+time evidence-versioning and query_debug_traces statements were appended
+later in the same list (open-ended slice picked those up too, growing to
+25), which would have raised on any `alembic upgrade head` run against a
+fresh database. Freezing removes the possibility of that drift entirely
+— see migrations/patients_db/README.md.
 
 Unlike 0001_baseline, every change here is purely additive (new tables,
 new nullable/defaulted columns) and genuinely reversible, so downgrade()
@@ -19,40 +25,38 @@ does real work instead of refusing.
 """
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-from typing import Sequence, Union
+from typing import List, Sequence, Union
 
 from alembic import op
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from src.api.services.patient_schema import SCHEMA_STATEMENTS  # noqa: E402
 
 revision: str = "0002_phase1_finalization"
 down_revision: Union[str, None] = "0001_baseline"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-# The baseline (0001) covers statements [0:92]; this revision owns
-# everything appended after it. Asserted, not just assumed, so a future
-# edit to patient_schema.py that changes the split point fails loudly at
-# migration time instead of silently upgrading the wrong statements.
-_BASELINE_STATEMENT_COUNT = 92
-
+FROZEN_STATEMENTS: List[str] = [
+    '\n    ALTER TABLE patient_profiles ADD COLUMN IF NOT EXISTS preferred_language TEXT;\n    ALTER TABLE patient_profiles ADD COLUMN IF NOT EXISTS timezone TEXT;\n    ',
+    "\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS diagnosis_type TEXT NOT NULL DEFAULT 'primary';\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS effective_date DATE;\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS canonical_cancer_type TEXT;\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS canonical_histology TEXT;\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS stage_system TEXT;\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS metastatic_sites JSONB NOT NULL DEFAULT '[]'::jsonb;\n    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS related_diagnosis_id UUID\n        REFERENCES patient_diagnoses(id) ON DELETE SET NULL;\n    ",
+    '\n    CREATE INDEX IF NOT EXISTS patient_diagnoses_status_idx\n        ON patient_diagnoses (patient_profile_id, status);\n    ',
+    "\n    CREATE TABLE IF NOT EXISTS tumor_profiles (\n        id UUID PRIMARY KEY,\n        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,\n        diagnosis_id UUID REFERENCES patient_diagnoses(id) ON DELETE SET NULL,\n        grade TEXT,\n        tumor_size_mm DOUBLE PRECISION,\n        molecular_subtype TEXT,\n        receptor_status JSONB NOT NULL DEFAULT '{}'::jsonb,\n        specimen_date DATE,\n        specimen_site TEXT,\n        raw_text TEXT,\n        source_type TEXT NOT NULL DEFAULT 'patient_manual',\n        source_document_id UUID,\n        verification_status TEXT NOT NULL DEFAULT 'extracted',\n        created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n    );\n    ",
+    '\n    CREATE INDEX IF NOT EXISTS tumor_profiles_profile_idx\n        ON tumor_profiles (patient_profile_id, created_at DESC);\n    ',
+    '\n    CREATE INDEX IF NOT EXISTS tumor_profiles_diagnosis_idx\n        ON tumor_profiles (diagnosis_id);\n    ',
+    '\n    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS specimen_date DATE;\n    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS specimen_site TEXT;\n    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS biomarker_category TEXT;\n    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS canonical_gene TEXT;\n    ',
+    '\n    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS delayed BOOLEAN NOT NULL DEFAULT false;\n    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS delay_reason TEXT;\n    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS held BOOLEAN NOT NULL DEFAULT false;\n    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS dose_reduction_pct REAL;\n    ',
+    "\n    ALTER TABLE treatment_agents ADD COLUMN IF NOT EXISTS canonical_name TEXT;\n    ALTER TABLE treatment_agents ADD COLUMN IF NOT EXISTS aliases JSONB NOT NULL DEFAULT '[]'::jsonb;\n    ALTER TABLE medication_exposures ADD COLUMN IF NOT EXISTS canonical_name TEXT;\n    ALTER TABLE medication_exposures ADD COLUMN IF NOT EXISTS aliases JSONB NOT NULL DEFAULT '[]'::jsonb;\n    ",
+    "\n    CREATE TABLE IF NOT EXISTS symptom_observations (\n        id UUID PRIMARY KEY,\n        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,\n        raw_text TEXT NOT NULL,\n        canonical_symptom TEXT,\n        severity SMALLINT,\n        onset_date DATE,\n        resolved_date DATE,\n        status TEXT NOT NULL DEFAULT 'active',\n        frequency TEXT,\n        possibly_related_treatment_episode_id UUID\n            REFERENCES treatment_episodes(id) ON DELETE SET NULL,\n        source_type TEXT NOT NULL DEFAULT 'patient_manual',\n        source_document_id UUID,\n        verification_status TEXT NOT NULL DEFAULT 'extracted',\n        created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n    );\n    ",
+    '\n    CREATE INDEX IF NOT EXISTS symptom_observations_profile_idx\n        ON symptom_observations (patient_profile_id, status, onset_date DESC);\n    ',
+    '\n    CREATE INDEX IF NOT EXISTS symptom_observations_canonical_idx\n        ON symptom_observations (patient_profile_id, canonical_symptom);\n    ',
+    "\n    CREATE TABLE IF NOT EXISTS nutrition_assessments (\n        id UUID PRIMARY KEY,\n        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,\n        assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,\n        appetite TEXT,\n        oral_intake_pct SMALLINT,\n        swallowing_difficulty BOOLEAN,\n        feeding_tube BOOLEAN NOT NULL DEFAULT false,\n        feeding_tube_type TEXT,\n        diet_restrictions JSONB NOT NULL DEFAULT '[]'::jsonb,\n        food_allergies JSONB NOT NULL DEFAULT '[]'::jsonb,\n        texture_requirements TEXT,\n        hydration_constraints TEXT,\n        nutrition_risk TEXT,\n        care_phase TEXT NOT NULL DEFAULT 'active_treatment',\n        source_type TEXT NOT NULL DEFAULT 'patient_manual',\n        source_document_id UUID,\n        verification_status TEXT NOT NULL DEFAULT 'extracted',\n        created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n    );\n    ",
+    '\n    CREATE INDEX IF NOT EXISTS nutrition_assessments_profile_idx\n        ON nutrition_assessments (patient_profile_id, assessment_date DESC);\n    ',
+    "\n    ALTER TABLE patient_allergies ADD COLUMN IF NOT EXISTS allergy_type TEXT NOT NULL DEFAULT 'allergy';\n    ",
+    "\n    ALTER TABLE encounters ADD COLUMN IF NOT EXISTS newly_ordered_tests JSONB NOT NULL DEFAULT '[]'::jsonb;\n    ALTER TABLE encounters ADD COLUMN IF NOT EXISTS next_steps TEXT;\n    ALTER TABLE encounters ADD COLUMN IF NOT EXISTS questions_for_next_visit JSONB NOT NULL DEFAULT '[]'::jsonb;\n    ",
+    "\n    CREATE TABLE IF NOT EXISTS care_team_instructions (\n        id UUID PRIMARY KEY,\n        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,\n        instruction_text TEXT NOT NULL,\n        instruction_type TEXT NOT NULL DEFAULT 'other',\n        author_provider TEXT,\n        physician_id UUID,\n        source_type TEXT NOT NULL DEFAULT 'clinician_entered',\n        source_document_id UUID,\n        effective_from DATE,\n        effective_to DATE,\n        active BOOLEAN NOT NULL DEFAULT true,\n        created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n    );\n    ",
+    '\n    CREATE INDEX IF NOT EXISTS care_team_instructions_profile_idx\n        ON care_team_instructions (patient_profile_id, active, created_at DESC);\n    ',
+]
 
 def upgrade() -> None:
-    new_statements = SCHEMA_STATEMENTS[_BASELINE_STATEMENT_COUNT:]
-    assert len(new_statements) == 18, (
-        f"Expected 18 Phase 1 finalization statements after the baseline's "
-        f"{_BASELINE_STATEMENT_COUNT}, found {len(new_statements)}. "
-        "patient_schema.py changed — add a new revision instead of editing "
-        "this one, or update this assertion if 0002 itself is being amended "
-        "before it has shipped anywhere."
-    )
-    for statement in new_statements:
+    for statement in FROZEN_STATEMENTS:
         op.execute(statement)
 
 

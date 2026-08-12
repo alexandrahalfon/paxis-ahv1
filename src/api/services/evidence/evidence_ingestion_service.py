@@ -26,10 +26,19 @@ Both are idempotent and deterministic:
 Fetching the same URL twice with unchanged content produces the same
 version_id, which is recognized as already-current and skipped —
 running an ingestion job twice does not duplicate chunks. Changed
-content produces a new version_id: the old version is marked
-is_current=false (superseded_by the new one) and its Qdrant points are
-deleted before the new ones are upserted, so search never returns two
-versions of the same page at once.
+content produces a new version_id: the NEW Qdrant points are upserted
+FIRST, then the Postgres transaction switches current_version_id to the
+new version, and only after that transaction commits are the OLD
+version's Qdrant points deleted — by their exact qdrant_point_id list
+from evidence_chunk_registry, not a payload-field filter. That ordering
+is deliberate (fixed 2026-08-12): the previous order deleted old points
+before upserting new ones, so a failed upsert after a successful delete
+left Postgres believing a version was current while zero of its points
+existed in Qdrant. Upsert-then-delete means the worst case on a mid-
+ingestion failure is a small number of temporary duplicate/orphaned
+points, not zero retrievable evidence — and if the Postgres transaction
+itself fails, the just-upserted new points are deleted as compensation
+so Qdrant doesn't accumulate points nothing ever points to.
 
 Reuses the same OpenAI embedding model and the same Qdrant client
 construction as comprehensive_retrieval.py (via get_comprehensive_retriever)
@@ -45,7 +54,7 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from qdrant_client.models import PointStruct, VectorParams, Distance, FilterSelector, Filter, FieldCondition, MatchValue
+from qdrant_client.models import PointStruct, VectorParams, Distance, PointIdsList
 
 from src.core.config import settings
 from src.api.services.evidence.source_registry import get_source_registry
@@ -293,8 +302,39 @@ class EvidenceIngestionService:
             chunk_rows.append({"point_id": point_id, "chunk_index": chunk.chunk_index,
                                 "section_title": chunk.section_title})
 
-        # ── Supersede the previous version, if any, before upserting ──
-        # Ordering matters here: evidence_documents.current_version_id
+        # ── Who's being superseded, and what exactly to delete once we're
+        # done — looked up BEFORE any writes, from evidence_chunk_registry
+        # (the source of truth for "which Qdrant points belong to this
+        # version"), so deletion later never depends on a Qdrant payload
+        # field matching what Postgres thinks is true. See point (18) in
+        # the 2026-08-12 beta audit: exact point-ID deletion is more
+        # auditable than a payload Filter and doesn't assume the payload
+        # schema stayed consistent across ingestion-code versions.
+        async with pool.acquire() as conn:
+            evidence_doc = await conn.fetchrow(
+                "SELECT * FROM evidence_documents WHERE id = $1", document_id,
+            )
+            prior_version_id = evidence_doc["current_version_id"] if evidence_doc else None
+            prior_point_ids: List[str] = []
+            if prior_version_id and prior_version_id != version_id:
+                prior_rows = await conn.fetch(
+                    "SELECT qdrant_point_id FROM evidence_chunk_registry "
+                    "WHERE evidence_document_version_id = $1",
+                    prior_version_id,
+                )
+                prior_point_ids = [r["qdrant_point_id"] for r in prior_rows]
+
+        # ── Upsert the NEW points FIRST ────────────────────────────────
+        # Nothing in Postgres has been written yet at this point, so a
+        # failure here is a clean no-op ingestion (safe to just retry) —
+        # the ordering bug this replaces (delete-old-then-upsert-new) could
+        # leave Postgres believing a version was current with zero of its
+        # points actually in Qdrant if the upsert failed after the delete.
+        await asyncio.to_thread(retriever.qdrant.upsert, collection_name=collection, points=points)
+
+        # ── Then the Postgres transaction that makes the new version
+        # current ─────────────────────────────────────────────────────
+        # Ordering matters here too: evidence_documents.current_version_id
         # references evidence_document_versions.id, which in turn
         # references evidence_documents.id — a genuine circular FK
         # dependency. Resolved the standard way: insert/update the
@@ -302,94 +342,114 @@ class EvidenceIngestionService:
         # version row (now able to reference an existing document), then
         # point the document at it. Doing this in the other order raises
         # a foreign-key violation on the very first ingestion.
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                evidence_doc = await conn.fetchrow(
-                    "SELECT * FROM evidence_documents WHERE id = $1", document_id,
-                )
-                prior_version_id = evidence_doc["current_version_id"] if evidence_doc else None
+        try:
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    if evidence_doc is None:
+                        await conn.execute(
+                            """
+                            INSERT INTO evidence_documents
+                                (id, source_id, doc_id, title, url, qdrant_collection,
+                                 applicability, constraints, last_ingested_at, latest_content_hash)
+                            VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb, now(), $9)
+                            """,
+                            document_id, source["id"], doc_key, doc.title, url, collection,
+                            json.dumps(applicability), json.dumps(constraints or {}), chash,
+                        )
+                    else:
+                        await conn.execute(
+                            """
+                            UPDATE evidence_documents
+                               SET title = $2, applicability = $3::jsonb, last_ingested_at = now(),
+                                   latest_content_hash = $4
+                             WHERE id = $1
+                            """,
+                            document_id, doc.title, json.dumps(applicability), chash,
+                        )
 
-                if evidence_doc is None:
+                    if prior_version_id:
+                        await conn.execute(
+                            """
+                            UPDATE evidence_document_versions
+                               SET is_current = false, superseded_by = $2
+                             WHERE id = $1
+                            """,
+                            prior_version_id, version_id,
+                        )
+
                     await conn.execute(
                         """
-                        INSERT INTO evidence_documents
-                            (id, source_id, doc_id, title, url, qdrant_collection,
-                             applicability, constraints, last_ingested_at, latest_content_hash)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb, now(), $9)
+                        INSERT INTO evidence_document_versions
+                            (id, evidence_document_id, content_hash, raw_text_excerpt, is_current)
+                        VALUES ($1, $2, $3, $4, true)
+                        ON CONFLICT (id) DO UPDATE SET is_current = true
                         """,
-                        document_id, source["id"], doc_key, doc.title, url, collection,
-                        json.dumps(applicability), json.dumps(constraints or {}), chash,
+                        version_id, document_id, chash, doc.plain_text[:2000],
                     )
-                else:
+
                     await conn.execute(
-                        """
-                        UPDATE evidence_documents
-                           SET title = $2, applicability = $3::jsonb, last_ingested_at = now(),
-                               latest_content_hash = $4
-                         WHERE id = $1
-                        """,
-                        document_id, doc.title, json.dumps(applicability), chash,
+                        "UPDATE evidence_documents SET current_version_id = $2 WHERE id = $1",
+                        document_id, version_id,
                     )
 
-                if prior_version_id:
-                    await conn.execute(
-                        """
-                        UPDATE evidence_document_versions
-                           SET is_current = false, superseded_by = $2
-                         WHERE id = $1
-                        """,
-                        prior_version_id, version_id,
-                    )
-
-                await conn.execute(
-                    """
-                    INSERT INTO evidence_document_versions
-                        (id, evidence_document_id, content_hash, raw_text_excerpt, is_current)
-                    VALUES ($1, $2, $3, $4, true)
-                    ON CONFLICT (id) DO UPDATE SET is_current = true
-                    """,
-                    version_id, document_id, chash, doc.plain_text[:2000],
-                )
-
-                await conn.execute(
-                    "UPDATE evidence_documents SET current_version_id = $2 WHERE id = $1",
-                    document_id, version_id,
-                )
-
-                for row in chunk_rows:
-                    await conn.execute(
-                        """
-                        INSERT INTO evidence_chunk_registry
-                            (id, evidence_document_id, evidence_document_version_id,
-                             qdrant_point_id, chunk_index, section_title)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                        """,
-                        str(uuid.uuid4()), document_id, version_id,
-                        row["point_id"], row["chunk_index"], row["section_title"],
-                    )
-
-        # Delete the superseded version's Qdrant points AFTER the new
-        # points are about to be upserted (below) — ordered so a failure
-        # here never leaves a document with zero retrievable points.
-        if prior_version_id and prior_version_id != version_id:
+                    for row in chunk_rows:
+                        await conn.execute(
+                            """
+                            INSERT INTO evidence_chunk_registry
+                                (id, evidence_document_id, evidence_document_version_id,
+                                 qdrant_point_id, chunk_index, section_title)
+                            VALUES ($1, $2, $3, $4, $5, $6)
+                            """,
+                            str(uuid.uuid4()), document_id, version_id,
+                            row["point_id"], row["chunk_index"], row["section_title"],
+                        )
+        except Exception:
+            # Compensate: the new points are now orphaned in Qdrant (no
+            # Postgres row will ever reference them), so remove them
+            # rather than leaving unreachable vectors behind. A small
+            # number of temporary duplicates surviving briefly (the
+            # window between the upsert above and this transaction) is
+            # the accepted tradeoff from upserting before writing —
+            # leaving them permanently orphaned on a genuine failure is
+            # not.
+            logger.error(
+                "[EvidenceIngestion] Postgres transaction failed for %s (version %s) — "
+                "removing the %d just-upserted Qdrant points as compensation",
+                doc_key, version_id, len(points), exc_info=True,
+            )
             try:
                 await asyncio.to_thread(
                     retriever.qdrant.delete,
                     collection_name=collection,
-                    points_selector=FilterSelector(
-                        filter=Filter(must=[
-                            FieldCondition(key="version_id", match=MatchValue(value=prior_version_id))
-                        ])
-                    ),
+                    points_selector=PointIdsList(points=[p.id for p in points]),
+                )
+            except Exception:
+                logger.error(
+                    "[EvidenceIngestion] compensating delete also failed for %s (version %s) — "
+                    "%d Qdrant points are now orphaned and need manual cleanup",
+                    doc_key, version_id, len(points), exc_info=True,
+                )
+            raise
+
+        # ── Only now delete the superseded version's OLD Qdrant points,
+        # by the exact point IDs looked up before any writes above.
+        # Failure here is non-fatal — the new version is already fully
+        # correct and current; a lingering stale point is a nuisance
+        # (extra, superseded search result) not a correctness bug the way
+        # zero retrievable points would be.
+        if prior_point_ids:
+            try:
+                await asyncio.to_thread(
+                    retriever.qdrant.delete,
+                    collection_name=collection,
+                    points_selector=PointIdsList(points=prior_point_ids),
                 )
             except Exception:
                 logger.warning(
-                    "[EvidenceIngestion] failed to delete superseded points for version %s "
+                    "[EvidenceIngestion] failed to delete %d superseded points for version %s "
                     "(new version's points are still correct; stale points may linger)",
-                    prior_version_id, exc_info=True,
+                    len(prior_point_ids), prior_version_id, exc_info=True,
                 )
-
-        await asyncio.to_thread(retriever.qdrant.upsert, collection_name=collection, points=points)
 
         logger.info(
             "[EvidenceIngestion] ingested %s -> %s (%d chunks, version %s)",
