@@ -6,11 +6,13 @@ treatment_episode. See medication_exposures in patient_db.py.
 
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any, Dict, List, Optional
 
 from src.api.services.patient_db import get_patient_db
 from src.api.services.patient._common import row_to_dict, append_profile_timeline_event
+from src.api.services.patient.clinical_normalization import normalize_drug_name
 
 
 class MedicationService:
@@ -32,6 +34,8 @@ class MedicationService:
         verification_status: str = "extracted",
         created_by: Optional[str] = None,
     ) -> Dict[str, Any]:
+        drug_norm = normalize_drug_name(generic_name)
+
         db = get_patient_db()
         await db.ensure_schema()
         pool = await db.get_pool()
@@ -43,13 +47,16 @@ class MedicationService:
                     INSERT INTO medication_exposures
                         (id, patient_profile_id, generic_name, brand_name, rxnorm_code,
                          dose, route, frequency, indication, start_date, end_date, status,
-                         source_type, source_document_id, verification_status)
-                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                         source_type, source_document_id, verification_status,
+                         canonical_name, aliases)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb)
                     RETURNING *
                     """,
-                    med_id, patient_profile_id, generic_name, brand_name, rxnorm_code,
+                    med_id, patient_profile_id, generic_name, brand_name,
+                    rxnorm_code or drug_norm["rxnorm_code"],
                     dose, route, frequency, indication, start_date, end_date, status,
                     source_type, source_document_id, verification_status,
+                    drug_norm["canonical"], json.dumps(drug_norm["aliases"]),
                 )
                 await append_profile_timeline_event(
                     conn, patient_profile_id, "medication_started",

@@ -1,5 +1,6 @@
 """Vitals/weight service (Phase 1). Feeds nutrition-risk derivation in
-patient_state_service (weight_change_30d_pct)."""
+patient_state_service — weight_change_pct(days) over the 7/30/90-day
+windows the Phase 1 checklist calls for ("useful windows")."""
 
 from __future__ import annotations
 
@@ -57,13 +58,18 @@ class VitalsService:
             )
         return list(reversed([row_to_dict(r) for r in rows]))
 
-    async def weight_change_30d_pct(self, patient_profile_id: str) -> Optional[float]:
-        """Percent change in weight_kg over the last 30 days. None when
-        there isn't enough history to compute it — never fabricated."""
-        trend = await self.get_trend(patient_profile_id, "weight_kg", limit=60)
+    async def weight_change_pct(
+        self, patient_profile_id: str, days: int = 30, trend: Optional[List[Dict[str, Any]]] = None
+    ) -> Optional[float]:
+        """Percent change in weight_kg over the last `days` days. None
+        when there isn't enough history to compute it — never fabricated.
+        Accepts a pre-fetched trend (see weight_trend_summary) so callers
+        computing 7/30/90 together don't hit the DB three times."""
+        if trend is None:
+            trend = await self.get_trend(patient_profile_id, "weight_kg", limit=90)
         if len(trend) < 2:
             return None
-        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         baseline = None
         for point in trend:
             ts = point.get("measured_at")
@@ -80,6 +86,16 @@ class VitalsService:
             return round((latest_val - base_val) / base_val * 100, 1)
         except (TypeError, ValueError, KeyError):
             return None
+
+    async def weight_trend_summary(self, patient_profile_id: str) -> Dict[str, Optional[float]]:
+        """{"7d": ..., "30d": ..., "90d": ...} percent change, each None
+        independently when there isn't enough history for that window."""
+        trend = await self.get_trend(patient_profile_id, "weight_kg", limit=180)
+        return {
+            "7d": await self.weight_change_pct(patient_profile_id, 7, trend=trend),
+            "30d": await self.weight_change_pct(patient_profile_id, 30, trend=trend),
+            "90d": await self.weight_change_pct(patient_profile_id, 90, trend=trend),
+        }
 
 
 _service: Optional[VitalsService] = None

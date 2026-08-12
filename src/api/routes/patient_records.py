@@ -54,6 +54,8 @@ class UpdateProfileBody(BaseModel):
     last_name: Optional[str] = None
     date_of_birth: Optional[str] = None
     sex: Optional[str] = None
+    preferred_language: Optional[str] = None
+    timezone: Optional[str] = None
 
 
 class DiagnosisBody(BaseModel):
@@ -65,12 +67,20 @@ class DiagnosisBody(BaseModel):
     tnm_m: Optional[str] = None
     diagnosis_date: Optional[str] = None
     raw_text: Optional[str] = None
+    # 'primary' | 'second_primary' | 'recurrence' | 'progression' | 'remission'
+    diagnosis_type: str = "primary"
+    # 'active' | 'remission' | 'resolved' | 'historical'
+    status: str = "active"
+    effective_date: Optional[str] = None
+    related_diagnosis_id: Optional[str] = None
 
 
 class BiomarkerBody(BaseModel):
     biomarker_name: str
     value: Optional[str] = None
     measured_date: Optional[str] = None
+    specimen_date: Optional[str] = None
+    specimen_site: Optional[str] = None
 
 
 class TreatmentAgentBody(BaseModel):
@@ -101,6 +111,10 @@ class CycleBody(BaseModel):
     cycle_date: Optional[str] = None
     status: str = "completed"
     notes: Optional[str] = None
+    delayed: bool = False
+    delay_reason: Optional[str] = None
+    held: bool = False
+    dose_reduction_pct: Optional[float] = None
 
 
 class MedicationBody(BaseModel):
@@ -139,6 +153,7 @@ class AllergyBody(BaseModel):
     allergen: str
     reaction: Optional[str] = None
     severity: Optional[str] = None
+    allergy_type: str = "allergy"  # 'allergy' | 'intolerance'
 
 
 class EncounterBody(BaseModel):
@@ -147,6 +162,51 @@ class EncounterBody(BaseModel):
     provider_name: Optional[str] = None
     organization: Optional[str] = None
     patient_summary: Optional[str] = None
+    newly_ordered_tests: List[str] = Field(default_factory=list)
+    next_steps: Optional[str] = None
+    questions_for_next_visit: List[str] = Field(default_factory=list)
+
+
+class TumorProfileBody(BaseModel):
+    diagnosis_id: Optional[str] = None
+    grade: Optional[str] = None
+    tumor_size_mm: Optional[float] = None
+    molecular_subtype: Optional[str] = None
+    receptor_status: Dict[str, str] = Field(default_factory=dict)
+    specimen_date: Optional[str] = None
+    specimen_site: Optional[str] = None
+    raw_text: Optional[str] = None
+
+
+class SymptomObservationBody(BaseModel):
+    raw_text: str = Field(min_length=1, max_length=1000)
+    severity: Optional[int] = Field(default=None, ge=1, le=5)
+    onset_date: Optional[str] = None
+    frequency: Optional[str] = None
+    possibly_related_treatment_episode_id: Optional[str] = None
+
+
+class NutritionAssessmentBody(BaseModel):
+    assessment_date: Optional[str] = None
+    appetite: Optional[str] = None  # 'poor' | 'fair' | 'good'
+    oral_intake_pct: Optional[int] = Field(default=None, ge=0, le=100)
+    swallowing_difficulty: Optional[bool] = None
+    feeding_tube: bool = False
+    feeding_tube_type: Optional[str] = None
+    diet_restrictions: List[str] = Field(default_factory=list)
+    food_allergies: List[str] = Field(default_factory=list)
+    texture_requirements: Optional[str] = None
+    hydration_constraints: Optional[str] = None
+    nutrition_risk: Optional[str] = None  # 'low' | 'moderate' | 'high'
+    care_phase: str = "active_treatment"  # 'active_treatment' | 'survivorship' | 'prevention'
+
+
+class CareTeamInstructionBody(BaseModel):
+    instruction_text: str = Field(min_length=1, max_length=2000)
+    instruction_type: str = "other"
+    author_provider: Optional[str] = None
+    effective_from: Optional[str] = None
+    effective_to: Optional[str] = None
 
 
 class VitalBody(BaseModel):
@@ -203,6 +263,15 @@ async def add_diagnosis(body: DiagnosisBody, profile: dict = Depends(get_own_pro
     return {"success": True, "diagnosis": diagnosis}
 
 
+@router.get("/diagnoses/active")
+async def list_active_diagnoses(profile: dict = Depends(get_own_profile)):
+    """Every diagnosis currently active/in remission — supports multiple
+    concurrent primaries and recurrence/progression history, unlike
+    GET /diagnoses which returns the full undifferentiated list."""
+    from src.api.services.patient.diagnosis_service import get_diagnosis_service
+    return {"diagnoses": await get_diagnosis_service().get_active_diagnoses(profile["id"])}
+
+
 @router.get("/biomarkers")
 async def list_biomarkers(profile: dict = Depends(get_own_profile)):
     from src.api.services.patient.diagnosis_service import get_diagnosis_service
@@ -216,6 +285,23 @@ async def add_biomarker(body: BiomarkerBody, profile: dict = Depends(get_own_pro
         patient_profile_id=profile["id"], created_by=profile["user_id"], **body.model_dump()
     )
     return {"success": True, "biomarker": biomarker}
+
+
+# ── Tumor profiles ───────────────────────────────────────────────────────
+
+@router.get("/tumor-profiles")
+async def list_tumor_profiles(profile: dict = Depends(get_own_profile)):
+    from src.api.services.patient.tumor_profile_service import get_tumor_profile_service
+    return {"tumor_profiles": await get_tumor_profile_service().list_profiles(profile["id"])}
+
+
+@router.post("/tumor-profiles")
+async def add_tumor_profile(body: TumorProfileBody, profile: dict = Depends(get_own_profile)):
+    from src.api.services.patient.tumor_profile_service import get_tumor_profile_service
+    row = await get_tumor_profile_service().add_profile(
+        patient_profile_id=profile["id"], created_by=profile["user_id"], **body.model_dump()
+    )
+    return {"success": True, "tumor_profile": row}
 
 
 # ── Treatments ───────────────────────────────────────────────────────────
@@ -535,3 +621,116 @@ async def remove_care_team_member(physician_id: str, profile: dict = Depends(get
     from src.api.services.patient.patient_care_team_service import get_patient_care_team_service
     ok = await get_patient_care_team_service().revoke_member(profile["id"], physician_id)
     return {"revoked": ok}
+
+
+# ── Symptom observations (Phase 1 finalization) ──────────────────────────
+# Succeeds the legacy /portal/symptoms diary for new writes — see
+# symptom_observation_service.py and patient_state_service.py's symptom-
+# loading section. The legacy diary and its endpoints keep working.
+
+@router.get("/symptom-observations")
+async def list_symptom_observations(
+    active_only: bool = False, profile: dict = Depends(get_own_profile)
+):
+    from src.api.services.patient.symptom_observation_service import (
+        get_symptom_observation_service,
+    )
+    return {
+        "observations": await get_symptom_observation_service().list_observations(
+            profile["id"], active_only=active_only
+        )
+    }
+
+
+@router.post("/symptom-observations")
+async def add_symptom_observation(
+    body: SymptomObservationBody, profile: dict = Depends(get_own_profile)
+):
+    from src.api.services.patient.symptom_observation_service import (
+        get_symptom_observation_service,
+    )
+    row = await get_symptom_observation_service().add_observation(
+        patient_profile_id=profile["id"], created_by=profile["user_id"], **body.model_dump()
+    )
+    return {"success": True, "observation": row}
+
+
+@router.post("/symptom-observations/{observation_id}/resolve")
+async def resolve_symptom_observation(
+    observation_id: str, profile: dict = Depends(get_own_profile)
+):
+    from src.api.services.patient.symptom_observation_service import (
+        get_symptom_observation_service,
+    )
+    row = await get_symptom_observation_service().resolve_observation(
+        observation_id, profile["id"], created_by=profile["user_id"]
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Symptom observation not found")
+    return {"success": True, "observation": row}
+
+
+# ── Nutrition assessments ────────────────────────────────────────────────
+
+@router.get("/nutrition-assessments")
+async def list_nutrition_assessments(profile: dict = Depends(get_own_profile)):
+    from src.api.services.patient.nutrition_assessment_service import (
+        get_nutrition_assessment_service,
+    )
+    return {
+        "assessments": await get_nutrition_assessment_service().list_assessments(profile["id"])
+    }
+
+
+@router.post("/nutrition-assessments")
+async def add_nutrition_assessment(
+    body: NutritionAssessmentBody, profile: dict = Depends(get_own_profile)
+):
+    from src.api.services.patient.nutrition_assessment_service import (
+        get_nutrition_assessment_service,
+    )
+    row = await get_nutrition_assessment_service().add_assessment(
+        patient_profile_id=profile["id"], created_by=profile["user_id"], **body.model_dump()
+    )
+    return {"success": True, "assessment": row}
+
+
+# ── Care team instructions ───────────────────────────────────────────────
+# A clinician's specific instruction to this patient, stored so it can
+# later be given precedence over generic education in retrieval (Phase 4/
+# 13 work) — see care_team_instruction_service.py.
+
+@router.get("/care-team-instructions")
+async def list_care_team_instructions(profile: dict = Depends(get_own_profile)):
+    from src.api.services.patient.care_team_instruction_service import (
+        get_care_team_instruction_service,
+    )
+    return {
+        "instructions": await get_care_team_instruction_service().list_active(profile["id"])
+    }
+
+
+@router.post("/care-team-instructions")
+async def add_care_team_instruction(
+    body: CareTeamInstructionBody, profile: dict = Depends(get_own_profile)
+):
+    from src.api.services.patient.care_team_instruction_service import (
+        get_care_team_instruction_service,
+    )
+    row = await get_care_team_instruction_service().add_instruction(
+        patient_profile_id=profile["id"], created_by=profile["user_id"], **body.model_dump()
+    )
+    return {"success": True, "instruction": row}
+
+
+@router.delete("/care-team-instructions/{instruction_id}")
+async def deactivate_care_team_instruction(
+    instruction_id: str, profile: dict = Depends(get_own_profile)
+):
+    from src.api.services.patient.care_team_instruction_service import (
+        get_care_team_instruction_service,
+    )
+    row = await get_care_team_instruction_service().deactivate(instruction_id, profile["id"])
+    if not row:
+        raise HTTPException(status_code=404, detail="Instruction not found")
+    return {"success": True, "instruction": row}

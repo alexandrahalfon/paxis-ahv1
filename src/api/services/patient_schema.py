@@ -1052,6 +1052,233 @@ SCHEMA_STATEMENTS: List[str] = [
     """
                 CREATE UNIQUE INDEX IF NOT EXISTS community_blocked_users_uidx
                     ON community_blocked_users (blocker_profile_id, blocked_profile_id);
-                
+
+    """,
+
+    # ── Phase 1 finalization (added 2026-08-12) ─────────────────────
+    # Everything below closes out the "Phase 1 — Finalize the canonical
+    # longitudinal patient data model" checklist: multi-primary/
+    # recurrence/progression support on diagnoses, tumor_profiles,
+    # normalization columns, symptom_observations (patient_profile-keyed,
+    # succeeding the legacy patient_symptom_entries table for new writes
+    # — see symptom_observation_service.py), nutrition_assessments,
+    # care_team_instructions, and treatment_cycles delay/hold/dose-
+    # reduction tracking. Hand-authored going forward (not extracted from
+    # ensure_schema()) — see migrations/patients_db/README.md: new
+    # changes are a migration revision first, appended here to keep
+    # ensure_schema() in sync, not the other way around.
+
+    # patient_profiles: only the two demographics Phase 1 explicitly
+    # calls for (needed for evidence applicability / localization).
+    # Deliberately not adding race, address, insurance, etc. just because
+    # they're commonly collected elsewhere — see the Phase 1 checklist's
+    # "avoid unnecessary demographic attributes" item.
+    """
+    ALTER TABLE patient_profiles ADD COLUMN IF NOT EXISTS preferred_language TEXT;
+    ALTER TABLE patient_profiles ADD COLUMN IF NOT EXISTS timezone TEXT;
+    """,
+
+    # patient_diagnoses: multiple primaries / recurrence / progression /
+    # remission as first-class, plus normalization columns. A recurrence
+    # or progression entry can point back at the primary it followed via
+    # related_diagnosis_id, so a patient's diagnosis history reads as a
+    # chain rather than a flat, undifferentiated list.
+    """
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS diagnosis_type TEXT NOT NULL DEFAULT 'primary';
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS effective_date DATE;
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS canonical_cancer_type TEXT;
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS canonical_histology TEXT;
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS stage_system TEXT;
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS metastatic_sites JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE patient_diagnoses ADD COLUMN IF NOT EXISTS related_diagnosis_id UUID
+        REFERENCES patient_diagnoses(id) ON DELETE SET NULL;
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS patient_diagnoses_status_idx
+        ON patient_diagnoses (patient_profile_id, status);
+    """,
+
+    # tumor_profiles: grade/size/receptor-status/molecular-subtype as its
+    # own entity rather than crammed into patient_diagnoses — a tumor
+    # profile can be re-assessed (new specimen, new stain) without
+    # implying the diagnosis itself changed.
+    """
+    CREATE TABLE IF NOT EXISTS tumor_profiles (
+        id UUID PRIMARY KEY,
+        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,
+        diagnosis_id UUID REFERENCES patient_diagnoses(id) ON DELETE SET NULL,
+        grade TEXT,
+        tumor_size_mm DOUBLE PRECISION,
+        molecular_subtype TEXT,
+        receptor_status JSONB NOT NULL DEFAULT '{}'::jsonb,
+        specimen_date DATE,
+        specimen_site TEXT,
+        raw_text TEXT,
+        source_type TEXT NOT NULL DEFAULT 'patient_manual',
+        source_document_id UUID,
+        verification_status TEXT NOT NULL DEFAULT 'extracted',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS tumor_profiles_profile_idx
+        ON tumor_profiles (patient_profile_id, created_at DESC);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS tumor_profiles_diagnosis_idx
+        ON tumor_profiles (diagnosis_id);
+    """,
+
+    # patient_biomarker_results: specimen provenance + a coarse category
+    # (receptor_status/pdl1/msi_mmr/tmb/variant/other) so retrieval can
+    # ask "does this patient have an actionable variant" without string-
+    # matching biomarker_name, plus a normalized gene symbol alongside
+    # the always-preserved raw_text.
+    """
+    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS specimen_date DATE;
+    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS specimen_site TEXT;
+    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS biomarker_category TEXT;
+    ALTER TABLE patient_biomarker_results ADD COLUMN IF NOT EXISTS canonical_gene TEXT;
+    """,
+
+    # treatment_cycles: delay/hold/dose-reduction tracking — the
+    # difference between "cycle 4 given on schedule" and "cycle 4 held
+    # for neutropenia" matters for both the timeline and retrieval.
+    """
+    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS delayed BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS delay_reason TEXT;
+    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS held BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE treatment_cycles ADD COLUMN IF NOT EXISTS dose_reduction_pct REAL;
+    """,
+
+    # treatment_agents / medication_exposures: canonical_name + aliases
+    # populated by clinical_normalization.py at write time. rxnorm_code
+    # stays NULL unless the curated static table happens to have one —
+    # see that module's docstring for why this isn't a live RxNorm API
+    # integration.
+    """
+    ALTER TABLE treatment_agents ADD COLUMN IF NOT EXISTS canonical_name TEXT;
+    ALTER TABLE treatment_agents ADD COLUMN IF NOT EXISTS aliases JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE medication_exposures ADD COLUMN IF NOT EXISTS canonical_name TEXT;
+    ALTER TABLE medication_exposures ADD COLUMN IF NOT EXISTS aliases JSONB NOT NULL DEFAULT '[]'::jsonb;
+    """,
+
+    # symptom_observations: the patient_profile-keyed symptom table Phase
+    # 1 calls for. The legacy patient_symptom_entries table (keyed by
+    # patient_user_id, no patient_profile_id, no normalization/status/
+    # trajectory columns) stays exactly as it is — symptom_service.py and
+    # the existing /portal/symptoms endpoints keep working unchanged —
+    # but new symptom-diary writes should go through
+    # symptom_observation_service.py going forward; patient_state_service
+    # now prefers this table and falls back to the legacy one. Attribution
+    # to a treatment is possibly_related_treatment_episode_id — named
+    # deliberately, not "caused_by", since Paxis observes a temporal
+    # association a patient or their care team noted, never a confirmed
+    # causal mechanism.
+    """
+    CREATE TABLE IF NOT EXISTS symptom_observations (
+        id UUID PRIMARY KEY,
+        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,
+        raw_text TEXT NOT NULL,
+        canonical_symptom TEXT,
+        severity SMALLINT,
+        onset_date DATE,
+        resolved_date DATE,
+        status TEXT NOT NULL DEFAULT 'active',
+        frequency TEXT,
+        possibly_related_treatment_episode_id UUID
+            REFERENCES treatment_episodes(id) ON DELETE SET NULL,
+        source_type TEXT NOT NULL DEFAULT 'patient_manual',
+        source_document_id UUID,
+        verification_status TEXT NOT NULL DEFAULT 'extracted',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS symptom_observations_profile_idx
+        ON symptom_observations (patient_profile_id, status, onset_date DESC);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS symptom_observations_canonical_idx
+        ON symptom_observations (patient_profile_id, canonical_symptom);
+    """,
+
+    # nutrition_assessments: the table Phase 1 calls for that had no
+    # equivalent at all before this — appetite/intake/swallowing/feeding
+    # route/restrictions/nutrition-risk, distinguishing active-treatment
+    # nutrition concerns from survivorship/prevention ones (architecture
+    # review section 19: don't downrank an active-treatment nutrition
+    # question with generic prevention-diet content).
+    """
+    CREATE TABLE IF NOT EXISTS nutrition_assessments (
+        id UUID PRIMARY KEY,
+        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,
+        assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        appetite TEXT,
+        oral_intake_pct SMALLINT,
+        swallowing_difficulty BOOLEAN,
+        feeding_tube BOOLEAN NOT NULL DEFAULT false,
+        feeding_tube_type TEXT,
+        diet_restrictions JSONB NOT NULL DEFAULT '[]'::jsonb,
+        food_allergies JSONB NOT NULL DEFAULT '[]'::jsonb,
+        texture_requirements TEXT,
+        hydration_constraints TEXT,
+        nutrition_risk TEXT,
+        care_phase TEXT NOT NULL DEFAULT 'active_treatment',
+        source_type TEXT NOT NULL DEFAULT 'patient_manual',
+        source_document_id UUID,
+        verification_status TEXT NOT NULL DEFAULT 'extracted',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS nutrition_assessments_profile_idx
+        ON nutrition_assessments (patient_profile_id, assessment_date DESC);
+    """,
+
+    # patient_allergies: true allergy vs. intolerance, since a nutrition
+    # or medication answer treats the two very differently (severity and
+    # avoidance strictness differ).
+    """
+    ALTER TABLE patient_allergies ADD COLUMN IF NOT EXISTS allergy_type TEXT NOT NULL DEFAULT 'allergy';
+    """,
+
+    # encounters: explicit next_steps / newly_ordered_tests / questions
+    # columns rather than everything bundled into the structured_changes
+    # catch-all, so a visit recap and a "questions for next appointment"
+    # list (architecture review Phase 24) can be built directly from a
+    # column instead of parsing free-form JSON.
+    """
+    ALTER TABLE encounters ADD COLUMN IF NOT EXISTS newly_ordered_tests JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE encounters ADD COLUMN IF NOT EXISTS next_steps TEXT;
+    ALTER TABLE encounters ADD COLUMN IF NOT EXISTS questions_for_next_visit JSONB NOT NULL DEFAULT '[]'::jsonb;
+    """,
+
+    # care_team_instructions: the table Phase 1 calls for that had no
+    # equivalent before — a clinician's specific instruction to this
+    # patient ("no NSAIDs while on this regimen"), which should outrank
+    # generic education when the two would otherwise conflict. Ranking
+    # that precedence is Phase 4/13 retrieval work; this is just the
+    # table to store it in.
+    """
+    CREATE TABLE IF NOT EXISTS care_team_instructions (
+        id UUID PRIMARY KEY,
+        patient_profile_id UUID NOT NULL REFERENCES patient_profiles(id) ON DELETE CASCADE,
+        instruction_text TEXT NOT NULL,
+        instruction_type TEXT NOT NULL DEFAULT 'other',
+        author_provider TEXT,
+        physician_id UUID,
+        source_type TEXT NOT NULL DEFAULT 'clinician_entered',
+        source_document_id UUID,
+        effective_from DATE,
+        effective_to DATE,
+        active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS care_team_instructions_profile_idx
+        ON care_team_instructions (patient_profile_id, active, created_at DESC);
     """,
 ]

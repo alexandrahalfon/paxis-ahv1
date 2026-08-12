@@ -42,6 +42,28 @@ class LabService:
 
         async with pool.acquire() as conn:
             async with conn.transaction():
+                # Duplicate-ingestion prevention (Phase 1 checklist item):
+                # the same test/date/value already on file is treated as
+                # "already recorded", not re-inserted — this is what
+                # stops a patient re-uploading the identical report (or
+                # a document being confirmed twice) from doubling their
+                # lab history. IS NOT DISTINCT FROM (rather than =) so
+                # NULL collected_at / NULL value_text compare as equal to
+                # another NULL, matching normal "same missing data" intent.
+                existing = await conn.fetchrow(
+                    """
+                    SELECT * FROM lab_results
+                     WHERE patient_profile_id = $1 AND canonical_test_name = $2
+                       AND collected_at IS NOT DISTINCT FROM $3
+                       AND value_numeric IS NOT DISTINCT FROM $4
+                       AND value_text IS NOT DISTINCT FROM $5
+                     LIMIT 1
+                    """,
+                    patient_profile_id, canonical, collected_at, value_numeric, value_text,
+                )
+                if existing:
+                    return row_to_dict(existing)
+
                 row = await conn.fetchrow(
                     """
                     INSERT INTO lab_results

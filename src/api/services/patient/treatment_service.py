@@ -8,11 +8,13 @@ see the CLAUDE.md-adjacent architecture review, section 9.
 
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any, Dict, List, Optional
 
 from src.api.services.patient_db import get_patient_db
 from src.api.services.patient._common import row_to_dict, append_profile_timeline_event
+from src.api.services.patient.clinical_normalization import normalize_drug_name, expand_regimen
 
 
 class TreatmentService:
@@ -35,7 +37,17 @@ class TreatmentService:
     ) -> Dict[str, Any]:
         """agents: optional list of {"agent_name", "dose", "route", "schedule"}
         inserted alongside the episode — the common case (FOLFOX -> its
-        three drugs) in one call instead of a follow-up per agent."""
+        three drugs) in one call instead of a follow-up per agent.
+
+        When agents is empty/omitted but regimen matches a known name in
+        clinical_normalization.REGIMEN_EXPANSIONS (FOLFOX, R-CHOP, ...),
+        its component agents are populated automatically — a patient
+        typing just "FOLFOX" still gets medication-specific retrieval
+        without having to name each drug themselves."""
+        agent_list = list(agents or [])
+        if not agent_list and regimen:
+            agent_list = [{"agent_name": name} for name in expand_regimen(regimen)]
+
         db = get_patient_db()
         await db.ensure_schema()
         pool = await db.get_pool()
@@ -56,26 +68,28 @@ class TreatmentService:
                     line_of_therapy, start_date, end_date, status, raw_text,
                     source_type, source_document_id, verification_status,
                 )
-                for agent in (agents or []):
+                for agent in agent_list:
                     if not agent.get("agent_name"):
                         continue
+                    drug_norm = normalize_drug_name(agent["agent_name"])
                     await conn.execute(
                         """
                         INSERT INTO treatment_agents
                             (id, treatment_episode_id, agent_name, rxnorm_code,
-                             dose, route, schedule)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                             dose, route, schedule, canonical_name, aliases)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
                         """,
                         str(uuid.uuid4()), episode_id, agent["agent_name"],
-                        agent.get("rxnorm_code"), agent.get("dose"),
-                        agent.get("route"), agent.get("schedule"),
+                        agent.get("rxnorm_code") or drug_norm["rxnorm_code"],
+                        agent.get("dose"), agent.get("route"), agent.get("schedule"),
+                        drug_norm["canonical"], json.dumps(drug_norm["aliases"]),
                     )
                 await append_profile_timeline_event(
                     conn, patient_profile_id, "treatment_started",
                     {
                         "regimen": regimen, "status": status,
                         "line_of_therapy": line_of_therapy,
-                        "agents": [a.get("agent_name") for a in (agents or [])],
+                        "agents": [a.get("agent_name") for a in agent_list],
                     },
                     created_by=created_by, event_date=start_date, source=source_type,
                 )
@@ -112,6 +126,8 @@ class TreatmentService:
         self, treatment_episode_id: str, patient_profile_id: str,
         cycle_number: Optional[int] = None, cycle_date: Optional[str] = None,
         status: str = "completed", notes: Optional[str] = None,
+        delayed: bool = False, delay_reason: Optional[str] = None,
+        held: bool = False, dose_reduction_pct: Optional[float] = None,
         created_by: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         db = get_patient_db()
@@ -129,15 +145,22 @@ class TreatmentService:
                 row = await conn.fetchrow(
                     """
                     INSERT INTO treatment_cycles
-                        (id, treatment_episode_id, cycle_number, cycle_date, status, notes)
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                        (id, treatment_episode_id, cycle_number, cycle_date, status, notes,
+                         delayed, delay_reason, held, dose_reduction_pct)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     RETURNING *
                     """,
                     cycle_id, treatment_episode_id, cycle_number, cycle_date, status, notes,
+                    delayed, delay_reason, held, dose_reduction_pct,
                 )
+                event_type = "cycle_held" if held else ("cycle_delayed" if delayed else "cycle_received")
                 await append_profile_timeline_event(
-                    conn, patient_profile_id, "cycle_received",
-                    {"regimen": episode["regimen"], "cycle_number": cycle_number},
+                    conn, patient_profile_id, event_type,
+                    {
+                        "regimen": episode["regimen"], "cycle_number": cycle_number,
+                        "delayed": delayed, "held": held,
+                        "dose_reduction_pct": dose_reduction_pct,
+                    },
                     created_by=created_by, event_date=cycle_date,
                 )
         return row_to_dict(row)

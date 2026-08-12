@@ -89,7 +89,7 @@ class PatientProfileService:
         return _row_to_dict(row) if row else None
 
     async def update_profile(self, user_id: str, **fields) -> Optional[Dict[str, Any]]:
-        allowed = {"first_name", "last_name", "date_of_birth", "sex"}
+        allowed = {"first_name", "last_name", "date_of_birth", "sex", "preferred_language", "timezone"}
         updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
         if not updates:
             return await self.get_by_user(user_id)

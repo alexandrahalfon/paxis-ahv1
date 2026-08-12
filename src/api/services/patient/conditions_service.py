@@ -71,11 +71,15 @@ class ConditionsService:
         allergen: str,
         reaction: Optional[str] = None,
         severity: Optional[str] = None,
+        allergy_type: str = "allergy",
         source_type: str = "patient_manual",
         source_document_id: Optional[str] = None,
         verification_status: str = "extracted",
         created_by: Optional[str] = None,
     ) -> Dict[str, Any]:
+        if allergy_type not in ("allergy", "intolerance"):
+            allergy_type = "allergy"
+
         db = get_patient_db()
         await db.ensure_schema()
         pool = await db.get_pool()
@@ -85,12 +89,12 @@ class ConditionsService:
                 row = await conn.fetchrow(
                     """
                     INSERT INTO patient_allergies
-                        (id, patient_profile_id, allergen, reaction, severity,
+                        (id, patient_profile_id, allergen, reaction, severity, allergy_type,
                          source_type, source_document_id, verification_status)
-                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
                     RETURNING *
                     """,
-                    aid, patient_profile_id, allergen, reaction, severity,
+                    aid, patient_profile_id, allergen, reaction, severity, allergy_type,
                     source_type, source_document_id, verification_status,
                 )
                 await append_profile_timeline_event(

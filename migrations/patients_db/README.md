@@ -71,6 +71,13 @@ alembic -c migrations/patients_db/alembic.ini current
 pool uses (`psycopg2`, sync-only, used for migrations exclusively — the
 running application never uses this driver).
 
+## Revisions
+
+| Revision | Adds | downgrade() |
+|---|---|---|
+| `0001_baseline` | Every table that predated real migrations (`SCHEMA_STATEMENTS[0:92]`) | Refuses — see its docstring |
+| `0002_phase1_finalization` | Multi-primary/recurrence diagnoses, `tumor_profiles`, `symptom_observations`, `nutrition_assessments`, `care_team_instructions`, normalization columns (`SCHEMA_STATEMENTS[92:110]`) | Real — drops exactly what it added |
+
 ## Not done here
 
 This baseline was written and reviewed against `patient_schema.py`
