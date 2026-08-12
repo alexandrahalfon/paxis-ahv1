@@ -49,6 +49,8 @@ class ConditionsService:
                     {"condition_name": condition_name}, created_by=created_by,
                     event_date=onset_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_comorbidities(
@@ -102,6 +104,8 @@ class ConditionsService:
                     {"allergen": allergen, "severity": severity}, created_by=created_by,
                     source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_allergies(self, patient_profile_id: str) -> List[Dict[str, Any]]:

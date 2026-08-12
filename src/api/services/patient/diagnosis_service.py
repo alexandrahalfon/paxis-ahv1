@@ -94,6 +94,8 @@ class DiagnosisService:
                     },
                     created_by=created_by, event_date=diagnosis_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def get_latest_diagnosis(self, patient_profile_id: str) -> Optional[Dict[str, Any]]:
@@ -190,6 +192,8 @@ class DiagnosisService:
                     {"biomarker_name": biomarker_name, "value": value, "category": category},
                     created_by=created_by, event_date=measured_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_biomarkers(self, patient_profile_id: str) -> List[Dict[str, Any]]:

@@ -88,6 +88,8 @@ class LabService:
                     },
                     created_by=created_by, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_results(

@@ -63,6 +63,8 @@ class MedicationService:
                     {"generic_name": generic_name, "indication": indication},
                     created_by=created_by, event_date=start_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def update_status(
@@ -89,6 +91,9 @@ class MedicationService:
                         {"generic_name": row["generic_name"]},
                         created_by=created_by, event_date=end_date,
                     )
+        if row:
+            from src.api.services.patient.patient_state_service import invalidate_patient_state
+            await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row) if row else None
 
     async def list_medications(

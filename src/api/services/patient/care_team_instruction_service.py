@@ -69,6 +69,8 @@ class CareTeamInstructionService:
                     {"instruction_type": instruction_type, "instruction_text": instruction_text},
                     created_by=created_by, event_date=effective_from, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_active(self, patient_profile_id: str) -> List[Dict[str, Any]]:
@@ -102,6 +104,9 @@ class CareTeamInstructionService:
                 """,
                 instruction_id, patient_profile_id,
             )
+        if row:
+            from src.api.services.patient.patient_state_service import invalidate_patient_state
+            await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row) if row else None
 
 

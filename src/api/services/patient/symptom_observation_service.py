@@ -65,6 +65,8 @@ class SymptomObservationService:
                     {"raw_text": raw_text, "canonical_symptom": canonical, "severity": severity},
                     created_by=created_by, event_date=onset_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def resolve_observation(
@@ -94,6 +96,9 @@ class SymptomObservationService:
                         created_by=created_by,
                         event_date=resolved_date or _date.today().isoformat(),
                     )
+        if row:
+            from src.api.services.patient.patient_state_service import invalidate_patient_state
+            await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row) if row else None
 
     async def list_observations(

@@ -82,6 +82,8 @@ class NutritionAssessmentService:
                      "care_phase": care_phase},
                     created_by=created_by, event_date=assessment_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_assessments(self, patient_profile_id: str, limit: int = 50) -> List[Dict[str, Any]]:

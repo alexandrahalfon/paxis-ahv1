@@ -59,6 +59,8 @@ class TumorProfileService:
                      "receptor_status": receptor_status or {}},
                     created_by=created_by, event_date=specimen_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_profiles(self, patient_profile_id: str) -> List[Dict[str, Any]]:

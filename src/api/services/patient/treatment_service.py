@@ -93,6 +93,8 @@ class TreatmentService:
                     },
                     created_by=created_by, event_date=start_date, source=source_type,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def update_episode_status(
@@ -120,6 +122,9 @@ class TreatmentService:
                         {"episode_id": episode_id, "status": status, "regimen": row["regimen"]},
                         created_by=created_by, event_date=end_date,
                     )
+        if row:
+            from src.api.services.patient.patient_state_service import invalidate_patient_state
+            await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row) if row else None
 
     async def add_cycle(
@@ -163,6 +168,8 @@ class TreatmentService:
                     },
                     created_by=created_by, event_date=cycle_date,
                 )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def list_episodes(self, patient_profile_id: str) -> List[Dict[str, Any]]:

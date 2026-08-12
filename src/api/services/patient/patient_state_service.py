@@ -427,3 +427,38 @@ def get_patient_state_service() -> PatientStateService:
     if _service is None:
         _service = PatientStateService()
     return _service
+
+
+async def invalidate_patient_state(patient_profile_id: str) -> None:
+    """Best-effort snapshot rebuild after a canonical write.
+
+    get_context() (patient_context_service.py) reads the LATEST
+    patient_state_snapshots row and only rebuilds when none exists at
+    all — it does not re-check staleness. Before this, a manual write
+    (add_diagnosis/add_episode/add_medication/add_observation/
+    add_assessment/add_vital/...) left the existing snapshot in place,
+    so a patient could add a new treatment and immediately ask a
+    question that retrieval answered from the state as it was BEFORE
+    that write — see the 2026-08-12 beta audit, "patient state can
+    become stale after manual edits". Confirmed document extraction
+    already rebuilds via patient_document_validator.py calling
+    build_state() after confirmation; every manual-entry write path
+    should call this the same way, immediately after its transaction
+    commits (never from inside the transaction itself — build_state()
+    acquires its own connection from the pool, so calling it before the
+    write commits would read pre-write data under READ COMMITTED and
+    produce a rebuild that's still stale).
+
+    Never raises: a failed rebuild must not cost the caller their
+    successful write. The next successful write (or the next document
+    confirmation) will catch up regardless — this narrows the staleness
+    window, it doesn't need to be perfect to be a real improvement.
+    """
+    try:
+        await get_patient_state_service().build_state(patient_profile_id)
+    except Exception:
+        logger.warning(
+            "[PatientState] best-effort snapshot rebuild failed for profile %s "
+            "(the write itself succeeded; retrieval may read stale state until "
+            "the next successful rebuild)", patient_profile_id, exc_info=True,
+        )

@@ -39,6 +39,8 @@ class VitalsService:
                 vid, patient_profile_id, vital_type, value_numeric, unit,
                 measured_at, source_type, source_document_id,
             )
+        from src.api.services.patient.patient_state_service import invalidate_patient_state
+        await invalidate_patient_state(patient_profile_id)
         return row_to_dict(row)
 
     async def get_trend(
