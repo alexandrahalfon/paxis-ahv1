@@ -78,6 +78,30 @@ Work with whatever they give you, be useful at the level of detail you have,
 and never imply they should have known more or come better prepared.
 """
 
+# Which patient intents warrant the expensive claim-level check
+# (claim_grounding_validator.py, step 6c below) -- mapped onto the
+# shared STRICT_VALIDATION_INTENTS vocabulary that module's
+# requires_strict_validation() understands. That vocabulary is written
+# in physician-decision terms (therapy_selection, dose_modification, ...)
+# because it's shared with the future physician path (Sprint C);
+# patient chat never makes those decisions at all (see
+# BASE_SYSTEM_PROMPT above: "Do NOT recommend new treatments or suggest
+# changes to their current plan"). Of today's patient intents,
+# medication questions (side effects, interactions) and
+# symptom-management questions (self-care, when to escalate) are the
+# ones where an unsupported specific claim is a genuine safety issue,
+# not just an unhelpful answer -- mapped onto the closest shared
+# category each one is. Values are literal strings matching
+# evidence.patient_context_service.INTENT_MEDICATION/INTENT_SYMPTOM
+# rather than importing those constants, matching that module's own
+# GENERAL_SAFETY_CATEGORY precedent for why (avoids a hard top-level
+# dependency on the evidence layer from this file, which otherwise only
+# imports it inline inside answer()).
+_PATIENT_STRICT_INTENT_MAP = {
+    "medication_explainer": "drug_interaction",
+    "symptom_management": "toxicity_management",
+}
+
 
 @dataclass
 class ChatResult:
@@ -422,6 +446,14 @@ class PatientChatService:
         #    uploaded their own data still gets personalized retrieval.
         context: Dict[str, Any] = {}
         evidence_block, sources, used_web = "", [], False
+        # Only ever populated by the multi-corpus branch below (the
+        # literature-only and PubMed fallback paths build `sources`
+        # directly via _evidence_block()/_web_block(), with no matching
+        # EvidencePacket) -- step 6c's claim-level validation checks for
+        # this explicitly, since claim_grounding_validator.validate_claims()
+        # needs real evidence text/title, not just the citation metadata
+        # `sources` carries.
+        packet: Optional[Dict[str, Any]] = None
         try:
             from src.api.services.evidence.patient_context_service import (
                 get_patient_context_service,
@@ -683,6 +715,62 @@ class PatientChatService:
         except Exception:
             logger.warning("[PatientChat] grounding validation errored (continuing)", exc_info=True)
 
+        # 6c. Claim-level grounding for high-risk patient intents
+        # (2026-08-12 convergence Sprint B item 11): claim_grounding_
+        # validator.py (A4) checks whether each claim in the answer is
+        # actually SUPPORTED by the passage it cites, not just that a
+        # citation number exists (all step 6b checks). Only runs when:
+        # a real EvidencePacket exists (only the multi-corpus retrieval
+        # branch builds one -- see `packet`'s definition near step 4);
+        # the mechanical gate above didn't already fall back to the safe
+        # response (nothing left worth claim-checking there); and this
+        # intent maps to a strict-validation category via
+        # _PATIENT_STRICT_INTENT_MAP, since an LLM pass on every turn is
+        # not free and most patient questions aren't high-risk enough to
+        # warrant it (see grounding_validator.py's own module docstring
+        # for the same mechanical-vs-claim-level split this reuses).
+        claim_result = None
+        if packet is not None and sources:
+            try:
+                from src.api.services.evidence.claim_grounding_validator import (
+                    validate_claims, repair_answer, requires_strict_validation,
+                )
+                from src.api.services.evidence.grounding_validator import (
+                    SAFE_FALLBACK_RESPONSE as _SAFE_FALLBACK,
+                )
+                if answer != _SAFE_FALLBACK:
+                    strict_intent = _PATIENT_STRICT_INTENT_MAP.get(intent)
+                    if requires_strict_validation(strict_intent):
+                        claim_result = await validate_claims(answer, packet)
+                        # needs_repair, not overall_valid -- a
+                        # partially_supported claim deliberately leaves
+                        # overall_valid True (see ClaimValidationResult's
+                        # docstring: "the caller narrows rather than
+                        # blocks"), but it still needs repair_answer()
+                        # applied to actually narrow it.
+                        if claim_result.needs_repair:
+                            repaired = repair_answer(answer, claim_result)
+                            if repaired.strip() and repaired != answer:
+                                logger.info(
+                                    "[PatientChat] claim validation repaired "
+                                    "unsupported claim(s) for intent=%s", intent,
+                                )
+                                answer = repaired
+                            else:
+                                logger.warning(
+                                    "[PatientChat] claim validation found "
+                                    "unsupported claim(s) with nothing to "
+                                    "mechanically repair, falling back to safe "
+                                    "response for intent=%s", intent,
+                                )
+                                answer = _SAFE_FALLBACK
+                                sources = []
+            except Exception:
+                logger.warning(
+                    "[PatientChat] claim validation errored (continuing with "
+                    "the mechanically-grounded answer)", exc_info=True,
+                )
+
         trace_id = None
         if trace:
             trace.set_answer(answer)
@@ -690,6 +778,8 @@ class PatientChatService:
                 trace_grounding = grounding_result.to_dict()
                 trace_grounding["retried"] = retried
                 trace.set_grounding(trace_grounding)
+            if claim_result:
+                trace.set_claim_validation(claim_result.to_dict())
             trace_id = await trace.save()
 
         # 7. At most one follow-up, and only when it would change the answer.
