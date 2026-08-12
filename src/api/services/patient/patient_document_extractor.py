@@ -94,7 +94,13 @@ class PatientDocumentExtractor:
 
     def _ocr_pdf(self, path: str) -> str:
         """Mistral OCR for a PDF, same call shape as
-        CompleteDocumentProcessor._extract_with_mistral_ocr."""
+        CompleteDocumentProcessor._extract_with_mistral_ocr — except that
+        module's docstring itself notes cleanup "relatively unimportant"
+        for literature PDFs; this one handles patient PHI, where it
+        matters. The uploaded copy is deleted from Mistral's file store
+        in a finally block, so it happens whether OCR succeeds or raises,
+        rather than leaving a patient's uploaded document sitting on a
+        third-party file API indefinitely."""
         client = self._mistral_client()
         if client is None:
             raise RuntimeError("Mistral OCR is not configured")
@@ -105,13 +111,28 @@ class PatientDocumentExtractor:
                 file={"file_name": Path(path).name, "content": f.read()},
                 purpose="ocr",
             )
-        signed_url = client.files.get_signed_url(file_id=uploaded.id)
-        ocr_response = client.ocr.process(
-            document=DocumentURLChunk(document_url=signed_url.url),
-            model=settings.mistral_ocr_model,
-        )
-        pages = getattr(ocr_response, "pages", []) or []
-        return "\n\n".join(getattr(p, "markdown", "") or "" for p in pages)
+        try:
+            signed_url = client.files.get_signed_url(file_id=uploaded.id)
+            ocr_response = client.ocr.process(
+                document=DocumentURLChunk(document_url=signed_url.url),
+                model=settings.mistral_ocr_model,
+            )
+            pages = getattr(ocr_response, "pages", []) or []
+            return "\n\n".join(getattr(p, "markdown", "") or "" for p in pages)
+        finally:
+            # Best-effort: a failed cleanup must not turn a successful
+            # (or already-failed) OCR into a hard failure for the
+            # patient's upload — but it's worth a log line since a
+            # lingering copy of patient PHI on Mistral's side is exactly
+            # what this cleanup exists to prevent.
+            try:
+                client.files.delete(file_id=uploaded.id)
+            except Exception as e:
+                logger.warning(
+                    "[PatientDocExtractor] failed to delete Mistral-hosted "
+                    "file %s after OCR (patient PHI may linger there): %s",
+                    uploaded.id, e,
+                )
 
     def _ocr_image(self, path: str) -> str:
         """Vision-model transcription for a phone photo. Uses the same

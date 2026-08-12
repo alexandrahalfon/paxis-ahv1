@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from ...core.config import get_settings
-from ...processing.document_processor import CompleteDocumentProcessor
+from ...processing.document_processor import CompleteDocumentProcessor, persist_study_profile_if_present
 from ...ingestion.colab_pipeline import ColabIngestionPipeline
 
 
@@ -35,7 +35,13 @@ class DocumentProcessingService:
             print(f"\n[Processing {upload_id}] Starting document processing...")
             processor = CompleteDocumentProcessor(str(file_path))
             processing_result = processor.process_complete()
-            
+
+            # Persist any study profile process_complete() extracted (Phase
+            # 10, gated by settings.extract_study_profiles) -- a real
+            # await now, not a second event loop nested inside this one.
+            # See persist_study_profile_if_present()'s docstring.
+            await persist_study_profile_if_present(processing_result, processor.doc_name)
+
             # Step 2: Ingestion Pipeline
             print(f"\n[Processing {upload_id}] Starting ingestion pipeline...")
             

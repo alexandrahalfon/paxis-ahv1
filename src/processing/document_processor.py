@@ -167,6 +167,23 @@ class CompleteDocumentProcessor:
                 print(f"  ⚠️  GCP sync failed: {e}")
         
         # Phase 10: Extract Study Profile (if enabled)
+        # Extraction only — this method is synchronous and every known
+        # caller invokes it from inside an already-running event loop
+        # (document_processing_service.process_document() awaits it from
+        # a FastAPI route/background task; see upload.py's
+        # process_approved_document_sync(), which drives its own event
+        # loop with loop.run_until_complete()). Postgres storage used to
+        # happen right here via
+        # `asyncio.get_event_loop().run_until_complete(storage.store_study_profile(...))`,
+        # which — called from a thread whose loop is already running —
+        # raises "This event loop is already running" every time. That
+        # was caught by the bare `except Exception` below and logged as
+        # a generic "PostgreSQL storage failed", so every study profile
+        # extracted under this flag was silently dropped without an
+        # obvious error. Storage now happens in
+        # persist_study_profile_if_present() (this module, below),
+        # called by the async caller after process_complete() returns —
+        # a real `await`, not a second nested loop.
         if getattr(settings, 'extract_study_profiles', False):
             print("\n📋 PHASE 10: Extracting study profile...")
             try:
@@ -175,26 +192,11 @@ class CompleteDocumentProcessor:
                     profile_file = self._save_study_profile(profile_result)
                     generated_files["files"]["study_profile"] = str(profile_file)
                     generated_files["study_profile"] = profile_result.get("extracted_data")
-                    print(f"  ✓ Study profile extracted")
-                    
-                    # Store to PostgreSQL
-                    try:
-                        import asyncio
-                        from ..api.services.study_profile_storage_service import get_study_profile_storage_service
-                        
-                        storage = get_study_profile_storage_service()
-                        study_id = asyncio.get_event_loop().run_until_complete(
-                            storage.store_study_profile(
-                                doc_id=self.doc_name,
-                                document_name=self.doc_name,
-                                extracted_data=profile_result.get("extracted_data"),
-                                processing_duration=profile_result.get("processing_duration_seconds")
-                            )
-                        )
-                        print(f"  ✓ Study profile stored in PostgreSQL: study_id={study_id}")
-                        generated_files["study_profile_id"] = study_id
-                    except Exception as e:
-                        print(f"  ⚠️  PostgreSQL storage failed: {e}")
+                    generated_files["study_profile_processing_duration"] = profile_result.get(
+                        "processing_duration_seconds"
+                    )
+                    print(f"  ✓ Study profile extracted (Postgres storage pending — see "
+                          f"persist_study_profile_if_present())")
             except Exception as e:
                 print(f"  ⚠️  Study profile extraction failed: {e}")
         
@@ -1023,9 +1025,55 @@ NEXT STEPS
     def _save_study_profile(self, profile_result: Dict) -> Path:
         """Save extracted study profile to JSON file."""
         file_path = self.output_dir / f"{self.doc_name}_study_profile.json"
-        
+
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(profile_result, f, indent=2, ensure_ascii=False)
-        
+
         print(f"  ✓ Saved: {file_path.name}")
         return file_path
+
+
+async def persist_study_profile_if_present(
+    generated_files: Dict, doc_name: str
+) -> Optional[int]:
+    """Persists a study profile extracted by process_complete()'s Phase 10
+    (gated by settings.extract_study_profiles) to Postgres. Split out as a
+    standalone async function — rather than left inline inside
+    process_complete(), which is synchronous and every known caller
+    invokes from inside an already-running event loop — specifically
+    because that combination made the previous
+    `asyncio.get_event_loop().run_until_complete(...)` call raise "This
+    event loop is already running" on every single call, silently
+    dropping every study profile that flag was meant to store. See the
+    Phase 10 comment in process_complete() for the full explanation.
+
+    Callers: every current caller of process_complete()
+    (document_processing_service.process_document(),
+    user_uploads_service.process_and_store_document()) is itself async,
+    so this is a plain `await persist_study_profile_if_present(...)`
+    after `processor.process_complete()`, not a second nested loop.
+
+    No-op (returns None, does nothing) when process_complete() didn't
+    extract a study profile — the common case, since extraction itself
+    is gated behind settings.extract_study_profiles and most documents
+    don't need one.
+    """
+    extracted_data = generated_files.get("study_profile")
+    if not extracted_data:
+        return None
+    try:
+        from ..api.services.study_profile_storage_service import get_study_profile_storage_service
+
+        storage = get_study_profile_storage_service()
+        study_id = await storage.store_study_profile(
+            doc_id=doc_name,
+            document_name=doc_name,
+            extracted_data=extracted_data,
+            processing_duration=generated_files.get("study_profile_processing_duration"),
+        )
+        generated_files["study_profile_id"] = study_id
+        print(f"  ✓ Study profile stored in PostgreSQL: study_id={study_id}")
+        return study_id
+    except Exception as e:
+        print(f"  ⚠️  PostgreSQL storage failed: {e}")
+        return None

@@ -6,6 +6,7 @@ Processes multiple PDF documents using the document processor.
 Equivalent to the Colab batch processing workflow.
 """
 
+import asyncio
 import os
 import sys
 import shutil
@@ -16,7 +17,7 @@ import subprocess
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from processing.document_processor import CompleteDocumentProcessor
+from processing.document_processor import CompleteDocumentProcessor, persist_study_profile_if_present
 from core.config import get_settings, ensure_directories
 
 
@@ -104,7 +105,14 @@ class BatchDocumentProcessor:
                 )
                 
                 result = processor.process_complete()
-                
+                # See persist_study_profile_if_present()'s docstring: this
+                # used to happen inside process_complete() itself via a
+                # nested run_until_complete(), which only worked by
+                # accident here (a plain sync script, no loop already
+                # running) and broke every async caller. This script has
+                # no running loop either, so asyncio.run() is safe.
+                asyncio.run(persist_study_profile_if_present(result, processor.doc_name))
+
                 stats["processed"] += 1
                 stats["results"].append({
                     "document": doc_stem,
@@ -151,7 +159,8 @@ class BatchDocumentProcessor:
             )
             
             result = processor.process_complete()
-            
+            asyncio.run(persist_study_profile_if_present(result, processor.doc_name))
+
             print(f"✅ Successfully processed: {pdf_path.stem}")
             return {
                 "status": "success",

@@ -18,7 +18,7 @@ from typing import Dict, Any, Optional, List, Tuple
 import numpy as np
 
 from .account_db import get_account_db
-from ...processing.document_processor import CompleteDocumentProcessor
+from ...processing.document_processor import CompleteDocumentProcessor, persist_study_profile_if_present
 from ...ingestion.embeddings import EmbeddingGenerator
 from ...core.config import get_settings
 
@@ -815,7 +815,15 @@ class UserUploadsService:
             print(f"[UserUpload {upload_id}] Processing document...")
             processor = CompleteDocumentProcessor(str(file_path))
             processing_result = processor.process_complete()
-            
+
+            # Persist any study profile process_complete() extracted
+            # internally (Phase 10, gated by settings.extract_study_profiles)
+            # -- separate from this method's own StudyProfileExtractor call
+            # below, which is for immediate display, not Postgres storage.
+            # See persist_study_profile_if_present()'s docstring for why
+            # this can't happen inside process_complete() itself.
+            await persist_study_profile_if_present(processing_result, processor.doc_name)
+
             # Use original filename for doc_name (not temp file name)
             doc_name = Path(filename).stem
             print(f"[UserUpload {upload_id}] Doc name: {doc_name}")
