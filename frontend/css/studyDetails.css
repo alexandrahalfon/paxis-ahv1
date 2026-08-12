@@ -1,0 +1,628 @@
+/* ============================================
+   Study Details Panel - Complete Styling
+   Includes evidence quotes in italics
+   ============================================ */
+
+/* Evidence Quote Styling (ITALICS) */
+.evidence-quote {
+    font-style: italic;
+    color: var(--gray-600);
+    font-size: 0.813rem;
+    line-height: 1.5;
+    margin-top: 0.5rem;
+    padding-left: 1rem;
+    border-left: 3px solid var(--gray-200);
+    background: var(--gray-50);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0 4px 4px 0;
+}
+
+/* Detail Sections */
+.detail-section {
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.section-header {
+    background: var(--gray-100);
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background var(--transition-base);
+    user-select: none;
+}
+
+.section-header:hover {
+    background: var(--gray-150);
+}
+
+.section-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.expand-icon {
+    font-size: 0.75rem;
+    color: var(--gray-600);
+    transition: transform var(--transition-base);
+    display: inline-block;
+    width: 1rem;
+}
+
+.section-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.section-content.expanded {
+    max-height: none;
+    padding: 1rem;
+}
+
+/* Field Rows */
+.field-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.field-row:last-child {
+    border-bottom: none;
+}
+
+.field-label {
+    font-weight: 600;
+    color: var(--gray-700);
+    font-size: 0.875rem;
+}
+
+.field-value {
+    color: var(--gray-900);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* Field Groups (for nested arrays) */
+.field-group {
+    margin-bottom: 1rem;
+}
+
+.field-group .field-label {
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.array-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Item Cards (generic styling for all item types) */
+.list-item {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.list-item:last-child {
+    margin-bottom: 0;
+}
+
+.item-content {
+    font-size: 0.875rem;
+    color: var(--gray-900);
+    line-height: 1.6;
+}
+
+.item-content-bullets {
+    font-size: 0.875rem;
+    color: var(--gray-900);
+    line-height: 1.8;
+}
+
+.item-content strong,
+.item-content-bullets strong {
+    color: var(--gray-900);
+}
+
+.criterion-item {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.criterion-item:last-child {
+    margin-bottom: 0;
+}
+
+.criterion-text {
+    font-size: 0.875rem;
+    color: var(--gray-900);
+    line-height: 1.6;
+}
+
+/* No Data Message */
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: var(--gray-500);
+    font-size: 0.938rem;
+}
+
+/* Error Message */
+.error {
+    background: #fee;
+    border: 1px solid #fcc;
+    color: #c33;
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .field-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .field-label {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .section-content.expanded {
+        padding: 0.75rem;
+    }
+}
+
+/* Panel Metadata */
+.panel-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    gap: 1rem;
+}
+
+.panel-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    font-size: 0.813rem;
+    color: var(--gray-600);
+    background: var(--gray-100);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+/* Save Study Button */
+.save-study-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+    background: white;
+    color: var(--gray-700);
+    font-size: 0.813rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.save-study-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.save-study-btn .save-star {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.save-study-btn.saved {
+    background: var(--primary-light, #e0e7ff);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.save-study-btn.saved .save-star {
+    color: var(--primary);
+}
+
+/* Full Title (no truncation) */
+.panel-title-area h3.full-title {
+    font-size: 1.1rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Print Styles */
+@media print {
+    .section-header {
+        cursor: default;
+    }
+    
+    .section-content {
+        max-height: none !important;
+        display: block !important;
+    }
+    
+    .expand-icon {
+        display: none;
+    }
+    
+    .close-btn {
+        display: none;
+    }
+}
+
+
+/* ============================================
+   Study Q&A Mode
+   ============================================ */
+
+/* Button in study details panel */
+.panel-footer {
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--gray-200);
+    background: var(--gray-50);
+}
+
+.study-qa-btn {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.study-qa-btn:hover {
+    background: var(--primary-dark, #2563eb);
+}
+
+/* Study Q&A Panel */
+.study-qa-panel {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100vh;
+    background: white;
+    border-left: 1px solid var(--gray-200);
+    z-index: 1001;
+    flex-direction: column;
+}
+
+body.study-qa-active .study-qa-panel {
+    display: flex;
+}
+
+/* When Q&A is active, move study details to the left */
+body.study-qa-active .study-details-panel {
+    right: 50%;
+    width: 50%;
+    border-right: 1px solid var(--gray-200);
+}
+
+body.study-qa-active .section.hero {
+    display: none;
+}
+
+/* Q&A Panel Header */
+.qa-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--gray-50);
+}
+
+.qa-title-area {
+    flex: 1;
+    min-width: 0;
+}
+
+.qa-title-area h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+    color: var(--gray-900);
+}
+
+.qa-study-name {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Q&A Messages Area */
+.qa-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.qa-welcome-message {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--gray-600);
+}
+
+.qa-welcome-message p {
+    margin-bottom: var(--spacing-md);
+}
+
+.qa-example-questions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.qa-example-btn {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    text-align: left;
+}
+
+.qa-example-btn:hover {
+    background: var(--primary-light, rgba(59, 130, 246, 0.1));
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Q&A Message Bubbles */
+.qa-message {
+    display: flex;
+    gap: var(--spacing-sm);
+    max-width: 90%;
+}
+
+.qa-message.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.qa-message.assistant {
+    align-self: flex-start;
+}
+
+.qa-message-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.qa-message.user .qa-message-avatar {
+    background: var(--primary);
+    color: white;
+}
+
+.qa-message.assistant .qa-message-avatar {
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+.qa-message-content {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.qa-message.user .qa-message-content {
+    background: var(--primary);
+    color: white;
+}
+
+.qa-message.assistant .qa-message-content {
+    background: var(--gray-100);
+    color: var(--gray-800);
+}
+
+/* Q&A Input Area */
+.qa-input-area {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--gray-200);
+    background: white;
+}
+
+.qa-input {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+    font-size: 0.9rem;
+    resize: none;
+    font-family: inherit;
+}
+
+.qa-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.qa-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all var(--transition-base);
+}
+
+.qa-send-btn:hover {
+    background: var(--primary-dark, #2563eb);
+}
+
+/* Q&A Footer */
+.qa-footer {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-top: 1px solid var(--gray-100);
+    text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    body.study-qa-active .study-details-panel {
+        display: none;
+    }
+    
+    .study-qa-panel {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   Fullscreen Mode Adjustments for Q&A
+   ============================================ */
+
+/* Q&A panel in fullscreen mode */
+body.chat-fullscreen-active .study-qa-panel {
+    z-index: 10001;
+}
+
+body.chat-fullscreen-active.study-qa-active .study-qa-panel {
+    display: flex;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100vh;
+}
+
+body.chat-fullscreen-active.study-qa-active .study-details-panel {
+    right: 50%;
+    width: 50%;
+}
+
+body.chat-fullscreen-active.study-qa-active .hero-chat.chat-fullscreen {
+    display: none;
+}
+
+/* On smaller screens in fullscreen Q&A mode */
+@media (max-width: 1024px) {
+    body.chat-fullscreen-active.study-qa-active .study-details-panel {
+        display: none;
+    }
+    
+    body.chat-fullscreen-active.study-qa-active .study-qa-panel {
+        width: 100%;
+    }
+}
+
+
+/* ============================================
+   Compare Study Button
+   ============================================ */
+
+.panel-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.compare-study-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    background: white;
+    color: var(--gray-600);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.compare-study-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.compare-study-btn.in-tray {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent);
+}
+
+.compare-icon {
+    font-size: 0.875rem;
+}
+
+/* Comparison badge in nav */
+.comparison-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 4px;
+}

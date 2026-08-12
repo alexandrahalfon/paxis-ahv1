@@ -1,0 +1,28 @@
+{
+  "id": "tnbc_stage_iii_trial_match",
+  "description": "Stage III triple-negative breast cancer trial-match query. Exercises the trial-match surface (P5) with explicit TNBC biomarker status and BRCA testing, plus a comorbidity that affects chemo eligibility. Validates that P5's retrieval doesn't leak into lung/HN categories.",
+  "query": "55 y.o. female with stage III triple-negative invasive ductal carcinoma of the left breast, ER-/PR-/HER2- confirmed, BRCA status pending, ECOG 1, status post neoadjuvant dose-dense AC-T with residual disease at mastectomy. What are the best matching trials for adjuvant or post-neoadjuvant systemic therapy?",
+  "category": "breast",
+  "query_type": "trial_match",
+  "expected": {
+    "min_studies": 2,
+    "max_studies": 10,
+    "required_source_lanes": ["qdrant"],
+    "must_trigger_events": [
+      "has_patient_context",
+      "trial_match_forced"
+    ],
+    "min_safety_triggers": {
+      "numerical_stripped": 0
+    },
+    "min_eligibility": {
+      "MATCH_plus_POSSIBLE": 1
+    },
+    "forbidden_doc_substrings": [
+      "NCCN-Non-Small_Cell_Lung_Cancer",
+      "head_neck",
+      "glioma",
+      "prostate"
+    ]
+  }
+}

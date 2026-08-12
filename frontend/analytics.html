@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Paxis</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/studyDetails.css">
+    <style>
+        /* Stats row */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem;
+            display: flex; flex-direction: column; gap: 0.25rem;
+        }
+        .stat-label { font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+        .stat-value { font-size: 1.6rem; font-weight: 700; color: #0f172a; line-height: 1.2; }
+        .stat-sub { font-size: 0.75rem; color: #64748b; }
+
+        /* Section panels */
+        .analytics-section { margin-bottom: 2.5rem; }
+        .section-header {
+            display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 0.75rem;
+            margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e2e8f0;
+        }
+        .section-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
+        .section-desc { font-size: 0.82rem; color: #64748b; margin-top: 0.15rem; }
+
+        /* Filter row */
+        .filter-row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 0.2rem; }
+        .filter-label { font-size: 0.7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; }
+        .filter-select, .filter-input {
+            padding: 0.4rem 0.6rem; border: 1px solid #e2e8f0; border-radius: 6px;
+            font-size: 0.82rem; color: #334155; background: #fff; min-width: 140px;
+        }
+        .filter-select:focus, .filter-input:focus { border-color: #2563eb; outline: none; }
+        .filter-btn {
+            padding: 0.4rem 1rem; background: #2563eb; color: #fff; border: none;
+            border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .filter-btn:hover { background: #1d4ed8; }
+        .filter-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        /* Chart panels */
+        .chart-panel {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+            padding: 1.25rem; transition: box-shadow 0.2s;
+        }
+        .chart-panel:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+        .chart-panel-title { font-weight: 600; font-size: 0.88rem; color: #334155; margin-bottom: 0.75rem; }
+        .chart-panel-meta { font-size: 0.72rem; color: #94a3b8; margin-top: 0.5rem; display: flex; gap: 1rem; }
+        .chart-canvas-wrap { position: relative; height: 340px; }
+        .chart-canvas-wrap.short { height: 260px; }
+        .chart-canvas-wrap.tall { height: 420px; }
+
+        /* Two-column layout */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+        @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* Loading / empty */
+        .panel-loading { text-align: center; color: #94a3b8; padding: 2rem; font-size: 0.88rem; }
+        .panel-empty { text-align: center; color: #94a3b8; padding: 2rem; background: #f8fafc; border-radius: 8px; font-size: 0.88rem; }
+
+        /* Forest plot note */
+        .forest-note { font-size: 0.78rem; color: #64748b; margin-top: 0.5rem; line-height: 1.5; }
+
+        /* Data source toggle */
+        .data-source-toggle { display: flex; gap: 0; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; width: fit-content; margin-bottom: 1.75rem; }
+        .ds-btn { padding: 0.5rem 1.25rem; background: #fff; border: none; font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .ds-btn:hover { background: #f1f5f9; }
+        .ds-btn-active { background: #2563eb; color: #fff !important; }
+        .ds-btn-active:hover { background: #1d4ed8; }
+
+        /* Literature search panel */
+        .lit-controls-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .lit-source-toggle { display: flex; gap: 0; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0; width: fit-content; }
+        .lit-src-btn { padding: 0.38rem 0.9rem; background: #fff; border: none; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+        .lit-src-btn:hover { background: #f1f5f9; }
+        .lit-src-btn.active { background: #0f172a; color: #fff; }
+        .lit-mode-toggle { display: flex; gap: 0; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0; width: fit-content; }
+        .lit-mode-btn { padding: 0.38rem 0.9rem; background: #fff; border: none; font-size: 0.8rem; font-weight: 500; color: #64748b; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+        .lit-mode-btn:hover { background: #f1f5f9; }
+        .lit-mode-btn.active { background: #2563eb; color: #fff; }
+        /* NL input */
+        .lit-nl-row { display: flex; gap: 0.6rem; align-items: flex-end; margin-bottom: 1rem; }
+        .lit-nl-row textarea { flex: 1; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem; font-family: inherit; font-size: 0.9rem; resize: none; min-height: 48px; max-height: 100px; line-height: 1.5; color: #334155; background: #fff; }
+        .lit-nl-row textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.12); }
+        /* Structured input */
+        .lit-struct-row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; margin-bottom: 1rem; }
+        .lit-struct-row .filter-group { flex: 1; min-width: 150px; }
+        .lit-struct-row .filter-group input { width: 100%; }
+        /* Shared */
+        .lit-parsed-info { font-size: 0.76rem; color: #94a3b8; margin-bottom: 0.5rem; font-style: italic; }
+        .lit-sources { margin-top: 0.75rem; font-size: 0.78rem; color: #64748b; line-height: 1.6; }
+        .lit-caveats { margin-top: 0.4rem; font-size: 0.75rem; color: #94a3b8; font-style: italic; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo"><img src="assets/paxis-logo.png" alt="Paxis" style="height:48px;width:auto;"></a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth"><a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a></li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;"><a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="container">
+            <div style="max-width:1100px;margin:0 auto;">
+                <div class="page-logo"><img src="assets/paxis-mark.png" alt="Paxis mark"></div>
+                <div class="feature-nav">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                </div>
+                <h1 class="text-center" style="margin-bottom:0.5rem;">Analytics</h1>
+                <p class="text-center" style="color:#64748b;margin-bottom:1.25rem;">Aggregate statistics from the knowledge base, or extract data from live PubMed literature.</p>
+
+                <!-- Data source toggle -->
+                <div style="display:flex;justify-content:center;margin-bottom:1.75rem;">
+                    <div class="data-source-toggle">
+                        <button class="ds-btn ds-btn-active" id="dsKbBtn" onclick="switchSource('kb')">Knowledge Base</button>
+                        <button class="ds-btn" id="dsLitBtn" onclick="switchSource('lit')">Literature Search (PubMed)</button>
+                    </div>
+                </div>
+
+                <!-- ═══ LITERATURE SEARCH PANEL (hidden by default) ═══ -->
+                <div id="litSearchPanel" style="display:none;">
+                    <div class="analytics-section">
+                        <div class="section-header">
+                            <div>
+                                <div class="section-title">Literature Chart</div>
+                                <div class="section-desc">Search PubMed or ClinicalTrials.gov and chart a metric extracted by AI.</div>
+                            </div>
+                        </div>
+                        <!-- Source + input mode toggles -->
+                        <div class="lit-controls-row">
+                            <div class="lit-source-toggle">
+                                <button class="lit-src-btn active" id="litSrcPubmed" onclick="setLitSource('pubmed')">PubMed</button>
+                                <button class="lit-src-btn" id="litSrcTrials" onclick="setLitSource('clinicaltrials')">ClinicalTrials.gov</button>
+                            </div>
+                            <div class="lit-mode-toggle">
+                                <button class="lit-mode-btn active" id="litModeNl" onclick="setLitMode('nl')">Natural language</button>
+                                <button class="lit-mode-btn" id="litModeStruct" onclick="setLitMode('structured')">Structured</button>
+                            </div>
+                        </div>
+                        <!-- Natural-language input -->
+                        <div id="litNlWrap" class="lit-nl-row">
+                            <textarea id="litNlInput" rows="2" placeholder="e.g. overall survival rates for NSCLC pembrolizumab grouped by treatment arm&#10;or: enrollment by phase for immunotherapy trials in lung cancer"></textarea>
+                            <button class="filter-btn" id="litRunBtn">Search &amp; Chart</button>
+                        </div>
+                        <!-- Structured input -->
+                        <div id="litStructWrap" class="lit-struct-row" style="display:none;">
+                            <div class="filter-group" style="flex:2;min-width:220px;">
+                                <span class="filter-label">Search Query</span>
+                                <input type="text" class="filter-input" id="litStructQuery" placeholder="e.g. NSCLC pembrolizumab overall survival">
+                            </div>
+                            <div class="filter-group" style="flex:1.5;min-width:160px;">
+                                <span class="filter-label">Metric to Extract</span>
+                                <input type="text" class="filter-input" id="litStructMetric" placeholder="e.g. OS rate, PFS months">
+                            </div>
+                            <div class="filter-group" style="flex:1;min-width:130px;">
+                                <span class="filter-label">Group By (optional)</span>
+                                <input type="text" class="filter-input" id="litStructGroupBy" placeholder="e.g. treatment, year">
+                            </div>
+                            <div class="filter-group">
+                                <span class="filter-label">&nbsp;</span>
+                                <button class="filter-btn" id="litRunBtnStruct">Search &amp; Chart</button>
+                            </div>
+                        </div>
+                        <div class="chart-panel" id="litPanel">
+                            <div class="lit-parsed-info" id="litParsedInfo" style="display:none;"></div>
+                            <div class="chart-panel-title" id="litTitle" style="color:#94a3b8;">Fill in the fields above, then click Search &amp; Chart.</div>
+                            <div class="chart-canvas-wrap" id="litChartWrap" style="display:none;"><canvas id="litChart"></canvas></div>
+                            <div class="chart-panel-meta" id="litMeta"></div>
+                            <div class="lit-sources" id="litSources"></div>
+                            <div class="lit-caveats" id="litCaveats"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ KB SECTIONS WRAPPER ═══ -->
+                <div id="kbSections">
+
+                <!-- ═══ OVERVIEW STATS ═══ -->
+                <div class="stats-row" id="statsRow">
+                    <div class="stat-card"><div class="stat-label">Studies</div><div class="stat-value" id="statStudies">—</div></div>
+                    <div class="stat-card"><div class="stat-label">Cancer Types</div><div class="stat-value" id="statCancerTypes">—</div></div>
+                    <div class="stat-card"><div class="stat-label">Avg OS</div><div class="stat-value" id="statOS">—</div><div class="stat-sub">rate %</div></div>
+                    <div class="stat-card"><div class="stat-label">Avg Follow-up</div><div class="stat-value" id="statFollowup">—</div><div class="stat-sub">months</div></div>
+                    <div class="stat-card"><div class="stat-label">Avg Dose</div><div class="stat-value" id="statDose">—</div><div class="stat-sub">Gy</div></div>
+                    <div class="stat-card"><div class="stat-label">RT Techniques</div><div class="stat-value" id="statTechniques">—</div></div>
+                </div>
+
+                <!-- ═══ CUSTOM AGGREGATE ═══ -->
+                <div class="analytics-section">
+                    <div class="section-header">
+                        <div><div class="section-title">Custom Aggregate</div><div class="section-desc">Pick a metric and grouping to explore patterns across the knowledge base.</div></div>
+                    </div>
+                    <div class="filter-row" style="margin-bottom:1rem;">
+                        <div class="filter-group">
+                            <span class="filter-label">Metric</span>
+                            <select class="filter-select" id="aggMetric">
+                                <option value="os_rate_percent">OS Rate %</option>
+                                <option value="os_median_months">OS Median (months)</option>
+                                <option value="pfs_rate_percent">PFS Rate %</option>
+                                <option value="pfs_median_months">PFS Median (months)</option>
+                                <option value="lc_rate_percent">Local Control %</option>
+                                <option value="number_of_patients">Number of Patients</option>
+                                <option value="median_followup_months">Follow-up (months)</option>
+                                <option value="median_age_years">Median Age (years)</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Group By</span>
+                            <select class="filter-select" id="aggGroupBy">
+                                <option value="normalized_phase">Study Phase</option>
+                                <option value="cancer_type">Cancer Type</option>
+                                <option value="study_type_normalized">Study Type</option>
+                                <option value="is_randomized">Randomized?</option>
+                                <option value="is_metastatic">Metastatic?</option>
+                                <option value="country">Country</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Aggregation</span>
+                            <select class="filter-select" id="aggFn">
+                                <option value="avg">Average</option>
+                                <option value="median">Median</option>
+                                <option value="min">Min</option>
+                                <option value="max">Max</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Cancer Type Filter</span>
+                            <select class="filter-select" id="aggCancerFilter"><option value="">All</option></select>
+                        </div>
+                        <button class="filter-btn" id="aggRunBtn">Run</button>
+                    </div>
+                    <div class="chart-panel" id="aggPanel">
+                        <div class="chart-panel-title" id="aggTitle">Select options and click Run</div>
+                        <div class="chart-canvas-wrap"><canvas id="aggChart"></canvas></div>
+                        <div class="chart-panel-meta" id="aggMeta"></div>
+                    </div>
+                </div>
+
+                <!-- ═══ DOSE + TECHNIQUE ROW ═══ -->
+                <div class="two-col analytics-section">
+                    <!-- Dose Distribution -->
+                    <div>
+                        <div class="section-header">
+                            <div><div class="section-title">Dose Distribution</div></div>
+                        </div>
+                        <div class="filter-row" style="margin-bottom:0.75rem;">
+                            <div class="filter-group">
+                                <span class="filter-label">Cancer Type</span>
+                                <select class="filter-select" id="doseCancerFilter"><option value="">All</option></select>
+                            </div>
+                            <button class="filter-btn" id="doseRunBtn">Update</button>
+                        </div>
+                        <div class="chart-panel">
+                            <div class="chart-panel-title">Radiation Total Dose (Gy)</div>
+                            <div class="chart-canvas-wrap short"><canvas id="doseChart"></canvas></div>
+                        </div>
+                    </div>
+                    <!-- Technique Frequency -->
+                    <div>
+                        <div class="section-header">
+                            <div><div class="section-title">Technique Frequency</div></div>
+                        </div>
+                        <div class="filter-row" style="margin-bottom:0.75rem;">
+                            <div class="filter-group">
+                                <span class="filter-label">Cancer Type</span>
+                                <select class="filter-select" id="techCancerFilter"><option value="">All</option></select>
+                            </div>
+                            <button class="filter-btn" id="techRunBtn">Update</button>
+                        </div>
+                        <div class="chart-panel">
+                            <div class="chart-panel-title">Studies per Technique</div>
+                            <div class="chart-canvas-wrap short"><canvas id="techChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ OUTCOMES BY STAGE ═══ -->
+                <div class="analytics-section">
+                    <div class="section-header">
+                        <div><div class="section-title">Outcomes by Stage</div><div class="section-desc">Average outcome metric grouped by cancer stage (min 2 studies per group).</div></div>
+                    </div>
+                    <div class="filter-row" style="margin-bottom:1rem;">
+                        <div class="filter-group">
+                            <span class="filter-label">Metric</span>
+                            <select class="filter-select" id="stageMetric">
+                                <option value="os_rate_percent">OS Rate %</option>
+                                <option value="pfs_rate_percent">PFS Rate %</option>
+                                <option value="lc_rate_percent">Local Control %</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Cancer Type</span>
+                            <select class="filter-select" id="stageCancerFilter"><option value="">All</option></select>
+                        </div>
+                        <button class="filter-btn" id="stageRunBtn">Run</button>
+                    </div>
+                    <div class="chart-panel">
+                        <div class="chart-panel-title" id="stageTitle">Outcomes by Stage</div>
+                        <div class="chart-canvas-wrap"><canvas id="stageChart"></canvas></div>
+                        <div class="chart-panel-meta" id="stageMeta"></div>
+                    </div>
+                </div>
+
+                <!-- ═══ META-ANALYSIS FOREST PLOT ═══ -->
+                <div class="analytics-section">
+                    <div class="section-header">
+                        <div><div class="section-title">Meta-Analysis / Rate Comparison</div><div class="section-desc">When HR + CI data exists: inverse-variance pooled forest plot. Otherwise: per-study survival rate comparison across the knowledge base.</div></div>
+                    </div>
+                    <div class="filter-row" style="margin-bottom:1rem;">
+                        <div class="filter-group">
+                            <span class="filter-label">Endpoint</span>
+                            <select class="filter-select" id="forestMetric">
+                                <option value="os">Overall Survival</option>
+                                <option value="pfs">Progression-Free Survival</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Cancer Type</span>
+                            <select class="filter-select" id="forestCancerFilter"><option value="">All</option></select>
+                        </div>
+                        <button class="filter-btn" id="forestRunBtn">Generate</button>
+                    </div>
+                    <div class="chart-panel">
+                        <div class="chart-panel-title" id="forestTitle">Forest Plot</div>
+                        <div class="chart-canvas-wrap tall" id="forestWrap"><canvas id="forestChart"></canvas></div>
+                        <div id="forestPooled" class="forest-note"></div>
+                    </div>
+                </div>
+
+                </div><!-- /#kbSections -->
+
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer"><div class="container"><div class="footer-content"><p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p></div></div></footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/chartUtils.js?v=2"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script>DemoBanner.init(); SideNav.init('analytics');</script>
+
+    <script>
+    (function() {
+        var BASE = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'http://localhost:8000/api/rag').replace('/rag', '');
+        var chartMgr = new ChartManager();
+
+        // ── Helpers ──
+        function esc(t) { if(!t) return ''; var d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+
+        async function apiFetch(path, body) {
+            var opts = body ? { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) } : {};
+            var resp = await fetch(BASE + '/analytics' + path, opts);
+            if (!resp.ok) { var e = await resp.json().catch(function(){return {};}); throw new Error(e.detail || resp.status); }
+            return resp.json();
+        }
+
+        // ── Populate filter dropdowns ──
+        async function loadFilters() {
+            try {
+                var f = await apiFetch('/filters');
+                var selectors = ['aggCancerFilter','doseCancerFilter','techCancerFilter','stageCancerFilter','forestCancerFilter'];
+                selectors.forEach(function(id) {
+                    var sel = document.getElementById(id);
+                    if (!sel) return;
+                    (f.cancer_types || []).forEach(function(ct) {
+                        var o = document.createElement('option'); o.value = ct; o.textContent = ct; sel.appendChild(o);
+                    });
+                });
+            } catch(e) { console.warn('[Analytics] filters failed:', e); }
+        }
+
+        // ── Overview ──
+        async function loadOverview() {
+            try {
+                var d = await apiFetch('/overview');
+                document.getElementById('statStudies').textContent = d.total_studies || '—';
+                document.getElementById('statCancerTypes').textContent = d.cancer_types || '—';
+                document.getElementById('statOS').textContent = d.avg_os_percent != null ? d.avg_os_percent + '%' : '—';
+                document.getElementById('statFollowup').textContent = d.avg_followup_months != null ? d.avg_followup_months : '—';
+                document.getElementById('statDose').textContent = d.avg_dose_gy != null ? d.avg_dose_gy : '—';
+                document.getElementById('statTechniques').textContent = d.unique_techniques || '—';
+            } catch(e) { console.warn('[Analytics] overview failed:', e); }
+        }
+
+        // ── Custom Aggregate ──
+        var aggChartInst = null;
+        document.getElementById('aggRunBtn').addEventListener('click', async function() {
+            var metric = document.getElementById('aggMetric').value;
+            var groupBy = document.getElementById('aggGroupBy').value;
+            var agg = document.getElementById('aggFn').value;
+            var ct = document.getElementById('aggCancerFilter').value;
+            var filters = ct ? { cancer_type: ct } : null;
+
+            this.disabled = true; this.textContent = '…';
+            try {
+                var r = await apiFetch('/aggregate', { metric: metric, group_by: groupBy, agg: agg, filters: filters });
+                if (aggChartInst) { aggChartInst.destroy(); }
+                document.getElementById('aggTitle').textContent = agg.charAt(0).toUpperCase() + agg.slice(1) + ' ' + metric.replace(/_/g,' ') + ' by ' + groupBy.replace(/_/g,' ');
+                aggChartInst = chartMgr.render('aggChart', {
+                    type: 'bar', title: '', labels: r.labels, unit: r.unit,
+                    datasets: [{ label: metric.replace(/_/g,' '), data: r.values }]
+                }, { showDataLabels: true });
+                document.getElementById('aggMeta').innerHTML = r.study_counts.map(function(n,i){ return '<span>' + esc(r.labels[i]) + ': n=' + n + '</span>'; }).join('');
+            } catch(e) { document.getElementById('aggTitle').textContent = 'Error: ' + e.message; }
+            finally { this.disabled = false; this.textContent = 'Run'; }
+        });
+
+        // ── Dose Distribution ──
+        var doseChartInst = null;
+        async function loadDose() {
+            var ct = document.getElementById('doseCancerFilter').value;
+            try {
+                var r = await apiFetch('/dose-distribution', { cancer_type: ct || null, bin_width: 5 });
+                if (doseChartInst) { doseChartInst.destroy(); }
+                doseChartInst = chartMgr.render('doseChart', {
+                    type: 'bar', title: '', labels: r.labels, unit: r.unit,
+                    datasets: [{ label: 'Studies', data: r.values }]
+                }, { showDataLabels: true, horizontal: false });
+            } catch(e) { console.warn('[Dose]', e); }
+        }
+        document.getElementById('doseRunBtn').addEventListener('click', loadDose);
+
+        // ── Technique Frequency ──
+        var techChartInst = null;
+        async function loadTech() {
+            var ct = document.getElementById('techCancerFilter').value;
+            try {
+                var r = await apiFetch('/technique-frequency', { cancer_type: ct || null });
+                if (techChartInst) { techChartInst.destroy(); }
+                techChartInst = chartMgr.render('techChart', {
+                    type: 'bar', title: '', labels: r.labels, unit: r.unit,
+                    datasets: [{ label: 'Studies', data: r.values }]
+                }, { showDataLabels: true, horizontal: true });
+            } catch(e) { console.warn('[Tech]', e); }
+        }
+        document.getElementById('techRunBtn').addEventListener('click', loadTech);
+
+        // ── Outcomes by Stage ──
+        var stageChartInst = null;
+        document.getElementById('stageRunBtn').addEventListener('click', async function() {
+            var metric = document.getElementById('stageMetric').value;
+            var ct = document.getElementById('stageCancerFilter').value;
+            this.disabled = true;
+            try {
+                var r = await apiFetch('/outcomes-by-stage', { metric: metric, cancer_type: ct || null });
+                if (stageChartInst) { stageChartInst.destroy(); }
+                document.getElementById('stageTitle').textContent = r.title || 'Outcomes by Stage';
+                stageChartInst = chartMgr.render('stageChart', {
+                    type: 'bar', title: '', labels: r.labels, unit: r.unit,
+                    datasets: [{ label: metric.replace(/_/g,' '), data: r.values }]
+                }, { showDataLabels: true });
+                document.getElementById('stageMeta').innerHTML = (r.study_counts||[]).map(function(n,i){ return '<span>' + esc(r.labels[i]) + ': n=' + n + '</span>'; }).join('');
+            } catch(e) { document.getElementById('stageTitle').textContent = 'Error: ' + e.message; }
+            finally { this.disabled = false; }
+        });
+
+        // ── Forest Plot ──
+        var forestChartInst = null;
+        document.getElementById('forestRunBtn').addEventListener('click', async function() {
+            var metric = document.getElementById('forestMetric').value;
+            var ct = document.getElementById('forestCancerFilter').value;
+            this.disabled = true; this.textContent = '…';
+            try {
+                var r = await apiFetch('/forest-plot', { metric: metric, cancer_type: ct || null });
+                document.getElementById('forestTitle').textContent = r.title || 'Forest Plot';
+
+                if (forestChartInst) { forestChartInst.destroy(); forestChartInst = null; }
+
+                if (!r.studies || r.studies.length === 0) {
+                    document.getElementById('forestWrap').innerHTML = '<div class="panel-empty">' + esc(r.message || 'No data found.') + '</div>';
+                    document.getElementById('forestPooled').textContent = '';
+                } else if (r.plot_type === 'rates') {
+                    // Rate comparison: horizontal bar chart of OS/PFS rates per study
+                    document.getElementById('forestWrap').innerHTML = '<canvas id="forestChart"></canvas>';
+                    var h = Math.max(250, r.studies.length * 28 + 80);
+                    document.getElementById('forestWrap').style.height = h + 'px';
+
+                    var labels = r.studies.map(function(s){ return s.label; });
+                    var data = r.studies.map(function(s){ return s.rate; });
+
+                    forestChartInst = chartMgr.render('forestChart', {
+                        type: 'bar', title: '', labels: labels, unit: '%',
+                        datasets: [{ label: metric.toUpperCase() + ' Rate', data: data }]
+                    }, { showDataLabels: true, horizontal: true });
+
+                    if (r.pooled) {
+                        document.getElementById('forestPooled').innerHTML =
+                            '<strong>Average ' + metric.toUpperCase() + ' rate: ' + r.pooled.rate + '%</strong>' +
+                            ' across ' + r.pooled.n_studies + ' studies with parseable percentage data.';
+                    } else {
+                        document.getElementById('forestPooled').textContent = '';
+                    }
+                } else {
+                    // True forest plot with HR + CI
+                    document.getElementById('forestWrap').innerHTML = '<canvas id="forestChart"></canvas>';
+                    var h = Math.max(200, r.studies.length * 40 + 80);
+                    document.getElementById('forestWrap').style.height = h + 'px';
+
+                    var plotData = { title: r.title, studies: r.studies.slice() };
+                    if (r.pooled && r.pooled.hr) {
+                        plotData.studies.push({
+                            label: r.pooled.label, hr: r.pooled.hr,
+                            ciLow: r.pooled.ciLow, ciHigh: r.pooled.ciHigh, weight: 10
+                        });
+                    }
+                    forestChartInst = chartMgr.renderForestPlot('forestChart', plotData);
+
+                    if (r.pooled && r.pooled.hr) {
+                        document.getElementById('forestPooled').innerHTML =
+                            '<strong>Pooled HR (fixed-effect): ' + r.pooled.hr + ' (95% CI ' + r.pooled.ciLow + '–' + r.pooled.ciHigh + ')</strong>' +
+                            '<br>Inverse-variance weighted across ' + r.studies.length + ' studies. ' +
+                            (r.pooled.hr < 1 ? 'Favors experimental arm.' : r.pooled.hr > 1 ? 'Favors control arm.' : 'No difference.');
+                    } else {
+                        document.getElementById('forestPooled').textContent = '';
+                    }
+                }
+            } catch(e) { document.getElementById('forestTitle').textContent = 'Error: ' + e.message; }
+            finally { this.disabled = false; this.textContent = 'Generate'; }
+        });
+
+        // ── Init ──
+        var hasFollowup = false;
+        try {
+            var raw = sessionStorage.getItem('followupContext');
+            if (raw) {
+                var peek = JSON.parse(raw);
+                if (peek && peek.query && (Date.now() - peek.timestamp < 300000)) {
+                    hasFollowup = true;
+                }
+            }
+        } catch(e) {}
+
+        // ── Data Source Toggle ──
+        window.switchSource = function(src) {
+            var kbEl = document.getElementById('kbSections');
+            var litEl = document.getElementById('litSearchPanel');
+            var kbBtn = document.getElementById('dsKbBtn');
+            var litBtn = document.getElementById('dsLitBtn');
+            if (src === 'kb') {
+                if (kbEl) kbEl.style.display = '';
+                if (litEl) litEl.style.display = 'none';
+                kbBtn.classList.add('ds-btn-active');
+                litBtn.classList.remove('ds-btn-active');
+            } else {
+                if (kbEl) kbEl.style.display = 'none';
+                if (litEl) litEl.style.display = '';
+                litBtn.classList.add('ds-btn-active');
+                kbBtn.classList.remove('ds-btn-active');
+            }
+        };
+
+        // ── Literature Search (PubMed / ClinicalTrials.gov) ──
+        var litChartInst = null;
+        var litSource = 'pubmed';
+        var litMode = 'nl'; // 'nl' or 'structured'
+
+        window.setLitSource = function(src) {
+            litSource = src;
+            document.getElementById('litSrcPubmed').classList.toggle('active', src === 'pubmed');
+            document.getElementById('litSrcTrials').classList.toggle('active', src === 'clinicaltrials');
+            if (litMode === 'nl') {
+                var ph = src === 'clinicaltrials'
+                    ? 'e.g. enrollment by phase for immunotherapy trials in lung cancer\nor: number of completed Phase III trials for EGFR-mutant NSCLC'
+                    : 'e.g. overall survival rates for NSCLC pembrolizumab grouped by treatment arm\nor: median PFS by cancer stage for checkpoint inhibitors';
+                document.getElementById('litNlInput').placeholder = ph;
+            }
+        };
+
+        window.setLitMode = function(mode) {
+            litMode = mode;
+            document.getElementById('litModeNl').classList.toggle('active', mode === 'nl');
+            document.getElementById('litModeStruct').classList.toggle('active', mode === 'structured');
+            document.getElementById('litNlWrap').style.display = mode === 'nl' ? '' : 'none';
+            document.getElementById('litStructWrap').style.display = mode === 'structured' ? '' : 'none';
+        };
+
+        async function runLitSearch(btn, payload) {
+            var titleEl = document.getElementById('litTitle');
+            var parsedEl = document.getElementById('litParsedInfo');
+            btn.disabled = true;
+            var origText = btn.textContent;
+            btn.textContent = 'Searching…';
+            var srcLabel = litSource === 'clinicaltrials' ? 'ClinicalTrials.gov' : 'PubMed';
+            titleEl.textContent = 'Searching ' + srcLabel + ' and extracting data…';
+            titleEl.style.color = '#94a3b8';
+            parsedEl.style.display = 'none';
+            document.getElementById('litChartWrap').style.display = 'none';
+            document.getElementById('litMeta').textContent = '';
+            document.getElementById('litSources').innerHTML = '';
+            document.getElementById('litCaveats').textContent = '';
+            try {
+                console.log('[LitSearch] source=' + litSource + ' mode=' + litMode, payload);
+                var r = await apiFetch('/online-aggregate', Object.assign({ source: litSource }, payload));
+                console.log('[LitSearch] Response:', r);
+
+                if (r.parsed_query || r.parsed_metric) {
+                    parsedEl.textContent = 'Searched: "' + (r.parsed_query || '') + '" · Metric: ' + (r.parsed_metric || '');
+                    parsedEl.style.display = '';
+                }
+                if (!r.labels || r.labels.length === 0) {
+                    titleEl.textContent = 'No quantitative data could be extracted. Try rephrasing or using a broader description.';
+                    titleEl.style.color = '#92400e';
+                    return;
+                }
+                titleEl.textContent = r.title || r.parsed_metric || 'Results';
+                titleEl.style.color = '#334155';
+                document.getElementById('litChartWrap').style.display = '';
+                if (litChartInst) { litChartInst.destroy(); litChartInst = null; }
+                litChartInst = chartMgr.render('litChart', {
+                    type: 'bar', title: r.title || '',
+                    labels: r.labels, unit: r.unit || '',
+                    datasets: [{ label: r.parsed_metric || 'Value', data: r.values }]
+                }, { showDataLabels: true });
+                var nLabel = litSource === 'clinicaltrials' ? 'trial' : 'article';
+                document.getElementById('litMeta').textContent =
+                    'Based on ' + (r.n_studies || r.labels.length) + ' ' + srcLabel + ' ' + nLabel +
+                    ((r.n_studies || r.labels.length) !== 1 ? 's' : '') +
+                    (r.unit ? ' · Unit: ' + r.unit : '');
+                if (r.sources && r.sources.length > 0) {
+                    var srcHtml = '<strong>Sources:</strong> ';
+                    srcHtml += r.sources.slice(0, 10).map(function(s) {
+                        var label = esc((s.title || '').substring(0, 70));
+                        if (s.pmid) {
+                            label += s.year ? ' (' + s.year + ')' : '';
+                            return '<a href="https://pubmed.ncbi.nlm.nih.gov/' + esc(s.pmid) + '/" target="_blank" rel="noopener">' + label + '</a>';
+                        }
+                        if (s.nct_id) {
+                            label += s.phase ? ' [' + s.phase + ']' : '';
+                            return '<a href="https://clinicaltrials.gov/study/' + esc(s.nct_id) + '" target="_blank" rel="noopener">' + label + '</a>';
+                        }
+                        return label;
+                    }).join('; ');
+                    document.getElementById('litSources').innerHTML = srcHtml;
+                }
+                if (r.caveats) {
+                    document.getElementById('litCaveats').textContent = r.caveats;
+                }
+            } catch(e) {
+                console.error('[LitSearch] Error:', e);
+                titleEl.textContent = 'Error: ' + e.message;
+                titleEl.style.color = '#dc2626';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        }
+
+        document.getElementById('litRunBtn').addEventListener('click', function() {
+            var nlInput = (document.getElementById('litNlInput').value || '').trim();
+            var titleEl = document.getElementById('litTitle');
+            if (!nlInput) {
+                titleEl.textContent = 'Please describe what you want to chart.';
+                titleEl.style.color = '#dc2626';
+                return;
+            }
+            runLitSearch(this, { nl_input: nlInput });
+        });
+
+        document.getElementById('litRunBtnStruct').addEventListener('click', function() {
+            var query = (document.getElementById('litStructQuery').value || '').trim();
+            var metric = (document.getElementById('litStructMetric').value || '').trim();
+            var groupBy = (document.getElementById('litStructGroupBy').value || '').trim();
+            var titleEl = document.getElementById('litTitle');
+            if (!query || !metric) {
+                titleEl.textContent = 'Please enter at least a search query and a metric.';
+                titleEl.style.color = '#dc2626';
+                return;
+            }
+            runLitSearch(this, { search_query: query, metric: metric, group_by: groupBy || null });
+        });
+
+        loadFilters().then(function() {
+            if (!hasFollowup) { loadDose(); loadTech(); return; }
+
+            // Apply follow-up context: pre-fill filters and auto-run all sections
+            try {
+                var ctx = JSON.parse(sessionStorage.getItem('followupContext') || 'null');
+                sessionStorage.removeItem('followupContext');
+                if (!ctx || !ctx.query) { loadDose(); loadTech(); return; }
+
+                var q = ctx.query.toLowerCase();
+                var filterSelectors = ['aggCancerFilter','doseCancerFilter','techCancerFilter','stageCancerFilter','forestCancerFilter'];
+                filterSelectors.forEach(function(id) {
+                    var sel = document.getElementById(id);
+                    if (!sel) return;
+                    var options = Array.from(sel.options);
+                    for (var i = 1; i < options.length; i++) {
+                        if (q.indexOf(options[i].value.toLowerCase()) !== -1) {
+                            sel.value = options[i].value;
+                            break;
+                        }
+                    }
+                });
+                console.log('[Analytics] Pre-filled cancer type filters from follow-up context');
+
+                // Auto-run all analytics sections with the pre-filled filters
+                setTimeout(function() {
+                    var aggBtn = document.getElementById('aggRunBtn');
+                    if (aggBtn) aggBtn.click();
+
+                    loadDose();
+                    loadTech();
+
+                    var stageBtn = document.getElementById('stageRunBtn');
+                    if (stageBtn) stageBtn.click();
+
+                    var forestBtn = document.getElementById('forestRunBtn');
+                    if (forestBtn) forestBtn.click();
+
+                    console.log('[Analytics] Auto-triggered all sections from follow-up context');
+                }, 100);
+            } catch (e) {
+                console.error('[Analytics] Error reading follow-up context:', e);
+                loadDose(); loadTech();
+            }
+        });
+        loadOverview();
+    })();
+    </script>
+</body>
+</html>

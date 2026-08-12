@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Document - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/studyDetails.css">
+    <style>
+        .upload-area {
+            border: 3px dashed var(--gray-300);
+            border-radius: var(--radius-lg);
+            padding: 4rem 2rem;
+            text-align: center;
+            background: var(--gray-50);
+            transition: all var(--transition-base);
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: var(--gray-100);
+        }
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: #e0f2fe;
+            transform: scale(1.02);
+        }
+        .upload-area.processing {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .upload-area.success {
+            border-color: #10b981;
+            background: #d1fae5;
+        }
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--gray-400);
+            margin-bottom: 1rem;
+        }
+        .upload-area.dragover .upload-icon,
+        .upload-area.success .upload-icon {
+            color: #10b981;
+        }
+        .file-input {
+            display: none;
+        }
+        .uploaded-files {
+            margin-top: 2rem;
+        }
+        .file-item {
+            background: white;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 1rem;
+        }
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .file-name {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+        .file-status {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-processing {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status-session {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .processing-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--gray-300);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .info-banner {
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--gray-700);
+        }
+        .success-checkmark {
+            font-size: 5rem;
+            color: #10b981;
+            animation: scaleIn 0.3s ease-out;
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .success-message {
+            color: #065f46;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 1rem 0;
+        }
+        
+        /* Study details panel for upload page */
+        .upload-study-details {
+            margin-top: 2rem;
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+        .upload-study-details .panel-header {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+        }
+        .upload-study-details .panel-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+        .upload-study-details .panel-content {
+            padding: 1.5rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .upload-another-btn {
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html" class="active">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="container">
+            <div style="max-width: 900px; margin: 0 auto;">
+                <div class="page-logo">
+                    <img src="assets/paxis-mark.png" alt="Paxis mark">
+                </div>
+                <div class="feature-nav">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                </div>
+                <h1 class="text-center" style="margin-bottom: 0.5rem;">Upload Your Documents</h1>
+                <p class="text-center" style="color: var(--gray-600); margin-bottom: 0.75rem;">
+                    Upload PDF documents to process and search within your personal collection
+                </p>
+                <div class="text-center" style="margin-bottom: 2rem;">
+                    <button type="button" class="btn-how-to-use" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                        How to use
+                    </button>
+                    <div class="how-to-use-panel" style="display: none;">
+                        <p><strong>Upload</strong> lets you add your own PDF documents to be processed and included in searches.</p>
+                        <ol>
+                            <li>Drag and drop a PDF file (or click to browse).</li>
+                            <li>The system will extract text, generate embeddings, and make the document searchable across Patient Matching, Evaluate Treatment Options, and other modes.</li>
+                            <li>Log in to keep your uploads permanently; otherwise they are session-only.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="info-banner" id="sessionBanner" style="display: none;">
+                    <strong>Not logged in:</strong> Your uploads will be saved for this session only. 
+                    <a href="login.html">Log in</a> to save them permanently.
+                </div>
+
+                <div class="card" id="uploadCard">
+                    <div class="card-body">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-icon" id="uploadIcon" style="font-size: 2.5rem; color: var(--gray-400);">Upload</div>
+                            <h3 id="uploadTitle" style="margin-bottom: 0.5rem;">Drag and drop PDF files here</h3>
+                            <p id="uploadSubtitle" style="color: var(--gray-600); margin-bottom: 1.5rem;">
+                                or click to browse
+                            </p>
+                            <input type="file" id="fileInput" class="file-input" accept=".pdf">
+                            <button class="btn btn-primary" id="selectFileBtn" onclick="document.getElementById('fileInput').click()">
+                                Select File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Study Details Display (shown after successful upload) -->
+                <div id="studyDetailsContainer" style="display: none;"></div>
+
+                <div class="uploaded-files" id="uploadedFiles" style="display: none;">
+                    <h3 style="margin-bottom: 1rem;">Your Uploads</h3>
+                    <div id="filesList"></div>
+                    <p style="margin-top: 1rem; text-align: center;">
+                        <a href="my-saves.html" class="btn btn-outline btn-sm">View all in My Collections</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <!-- <a href="about.html">About</a> -->
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/studyDetailsRenderer.js"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script>DemoBanner.init(); SideNav.init('upload');</script>
+    <script>
+        const api = new PaxisAPI();
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const filesList = document.getElementById('filesList');
+        const uploadedFilesDiv = document.getElementById('uploadedFiles');
+        const sessionBanner = document.getElementById('sessionBanner');
+        const studyDetailsContainer = document.getElementById('studyDetailsContainer');
+        const uploadIcon = document.getElementById('uploadIcon');
+        const uploadTitle = document.getElementById('uploadTitle');
+        const uploadSubtitle = document.getElementById('uploadSubtitle');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        
+        const SESSION_UPLOADS_KEY = 'exueed_session_uploads';
+        let recentUploads = [];
+
+        function updateSessionBanner() {
+            const token = localStorage.getItem('exueed_token');
+            sessionBanner.style.display = token ? 'none' : 'block';
+        }
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf'));
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        function resetUploadArea() {
+            uploadArea.classList.remove('processing', 'success');
+            uploadIcon.textContent = 'Upload';
+            uploadIcon.classList.remove('success-checkmark');
+            uploadTitle.textContent = 'Drag and drop PDF files here';
+            uploadSubtitle.innerHTML = 'or click to browse';
+            selectFileBtn.style.display = 'inline-block';
+            studyDetailsContainer.style.display = 'none';
+            studyDetailsContainer.innerHTML = '';
+        }
+
+        async function handleFile(file) {
+            // Reset any previous success state
+            resetUploadArea();
+            
+            uploadArea.classList.add('processing');
+            uploadTitle.textContent = 'Processing...';
+            uploadSubtitle.innerHTML = '<span class="processing-spinner"></span>This may take a minute';
+            selectFileBtn.style.display = 'none';
+            
+            try {
+                const result = await api.processUserUpload(file);
+                
+                if (result.success) {
+                    // Show success state
+                    uploadArea.classList.remove('processing');
+                    uploadArea.classList.add('success');
+                    uploadIcon.textContent = 'Done';
+                    uploadIcon.classList.add('success-checkmark');
+                    uploadTitle.innerHTML = '<span class="success-message">Success!</span>';
+                    
+                    // Show different message if document was reused from existing
+                    if (result.reused_existing) {
+                        uploadSubtitle.textContent = `${result.title || result.filename} - found existing, linked to your account`;
+                    } else {
+                        uploadSubtitle.textContent = `${result.title || result.filename} processed successfully`;
+                    }
+                    
+                    // If session storage (not logged in), save embeddings and metadata locally
+                    if (result.stored === 'session' && result.embeddings) {
+                        const sessionUploads = JSON.parse(sessionStorage.getItem(SESSION_UPLOADS_KEY) || '[]');
+                        sessionUploads.unshift({
+                            upload_id: result.upload_id,
+                            doc_id: result.doc_id,
+                            filename: result.filename,
+                            title: result.title,
+                            chunk_count: result.chunk_count,
+                            embedding_dim: result.embedding_dim,
+                            embeddings: result.embeddings,
+                            chunk_metadata: result.chunk_metadata,
+                            doc_meta: result.doc_meta,
+                            created_at: new Date().toISOString()
+                        });
+                        sessionStorage.setItem(SESSION_UPLOADS_KEY, JSON.stringify(sessionUploads));
+                    }
+                    
+                    recentUploads.unshift({
+                        upload_id: result.upload_id,
+                        doc_id: result.doc_id,
+                        filename: result.filename,
+                        title: result.title,
+                        chunk_count: result.chunk_count,
+                        status: 'completed',
+                        stored: result.stored,
+                        created_at: new Date().toISOString()
+                    });
+                    
+                    // Display study details if available
+                    if (result.study_profile || result.doc_id) {
+                        displayStudyDetails(result);
+                    }
+                    
+                    displayFiles();
+                } else {
+                    throw new Error(result.error || 'Processing failed');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                resetUploadArea();
+                showError(document.body, `Failed to process ${file.name}: ${error.message}`);
+            } finally {
+                fileInput.value = '';
+            }
+        }
+
+        function displayStudyDetails(result) {
+            studyDetailsContainer.style.display = 'block';
+            
+            // Build study details data structure from the returned study_profile
+            const studyData = result.study_profile ? buildStudyDataFromProfile(result) : null;
+            
+            if (studyData) {
+                studyDetailsContainer.innerHTML = `
+                    <div class="upload-study-details">
+                        <div class="panel-header">
+                            <h3>Extracted Study Details</h3>
+                        </div>
+                        <div class="panel-content" id="studyDetailsContent"></div>
+                    </div>
+                    <div class="text-center upload-another-btn">
+                        <button class="btn btn-primary" onclick="resetUploadArea()">Upload Another Document</button>
+                    </div>
+                `;
+                
+                // Use the study details renderer
+                const contentDiv = document.getElementById('studyDetailsContent');
+                renderStudyDetailsContent(contentDiv, studyData);
+            } else {
+                // No study profile available - show message instead of trying to fetch
+                // (User uploads go to user_study_profiles table, not the main studies table)
+                studyDetailsContainer.innerHTML = `
+                    <div class="upload-study-details">
+                        <div class="panel-header">
+                            <h3>Study Details</h3>
+                        </div>
+                        <div class="panel-content">
+                            <div class="alert alert-info">
+                                <strong>Document processed successfully!</strong><br>
+                                Study details extraction is processing. The detailed study profile will be available shortly.
+                            </div>
+                            <p style="margin-top: 1rem; color: var(--gray-600);">
+                                ${result.chunk_count} chunks created • ${result.embedding_dim}-dimensional embeddings
+                            </p>
+                        </div>
+                    </div>
+                    <div class="text-center upload-another-btn">
+                        <button class="btn btn-primary" onclick="resetUploadArea()">Upload Another Document</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function fetchAndDisplayStudyDetails(docId) {
+            try {
+                const response = await fetch(`${CONFIG.API_BASE}/study-details`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ doc_id: docId })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    studyDetailsContainer.innerHTML = `
+                        <div class="upload-study-details">
+                            <div class="panel-header">
+                                <h3>Extracted Study Details</h3>
+                            </div>
+                            <div class="panel-content" id="studyDetailsContent"></div>
+                        </div>
+                        <div class="text-center upload-another-btn">
+                            <button class="btn btn-primary" onclick="resetUploadArea()">Upload Another Document</button>
+                        </div>
+                    `;
+                    const contentDiv = document.getElementById('studyDetailsContent');
+                    renderStudyDetailsContent(contentDiv, data);
+                } else {
+                    throw new Error('Study details not available');
+                }
+            } catch (error) {
+                studyDetailsContainer.innerHTML = `
+                    <div class="upload-study-details">
+                        <div class="panel-header">
+                            <h3>Study Details</h3>
+                        </div>
+                        <div class="panel-content">
+                            <div class="alert alert-warning">
+                                Study details extraction is still processing. Check back later.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center upload-another-btn">
+                        <button class="btn btn-primary" onclick="resetUploadArea()">Upload Another Document</button>
+                    </div>
+                `;
+            }
+        }
+
+        function buildStudyDataFromProfile(result) {
+            const profile = result.study_profile;
+            if (!profile) return null;
+            
+            // Convert the extracted profile to the format expected by the renderer
+            return {
+                title: getProfileValue(profile, 'study_details', 'study_name') || result.title,
+                doc_id: result.doc_id,
+                study_details: buildFieldDict(profile.study_details || {}),
+                patient_characteristics: {
+                    ...buildFieldDict(profile.patient_characteristics || {}),
+                    inclusion_criteria: (profile.patient_characteristics?.inclusion_criteria || []).map(c => ({
+                        criterion: typeof c === 'string' ? c : (c.criterion || c.value),
+                        evidence_quote: c.evidence_quote
+                    })),
+                    exclusion_criteria: (profile.patient_characteristics?.exclusion_criteria || []).map(c => ({
+                        criterion: typeof c === 'string' ? c : (c.criterion || c.value),
+                        evidence_quote: c.evidence_quote
+                    }))
+                },
+                diagnosis: buildFieldDict(profile.diagnosis || {}),
+                staging: {
+                    ...buildFieldDict(profile.staging || {}),
+                    stage_distribution: profile.staging?.stage_distribution || [],
+                    staging_components: profile.staging?.staging_components || []
+                },
+                treatment: {
+                    study_arms: profile.treatment?.study_arms || [],
+                    chemotherapy_regimens: profile.treatment?.chemotherapy_regimens || [],
+                    radiation_details: profile.treatment?.radiation_details || [],
+                    surgery_details: profile.treatment?.surgery_details || []
+                },
+                outcomes: buildFieldDict(profile.outcomes || {}),
+                biomarkers: profile.biomarkers || [],
+                toxicity: profile.toxicity || [],
+                dose_constraints: profile.dose_constraints || []
+            };
+        }
+
+        function getProfileValue(profile, section, field) {
+            const sectionData = profile[section];
+            if (!sectionData) return null;
+            const fieldData = sectionData[field];
+            if (!fieldData) return null;
+            return typeof fieldData === 'object' ? fieldData.value : fieldData;
+        }
+
+        function buildFieldDict(sectionData) {
+            const result = {};
+            for (const [key, value] of Object.entries(sectionData)) {
+                if (Array.isArray(value)) continue; // Skip arrays
+                if (typeof value === 'object' && value !== null) {
+                    if (value.value !== undefined) {
+                        result[key] = {
+                            label: formatLabel(key),
+                            value: value.value,
+                            evidence_quote: value.evidence_quote
+                        };
+                    }
+                } else if (value !== null) {
+                    result[key] = {
+                        label: formatLabel(key),
+                        value: value
+                    };
+                }
+            }
+            return result;
+        }
+
+        function formatLabel(key) {
+            return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function renderStudyDetailsContent(container, data) {
+            // Use the enhanced renderer if available
+            if (typeof renderStudyDetailsSections === 'function') {
+                renderStudyDetailsSections(container, data);
+            } else {
+                // Fallback to simple display
+                container.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+        }
+
+        function displayFiles() {
+            if (recentUploads.length === 0) {
+                uploadedFilesDiv.style.display = 'none';
+                return;
+            }
+
+            uploadedFilesDiv.style.display = 'block';
+            filesList.innerHTML = recentUploads.map(file => {
+                const statusClass = file.stored === 'session' ? 'status-session' : 'status-completed';
+                const statusText = file.stored === 'session' ? 'Session' : 'Saved';
+                
+                return `
+                    <div class="file-item">
+                        <div class="file-header">
+                            <div class="file-name">${escapeHtml(file.title || file.filename)}</div>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="file-status">
+                            ${file.chunk_count} chunks • ${escapeHtml(file.filename)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showSuccess(container, message) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success';
+            alert.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 1000; max-width: 400px;';
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function showError(container, message) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-error';
+            alert.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 1000; max-width: 400px;';
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        window.addEventListener('load', updateSessionBanner);
+    </script>
+</body>
+</html>

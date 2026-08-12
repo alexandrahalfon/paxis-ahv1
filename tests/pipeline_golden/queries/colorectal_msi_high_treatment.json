@@ -1,0 +1,28 @@
+{
+  "id": "colorectal_msi_high_treatment",
+  "description": "MSI-high stage III colorectal — the biomarker-driven pembrolizumab indication. Exercises Postgres biomarker Tier-1 match, MSI JSONB path, and PD-L1/CPS-adjacent expansion. Different cancer family from HN so verifies category filters don't cross-leak.",
+  "query": "62 y.o. female with stage III MSI-high dMMR adenocarcinoma of the transverse colon, pT3pN2, KRAS wild-type, BRAF wild-type, post right hemicolectomy. What is the best adjuvant systemic therapy?",
+  "category": "colorectal",
+  "query_type": "treatment_recommendation",
+  "expected": {
+    "min_studies": 2,
+    "max_studies": 8,
+    "required_source_lanes": ["qdrant"],
+    "must_trigger_events": [
+      "has_patient_context",
+      "msi_high_biomarker"
+    ],
+    "min_safety_triggers": {
+      "numerical_stripped": 0
+    },
+    "min_eligibility": {
+      "MATCH_plus_POSSIBLE": 1
+    },
+    "forbidden_doc_substrings": [
+      "NCCN-Non-Small_Cell_Lung_Cancer",
+      "head_neck",
+      "glioma",
+      "prostate"
+    ]
+  }
+}

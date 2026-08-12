@@ -1,0 +1,29 @@
+{
+  "id": "hn_scc_recurrent_ici_refractory",
+  "description": "80 y.o. male with recurrent oral-tongue SCC, CPS 100, progressing on pembrolizumab, no longer surgical, radiographic concern for RV metastasis. Canonical audit case that exercises LLM 8-axis extraction, inference layer (ICI-refractory, unresectable, cardiac met), PTO frame lookup, and eligibility demotion on subsite hierarchy.",
+  "query": "80 y.o. male non-smoker with PMH HTN, Hep C, BPH, CKD, and recurrent SCC of the left oral tongue (CPS 100) progressing on pembrolizumab, no longer a surgical candidate, with radiographic concern for right-ventricle metastasis. What is the best next-line systemic therapy?",
+  "category": null,
+  "query_type": "treatment_recommendation",
+  "expected": {
+    "min_studies": 3,
+    "max_studies": 8,
+    "required_source_lanes": ["qdrant"],
+    "must_trigger_events": [
+      "has_patient_context",
+      "ici_refractory_trajectory"
+    ],
+    "min_safety_triggers": {
+      "numerical_stripped": 0
+    },
+    "min_eligibility": {
+      "MATCH_plus_POSSIBLE": 2
+    },
+    "forbidden_doc_substrings": [
+      "NCCN-Non-Small_Cell_Lung_Cancer",
+      "nasopharyngeal",
+      "thymoma",
+      "amyloidosis",
+      "bladder"
+    ]
+  }
+}

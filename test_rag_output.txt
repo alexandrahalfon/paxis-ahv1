@@ -1,0 +1,29 @@
+[Test] Starting RAG patient matching test...
+[Main] Script starting...
+================================================================================
+PATIENT MATCHING TEST - Using EnhancedRAGService
+================================================================================
+
+[Setup] Initializing EnhancedRAGService...
+✅ Enhanced RAG Service initialized successfully
+   Qdrant URL: https://ffbfc406-406a-4f3a-a0e4-8e3fa754d378.us-east4-0.gcp.cloud.qdrant.io
+   Collection: exueed_kb_latest
+   Cross-encoder enabled: True
+   Bidirectional query expansion: ENABLED
+
+[Query] Find clinical studies for a patient with the following profile:
+    
+72-year-old man with localized prostate cancer:
+- PSA: 5.6 ng/mL (elevated on screening)
+- Normal prostate on digital rectal exam
+-...
+
+[RAG] Running query...
+Traceback (most recent call last):
+  File "/Users/ahalfon/exueed-updated/test_rag_patient_matching.py", line 48, in test_rag_patient_matching
+    result = await rag_service.query(
+                   ^^^^^^^^^^^^^^^^^^
+TypeError: EnhancedRAGService.query() got an unexpected keyword argument 'query'
+[RAG] ERROR: EnhancedRAGService.query() got an unexpected keyword argument 'query'
+
+[Main] Test completed with success=False

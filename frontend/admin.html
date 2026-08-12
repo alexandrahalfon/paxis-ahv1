@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .admin-header {
+            background: var(--gray-900);
+            color: white;
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .status-filter {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-button {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--gray-300);
+            background: white;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: all var(--transition-base);
+        }
+        
+        .filter-button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .filter-button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .upload-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all var(--transition-base);
+        }
+        
+        .upload-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+        
+        .upload-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .upload-title {
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+        
+        .upload-meta {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+        
+        .upload-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        
+        .notes-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            font-family: var(--font-sans);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-500);
+        }
+    </style>
+</head>
+<body>
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div class="container">
+            <h1 style="color: white; margin: 0;">Admin Panel</h1>
+        <p style="color: rgba(255,255,255,0.8); margin: 0.5rem 0 0 0;">Document Approval & Management</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <section class="section">
+        <div class="container">
+            <div style="max-width: 1200px; margin: 0 auto;">
+                <div class="page-logo">
+                    <img src="assets/paxis-mark.png" alt="Paxis mark">
+                </div>
+                <div class="feature-nav">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                </div>
+                <!-- Tabs -->
+                <div class="tabs-container" style="margin-bottom: 2rem;">
+                    <div class="tabs">
+                        <button class="tab-button active" data-tab="uploads">Document Uploads</button>
+                        <button class="tab-button" data-tab="alerts">Study Alerts</button>
+                        <button class="tab-button" data-tab="search">Literature Search</button>
+                    </div>
+                </div>
+
+                <!-- Uploads Tab -->
+                <div id="uploads-tab" class="tab-content active">
+                    <!-- Status Filter -->
+                    <div class="status-filter">
+                        <button class="filter-button active" data-status="all" onclick="filterByStatus('all')">All</button>
+                        <button class="filter-button" data-status="pending" onclick="filterByStatus('pending')">Pending</button>
+                        <button class="filter-button" data-status="approved" onclick="filterByStatus('approved')">Approved</button>
+                        <button class="filter-button" data-status="processing" onclick="filterByStatus('processing')">Processing</button>
+                        <button class="filter-button" data-status="completed" onclick="filterByStatus('completed')">Completed</button>
+                        <button class="filter-button" data-status="rejected" onclick="filterByStatus('rejected')">Rejected</button>
+                    </div>
+
+                    <!-- Uploads List -->
+                    <div id="uploadsList">
+                        <div class="empty-state">
+                            <p>Loading uploads...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts Tab -->
+                <div id="alerts-tab" class="tab-content">
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <div class="card-header">
+                            <h3>Create New Alert</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Cancer Type</label>
+                                <select id="alertCancerType" class="form-select">
+                                    <option value="">Select cancer type...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Frequency</label>
+                                <select id="alertFrequency" class="form-select">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="createAlert()">Create Alert</button>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-bottom: 1rem;">Active Alerts</h3>
+                    <div id="alertsList">
+                        <div class="empty-state">
+                            <p>Loading alerts...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Tab -->
+                <div id="search-tab" class="tab-content">
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <div class="card-header">
+                            <h3>Search for New Studies</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Cancer Type (optional)</label>
+                                <select id="searchCancerType" class="form-select">
+                                    <option value="">All cancer types</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Days Back</label>
+                                <input type="number" id="daysBack" class="form-input" value="30" min="1" max="365">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Results</label>
+                                <input type="number" id="maxResults" class="form-input" value="50" min="1" max="100">
+                            </div>
+                            <button class="btn btn-primary" onclick="searchLiterature()">Search</button>
+                        </div>
+                    </div>
+
+                    <div id="searchResults">
+                        <div class="empty-state">
+                            <p>Click "Search" to find new studies</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <!-- <a href="about.html">About</a> -->
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script>
+        const apiDocsLink = document.getElementById('apiDocsLink');
+        if (apiDocsLink) apiDocsLink.href = CONFIG.API_DOCS;
+        const API_BASE = CONFIG.API_BASE + '/upload';
+        let allUploads = [];
+        let currentFilter = 'all';
+
+        async function loadUploads() {
+            try {
+                const response = await fetch(`${API_BASE}/all`);
+                if (response.ok) {
+                    allUploads = await response.json();
+                    displayUploads();
+                } else {
+                    showError(document.getElementById('uploadsList'), 'Failed to load uploads');
+                }
+            } catch (error) {
+                showError(document.getElementById('uploadsList'), `Error: ${error.message}`);
+            }
+        }
+
+        function filterByStatus(status) {
+            currentFilter = status;
+            
+            // Update filter buttons
+            document.querySelectorAll('.filter-button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.status === status) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            displayUploads();
+        }
+
+        function displayUploads() {
+            const listDiv = document.getElementById('uploadsList');
+            
+            let filtered = allUploads;
+            if (currentFilter !== 'all') {
+                filtered = allUploads.filter(u => u.status === currentFilter);
+            }
+            
+            if (filtered.length === 0) {
+                listDiv.innerHTML = '<div class="empty-state"><p>No uploads found</p></div>';
+                return;
+            }
+            
+            listDiv.innerHTML = '';
+            
+            filtered.forEach(upload => {
+                const card = document.createElement('div');
+                card.className = 'upload-card';
+                
+                const statusClass = `status-${upload.status}`;
+                const statusText = upload.status.charAt(0).toUpperCase() + upload.status.slice(1);
+                const uploadedDate = new Date(upload.uploaded_at).toLocaleString();
+                
+                let actionsHtml = '';
+                if (upload.status === 'pending') {
+                    actionsHtml = `
+                        <div class="upload-actions">
+                            <input 
+                                type="text" 
+                                class="notes-input" 
+                                id="notes-${upload.upload_id}" 
+                                placeholder="Optional notes..."
+                            >
+                            <button class="btn btn-secondary" onclick="approveUpload('${upload.upload_id}')">
+                                Approve
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectUpload('${upload.upload_id}')">
+                                Reject
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                card.innerHTML = `
+                    <div class="upload-header">
+                        <div>
+                            <div class="upload-title">${upload.filename}</div>
+                            <div class="upload-meta">
+                                Uploaded: ${uploadedDate} | 
+                                Size: ${(upload.file_size / 1024 / 1024).toFixed(2)} MB
+                            </div>
+                        </div>
+                        <div>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                    ${upload.error ? `<div class="alert alert-error" style="margin-top: 1rem;">Error: ${upload.error}</div>` : ''}
+                    ${actionsHtml}
+                `;
+                
+                listDiv.appendChild(card);
+            });
+        }
+
+        async function approveUpload(uploadId) {
+            const notesInput = document.getElementById(`notes-${uploadId}`);
+            const notes = notesInput ? notesInput.value : null;
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        upload_id: uploadId,
+                        action: 'approve',
+                        notes: notes
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showSuccess(document.body, result.message);
+                    await loadUploads();
+                } else {
+                    const error = await response.json();
+                    showError(document.body, error.detail || 'Failed to approve upload');
+                }
+            } catch (error) {
+                showError(document.body, `Error: ${error.message}`);
+            }
+        }
+
+        async function rejectUpload(uploadId) {
+            const notesInput = document.getElementById(`notes-${uploadId}`);
+            const notes = notesInput ? notesInput.value : null;
+            
+            if (!confirm('Are you sure you want to reject this upload?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        upload_id: uploadId,
+                        action: 'reject',
+                        notes: notes
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showSuccess(document.body, result.message);
+                    await loadUploads();
+                } else {
+                    const error = await response.json();
+                    showError(document.body, error.detail || 'Failed to reject upload');
+                }
+            } catch (error) {
+                showError(document.body, `Error: ${error.message}`);
+            }
+        }
+
+        // Tab functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+                
+                // Update tab buttons
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+                
+                // Load data for active tab
+                if (tabName === 'alerts') {
+                    loadAlerts();
+                    loadCancerTypes();
+                } else if (tabName === 'search') {
+                    loadCancerTypes();
+                }
+            });
+        });
+
+        // Alerts functionality
+        const ALERTS_API = CONFIG.API_BASE + '/alerts';
+        
+        async function loadCancerTypes() {
+            try {
+                const response = await fetch(`${ALERTS_API}/cancer-types`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const cancerTypes = data.cancer_types || [];
+                    
+                    // Populate select dropdowns
+                    const selects = ['alertCancerType', 'searchCancerType'];
+                    selects.forEach(selectId => {
+                        const select = document.getElementById(selectId);
+                        if (select) {
+                            // Keep first option, clear rest
+                            while (select.children.length > 1) {
+                                select.removeChild(select.lastChild);
+                            }
+                            cancerTypes.forEach(type => {
+                                const option = document.createElement('option');
+                                option.value = type;
+                                option.textContent = type;
+                                select.appendChild(option);
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading cancer types:', error);
+            }
+        }
+        
+        async function loadAlerts() {
+            try {
+                const response = await fetch(`${ALERTS_API}/`);
+                if (response.ok) {
+                    const alerts = await response.json();
+                    displayAlerts(alerts);
+                }
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        }
+        
+        function displayAlerts(alerts) {
+            const listDiv = document.getElementById('alertsList');
+            
+            if (alerts.length === 0) {
+                listDiv.innerHTML = '<div class="empty-state"><p>No alerts configured</p></div>';
+                return;
+            }
+            
+            listDiv.innerHTML = '';
+            
+            alerts.forEach(alert => {
+                const card = document.createElement('div');
+                card.className = 'upload-card';
+                
+                const enabledBadge = alert.enabled 
+                    ? '<span class="status-badge status-completed">Enabled</span>'
+                    : '<span class="status-badge status-rejected">Disabled</span>';
+                
+                card.innerHTML = `
+                    <div class="upload-header">
+                        <div>
+                            <div class="upload-title">${alert.cancer_type}</div>
+                            <div class="upload-meta">
+                                Frequency: ${alert.frequency} | 
+                                Last checked: ${alert.last_checked ? new Date(alert.last_checked).toLocaleString() : 'Never'} |
+                                Matches found: ${alert.matches_found || 0}
+                            </div>
+                        </div>
+                        <div>
+                            ${enabledBadge}
+                        </div>
+                    </div>
+                    <div class="upload-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="checkAlert('${alert.alert_id}')">Check Now</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteAlert('${alert.alert_id}')">Delete</button>
+                    </div>
+                `;
+                
+                listDiv.appendChild(card);
+            });
+        }
+        
+        async function createAlert() {
+            const cancerType = document.getElementById('alertCancerType').value;
+            const frequency = document.getElementById('alertFrequency').value;
+            
+            if (!cancerType) {
+                alert('Please select a cancer type');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${ALERTS_API}/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        cancer_type: cancerType,
+                        frequency: frequency,
+                        enabled: true
+                    })
+                });
+                
+                if (response.ok) {
+                    showSuccess(document.body, 'Alert created successfully');
+                    loadAlerts();
+                } else {
+                    const error = await response.json();
+                    showError(document.body, error.detail || 'Failed to create alert');
+                }
+            } catch (error) {
+                showError(document.body, `Error: ${error.message}`);
+            }
+        }
+        
+        async function deleteAlert(alertId) {
+            if (!confirm('Are you sure you want to delete this alert?')) return;
+            
+            try {
+                const response = await fetch(`${ALERTS_API}/${alertId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showSuccess(document.body, 'Alert deleted');
+                    loadAlerts();
+                }
+            } catch (error) {
+                showError(document.body, `Error: ${error.message}`);
+            }
+        }
+        
+        async function checkAlert(alertId) {
+            try {
+                const response = await fetch(`${ALERTS_API}/check`);
+                if (response.ok) {
+                    const results = await response.json();
+                    showSuccess(document.body, `Found ${Object.keys(results).length} alert(s) with new studies`);
+                    loadAlerts();
+                }
+            } catch (error) {
+                showError(document.body, `Error: ${error.message}`);
+            }
+        }
+        
+        // Literature search functionality
+        async function searchLiterature() {
+            const cancerType = document.getElementById('searchCancerType').value || null;
+            const daysBack = parseInt(document.getElementById('daysBack').value) || 30;
+            const maxResults = parseInt(document.getElementById('maxResults').value) || 50;
+            
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '<div class="empty-state"><p>Searching...</p></div>';
+            
+            try {
+                const response = await fetch(`${ALERTS_API}/search`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        cancer_type: cancerType,
+                        days_back: daysBack,
+                        max_results: maxResults
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displaySearchResults(data);
+                } else {
+                    const error = await response.json();
+                    showError(resultsDiv, error.detail || 'Search failed');
+                }
+            } catch (error) {
+                showError(resultsDiv, `Error: ${error.message}`);
+            }
+        }
+        
+        function displaySearchResults(data) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!data.studies || data.studies.length === 0) {
+                resultsDiv.innerHTML = '<div class="empty-state"><p>No new studies found</p></div>';
+                return;
+            }
+            
+            let html = `<h3 style="margin-bottom: 1rem;">Found ${data.total_results} studies</h3>`;
+            
+            // Group by cancer type matches
+            if (data.matches_by_cancer_type) {
+                Object.keys(data.matches_by_cancer_type).forEach(cancerType => {
+                    const studies = data.matches_by_cancer_type[cancerType];
+                    if (studies.length > 0) {
+                        html += `<h4 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">${cancerType === '_unmatched' ? 'Unmatched Studies' : cancerType}</h4>`;
+                        
+                        studies.forEach(study => {
+                            const studyJson = JSON.stringify(study).replace(/"/g, '&quot;');
+                            html += `
+                                <div class="upload-card">
+                                    <div class="upload-header">
+                                        <div>
+                                            <div class="upload-title">${study.title || 'No title'}</div>
+                                            <div class="upload-meta">
+                                                ${study.journal ? `Journal: ${study.journal} | ` : ''}
+                                                ${study.year ? `Year: ${study.year} | ` : ''}
+                                                ${study.doi ? `DOI: ${study.doi} | ` : ''}
+                                                ${study.pmid ? `PMID: ${study.pmid}` : ''}
+                                                ${study.source ? `Source: ${study.source}` : ''}
+                                            </div>
+                                            ${study.abstract ? `<p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--gray-600);">${study.abstract.substring(0, 200)}...</p>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="upload-actions">
+                                        <button class="btn btn-primary btn-sm" onclick="uploadStudyFromSearch('${studyJson}')">Upload Study</button>
+                                        ${study.doi ? `<a href="https://doi.org/${study.doi}" target="_blank" class="btn btn-outline btn-sm">View Paper</a>` : ''}
+                                        ${study.pmid ? `<a href="https://pubmed.ncbi.nlm.nih.gov/${study.pmid}" target="_blank" class="btn btn-outline btn-sm">View on PubMed</a>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        async function uploadStudyFromSearch(studyJson) {
+            const study = JSON.parse(studyJson.replace(/&quot;/g, '"'));
+            
+            try {
+                const response = await fetch(`${ALERTS_API}/upload-study`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(study)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess(document.body, result.message);
+                    // Refresh uploads list if on uploads tab
+                    if (document.getElementById('uploads-tab').classList.contains('active')) {
+                        loadUploads();
+                    }
+                } else {
+                    showError(document.body, result.message || 'Failed to download PDF. Please upload manually.');
+                }
+            } catch (error) {
+                showError(document.body, `Error: ${error.message}`);
+            }
+        }
+
+        // Auto-refresh uploads every 10 seconds
+        setInterval(loadUploads, 10000);
+
+        // Load on page load
+        window.addEventListener('load', () => {
+            loadUploads();
+            loadCancerTypes();
+        });
+    </script>
+</body>
+</html>

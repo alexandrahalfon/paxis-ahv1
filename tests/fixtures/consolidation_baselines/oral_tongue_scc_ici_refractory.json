@@ -1,0 +1,24 @@
+{
+  "query": "80-year-old male with recurrent squamous cell carcinoma of the oral tongue, PD-L1 CPS 100, previously treated with pembrolizumab (ICI-refractory), no longer a surgical candidate. What is the best next-line systemic therapy?",
+  "query_structure": {
+    "site": "head_neck",
+    "filter_category": "head_neck",
+    "biomarkers": ["PD-L1", "CPS 100"],
+    "histology": "scc",
+    "stage": null,
+    "query_type": "treatment_recommendation",
+    "question_focus": null
+  },
+  "retrieval_doc_ids": [],
+  "eligibility_verdicts": {},
+  "final_study_count": 0,
+  "pipeline_metrics": {
+    "qdrant_count": 0,
+    "pg_count": 0,
+    "pto_count": 0,
+    "total_candidates": 0
+  },
+  "inference_terms_count": 0,
+  "biomarker_status_sample": {},
+  "timestamp": "PLACEHOLDER_REQUIRES_LIVE_CAPTURE"
+}

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="container">
+            <div style="max-width: 520px; margin: 0 auto;">
+                <div class="page-logo">
+                    <img src="assets/paxis-mark.png" alt="Paxis mark">
+                </div>
+                <div class="feature-nav">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                </div>
+                <h1 class="text-center" style="margin-bottom: 0.5rem;">Account</h1>
+                <p class="text-center" style="color: var(--gray-600); margin-bottom: 1.5rem;">
+                    Create an account or log in to enable per-user caching.
+                </p>
+
+                <div id="authMessage" class="alert alert-info" style="display: none;"></div>
+
+                <div class="tabs-container" style="margin-bottom: 1.5rem;">
+                    <div class="tabs">
+                        <button class="tab-button active" data-tab="login">Login</button>
+                        <button class="tab-button" data-tab="register">Create account</button>
+                    </div>
+                </div>
+
+                <div id="login-tab" class="tab-content active">
+                    <div class="card">
+                        <div class="card-body">
+                            <form id="loginForm">
+                                <div class="form-group">
+                                    <label class="form-label" for="loginEmail">Email</label>
+                                    <input type="email" id="loginEmail" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="loginPassword">Password</label>
+                                    <input type="password" id="loginPassword" class="form-input" maxlength="128" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">Login</button>
+                                <p style="text-align: center; font-size: 0.85rem; color: var(--gray-500); margin-top: 0.9rem;">
+                                    Forgot your password? Email <a href="mailto:aysha.verdi@gmail.com">aysha.verdi@gmail.com</a> for a manual reset.
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="register-tab" class="tab-content">
+                    <div class="card">
+                        <div class="card-body">
+                            <form id="registerForm">
+                                <div class="form-group">
+                                    <label class="form-label" for="registerFirstName">First name</label>
+                                    <input type="text" id="registerFirstName" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="registerLastName">Last name</label>
+                                    <input type="text" id="registerLastName" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="registerInstitution">Affiliated institution</label>
+                                    <input type="text" id="registerInstitution" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="registerEmail">Work email</label>
+                                    <input type="email" id="registerEmail" class="form-input"
+                                           placeholder="you@yourhospital.org" required>
+                                    <p style="font-size:0.8rem;color:var(--gray-500);margin-top:0.35rem;">
+                                        Please use your institutional address. Personal email
+                                        (Gmail, Outlook, and similar) can't be used for clinician accounts.
+                                    </p>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="registerPassword">Password (8-128 chars)</label>
+                                    <input type="password" id="registerPassword" class="form-input" minlength="8" maxlength="128" required>
+                                </div>
+                                <button type="submit" class="btn btn-secondary btn-lg" style="width: 100%;">Create account</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="meCard" class="card" style="margin-top: 1.5rem; display: none;">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: 0.5rem;">Signed in</h3>
+                        <p id="meEmail" style="margin: 0; color: var(--gray-700);"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <!-- <a href="about.html">About</a> -->
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script>
+        const apiDocsLink = document.getElementById('apiDocsLink');
+        if (apiDocsLink) apiDocsLink.href = CONFIG.API_DOCS;
+        const api = new PaxisAPI();
+
+        function showMessage(text, type = 'info') {
+            const el = document.getElementById('authMessage');
+            el.className = `alert alert-${type}`;
+            el.textContent = text;
+            el.style.display = 'flex';
+        }
+
+        function hideMessage() {
+            const el = document.getElementById('authMessage');
+            el.style.display = 'none';
+        }
+
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+                hideMessage();
+            });
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessage();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            try {
+                await api.login(email, password);
+                showMessage('Logged in successfully.', 'success');
+                await migrateSessionSaves();
+                await loadMe();
+                // Send patients to the patient interface and everyone
+                // else to the clinician home (the pre-existing default).
+                setTimeout(() => {
+                    if (window.InterfaceSwitch) InterfaceSwitch.redirectByRole('index.html');
+                    else window.location.href = 'index.html';
+                }, 600);
+            } catch (err) {
+                showMessage(err.message || 'Login failed.', 'error');
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessage();
+            const firstName = document.getElementById('registerFirstName').value.trim();
+            const lastName = document.getElementById('registerLastName').value.trim();
+            const institution = document.getElementById('registerInstitution').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            try {
+                await BetaDisclaimer.showForRegistration();
+                await api.register(email, password, firstName, lastName, institution);
+                await api.login(email, password);
+                showMessage('Account created and logged in.', 'success');
+                await migrateSessionSaves();
+                await loadMe();
+                setTimeout(() => { window.location.href = 'index.html'; }, 600);
+            } catch (err) {
+                showMessage(err.message || 'Registration failed.', 'error');
+            }
+        });
+
+        /**
+         * Migrate session-stored saves to the user's account
+         */
+        async function migrateSessionSaves() {
+            const SAVED_STUDIES_KEY = 'exueed_saved_studies';
+            const SESSION_CASES_KEY = 'exueed_session_saves';
+            const SESSION_UPLOADS_KEY = 'exueed_session_uploads';
+            
+            // Migrate studies
+            try {
+                const sessionStudies = JSON.parse(sessionStorage.getItem(SAVED_STUDIES_KEY) || '[]');
+                for (const study of sessionStudies) {
+                    try {
+                        await api.saveStudy(study.id, study.title, study.doi, study.pmid);
+                    } catch (e) {
+                        console.warn('Failed to migrate study:', study.id, e);
+                    }
+                }
+                if (sessionStudies.length > 0) {
+                    sessionStorage.removeItem(SAVED_STUDIES_KEY);
+                    console.log(`Migrated ${sessionStudies.length} studies to account`);
+                }
+            } catch (e) {
+                console.warn('Error migrating studies:', e);
+            }
+            
+            // Migrate cases
+            try {
+                const sessionCases = JSON.parse(sessionStorage.getItem(SESSION_CASES_KEY) || '[]');
+                for (const c of sessionCases) {
+                    try {
+                        await api.saveCase(c.original_query, c.case_name);
+                    } catch (e) {
+                        console.warn('Failed to migrate case:', c.case_name, e);
+                    }
+                }
+                if (sessionCases.length > 0) {
+                    sessionStorage.removeItem(SESSION_CASES_KEY);
+                    console.log(`Migrated ${sessionCases.length} cases to account`);
+                }
+            } catch (e) {
+                console.warn('Error migrating cases:', e);
+            }
+            
+            // Migrate uploads
+            try {
+                const sessionUploads = JSON.parse(sessionStorage.getItem(SESSION_UPLOADS_KEY) || '[]');
+                for (const upload of sessionUploads) {
+                    try {
+                        await api.migrateUserUpload({
+                            upload_id: upload.upload_id,
+                            filename: upload.filename,
+                            title: upload.title,
+                            doc_meta: upload.doc_meta || {},
+                            embeddings: upload.embeddings || [],
+                            chunk_metadata: upload.chunk_metadata || []
+                        });
+                    } catch (e) {
+                        console.warn('Failed to migrate upload:', upload.filename, e);
+                    }
+                }
+                if (sessionUploads.length > 0) {
+                    sessionStorage.removeItem(SESSION_UPLOADS_KEY);
+                    console.log(`Migrated ${sessionUploads.length} uploads to account`);
+                }
+            } catch (e) {
+                console.warn('Error migrating uploads:', e);
+            }
+        }
+
+        async function loadMe() {
+            const meCard = document.getElementById('meCard');
+            const meEmail = document.getElementById('meEmail');
+            try {
+                const me = await api.getMe();
+                meEmail.textContent = me.email;
+                meCard.style.display = 'block';
+            } catch {
+                meCard.style.display = 'none';
+            }
+        }
+
+        window.addEventListener('load', loadMe);
+    </script>
+</body>
+</html>

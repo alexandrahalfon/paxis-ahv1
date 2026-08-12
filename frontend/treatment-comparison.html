@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluate Treatment Options - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/studyDetails.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <section class="section">
+        <div class="container">
+            <div style="max-width: 1000px; margin: 0 auto;">
+                <div class="page-logo">
+                    <img src="assets/paxis-mark.png" alt="Paxis mark">
+                </div>
+                <div class="feature-nav" style="display: none;">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" id="analyticsNavLink" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                </div>
+                <h1 class="text-center" style="margin-bottom: 0.5rem;">Evaluate Treatment Options</h1>
+                <p class="text-center" style="color: var(--gray-600); margin-bottom: 0.75rem;">
+                    Describe what you want to compare and get visual analysis with supporting evidence
+                </p>
+                <div class="text-center" style="margin-bottom: 2rem;">
+                    <button type="button" class="btn-how-to-use" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                        How to use
+                    </button>
+                    <div class="how-to-use-panel" style="display: none;">
+                        <p><strong>Evaluate Treatment Options</strong> lets you compare two or more treatments using evidence from our study library.</p>
+                        <ol>
+                            <li>Type a natural-language question — e.g., <em>"Compare pembrolizumab vs chemotherapy for stage IV NSCLC"</em>.</li>
+                            <li>The system identifies the treatments and cancer context, retrieves matching studies, and generates a visual side-by-side comparison.</li>
+                            <li>Results include survival outcomes, toxicity profiles, and supporting evidence citations.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Natural Language Input -->
+                <div class="card">
+                    <div class="card-body">
+                        <form id="comparisonForm">
+                            <div class="form-group">
+                                <label class="form-label">What would you like to compare?</label>
+                                <textarea 
+                                    id="comparisonQuery" 
+                                    class="form-input" 
+                                    rows="3"
+                                    placeholder="e.g., Compare pembrolizumab vs chemotherapy for stage IV NSCLC&#10;or: What are the survival outcomes for concurrent vs sequential chemoRT in locally advanced lung cancer?&#10;or: Compare toxicity profiles of IMRT vs 3D-CRT for head and neck cancer"
+                                    required
+                                ></textarea>
+                            </div>
+
+                            <div class="example-queries">
+                                <span class="example-label">Try:</span>
+                                <button type="button" class="example-query-btn" data-query="Compare pembrolizumab vs chemotherapy for NSCLC overall survival">Pembrolizumab vs Chemo (NSCLC)</button>
+                                <button type="button" class="example-query-btn" data-query="Compare concurrent vs sequential chemoradiation for locally advanced lung cancer">Concurrent vs Sequential ChemoRT</button>
+                                <button type="button" class="example-query-btn" data-query="Compare SBRT vs conventional fractionation for early stage lung cancer">SBRT vs Conventional RT</button>
+                            </div>
+
+                            <button type="submit" id="compareBtn" class="btn btn-accent btn-lg" style="width: 100%; margin-top: 1rem;">
+                                Generate Comparison
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="results" class="comparison-results" style="display: none;">
+                    <div class="results-header">
+                        <h2>Comparison Results</h2>
+                        <button type="button" id="reportBtnComparison" class="btn btn-outline btn-sm" disabled>
+                            Generate Report (PDF)
+                        </button>
+                    </div>
+                    
+                    <!-- Summary Section -->
+                    <div id="summarySection" class="comparison-summary-section"></div>
+                    
+                    <!-- Charts Section -->
+                    <div id="chartsSection" class="comparison-charts-section"></div>
+                    
+                    <!-- Detailed Analysis -->
+                    <div id="analysisSection" class="comparison-analysis-section"></div>
+                    
+                    <!-- Sources -->
+                    <div id="sourcesSection" class="comparison-sources-section"></div>
+                </div>
+
+                <!-- Bottom Navigation — shown after results -->
+                <div id="bottomNav" class="bottom-nav-section" style="display: none; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
+                    <p style="text-align: center; color: var(--gray-600); margin-bottom: 1rem; font-size: 0.9rem;">Continue your research</p>
+                    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                        <a href="index.html" class="btn btn-outline btn-sm">Query Clinical Evidence</a>
+                        <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                        <a href="analytics.html" id="bottomAnalyticsLink" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Study Details Panel -->
+    <div id="study-details-panel" class="study-details-panel">
+        <div class="panel-placeholder">Select a study to view details</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <!-- <a href="about.html">About</a> -->
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/studyDetails.js"></script>
+    <script src="js/studyDetailsRenderer.js"></script>
+    <script src="js/chartUtils.js?v=2"></script>
+    <script src="js/litAnalyticsPanel.js"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script src="js/patientSignal.js?v=4"></script>
+    <script>DemoBanner.init(); SideNav.init('treatment-comparison');</script>
+
+    <script>
+        const api = new PaxisAPI();
+        const comparisonForm = document.getElementById('comparisonForm');
+        const comparisonQuery = document.getElementById('comparisonQuery');
+        const compareBtn = document.getElementById('compareBtn');
+        const resultsContainer = document.getElementById('results');
+        const summarySection = document.getElementById('summarySection');
+        const chartsSection = document.getElementById('chartsSection');
+        const analysisSection = document.getElementById('analysisSection');
+        const sourcesSection = document.getElementById('sourcesSection');
+        const reportBtnComparison = document.getElementById('reportBtnComparison');
+        
+        let lastComparisonResult = null;
+        let chartInstances = [];
+
+        // Example query buttons
+        document.querySelectorAll('.example-query-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                comparisonQuery.value = btn.dataset.query;
+                comparisonQuery.focus();
+            });
+        });
+
+        // Check for follow-up context from main query page
+        try {
+            const ctx = JSON.parse(sessionStorage.getItem('followupContext') || 'null');
+            if (ctx && ctx.query && (Date.now() - ctx.timestamp < 300000)) {
+                comparisonQuery.value = ctx.query;
+                sessionStorage.removeItem('followupContext');
+                console.log('[TreatmentComparison] Pre-filled from follow-up context');
+            }
+        } catch (e) {
+            console.error('[TreatmentComparison] Error reading follow-up context:', e);
+        }
+
+        // Rerouted here from a chat message that read as a treatment
+        // comparison (see index.html sendMessage) — auto-fill AND
+        // auto-run so arriving here shows the full breakdown immediately
+        // instead of making the user retype and click "Generate Comparison".
+        try {
+            const autorunKey = 'exueed_autorun_treatment_comparison';
+            const autorun = JSON.parse(sessionStorage.getItem(autorunKey) || 'null');
+            if (autorun && autorun.query && (Date.now() - autorun.timestamp < 300000)) {
+                sessionStorage.removeItem(autorunKey);
+                comparisonQuery.value = autorun.query;
+                console.log('[TreatmentComparison] Auto-running from chat reroute');
+                // Deferred slightly so the rest of this script's const/let
+                // declarations below (comparisonForm's submit handler) have
+                // finished registering before we trigger it.
+                setTimeout(() => comparisonForm.requestSubmit(), 0);
+            }
+        } catch (e) {
+            console.error('[TreatmentComparison] Error reading autorun context:', e);
+        }
+
+        comparisonForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const query = comparisonQuery.value.trim();
+            if (!query) {
+                alert('Please describe what you want to compare');
+                return;
+            }
+
+            // Show loading
+            resultsContainer.style.display = 'block';
+            compareBtn.disabled = true;
+            compareBtn.textContent = 'Analyzing...';
+            
+            // Clear previous results
+            destroyCharts();
+            summarySection.innerHTML = '<div class="loading"><div class="spinner"></div><span>Retrieving evidence and generating visualizations...</span></div>';
+            chartsSection.innerHTML = '';
+            analysisSection.innerHTML = '';
+            sourcesSection.innerHTML = '';
+
+            try {
+                // Use the dedicated visual comparison endpoint
+                const result = await api.visualComparison(query, 15);
+                
+                lastComparisonResult = result;
+                reportBtnComparison.disabled = false;
+                
+                // Render the comparison results with charts
+                renderVisualComparisonResults(result, query);
+
+                // Show bottom navigation
+                const bottomNav = document.getElementById('bottomNav');
+                if (bottomNav) bottomNav.style.display = 'block';
+
+                // Show literature analytics button
+                if (typeof LitAnalyticsPanel !== 'undefined' && bottomNav) {
+                    LitAnalyticsPanel.showButton(query, bottomNav);
+                }
+
+                // Passive patient-profile capture (patient-centric pivot).
+                // No-ops if not logged in; never blocks or delays results.
+                if (typeof PatientSignal !== 'undefined') {
+                    PatientSignal.checkAndPrompt(query);
+                }
+
+            } catch (error) {
+                lastComparisonResult = null;
+                reportBtnComparison.disabled = true;
+                const bottomNav = document.getElementById('bottomNav');
+                if (bottomNav) bottomNav.style.display = 'none';
+                summarySection.innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to generate comparison: ${error.message}
+                    </div>
+                `;
+            } finally {
+                compareBtn.disabled = false;
+                compareBtn.textContent = 'Generate Comparison';
+            }
+        });
+
+        function destroyCharts() {
+            chartInstances.forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            chartInstances = [];
+        }
+
+        function renderVisualComparisonResults(result, query) {
+            // Render summary
+            renderSummary(result, query);
+            
+            // Render charts from the charts array
+            renderChartsFromArray(result.charts || []);
+            
+            // Check if we have per-arm results (new pipeline)
+            if (result.treatment_arms && result.treatment_arms.length > 0) {
+                renderArmBreakdown(
+                    result.treatment_arms,
+                    result.detailed_analysis || ''
+                );
+            } else {
+                // Fallback to old flat rendering
+                renderStudyBreakdown(
+                    result.retrieval_results || [],
+                    result.detailed_analysis || '',
+                    result.study_profiles || []
+                );
+            }
+        }
+
+        function renderComparisonResults(result, query) {
+            // Legacy function — delegates to visual comparison renderer
+            renderVisualComparisonResults(result, query);
+        }
+
+        function renderSummary(result, query) {
+            // Handle both new (summary) and old (short_answer) formats
+            const summaryText = result.summary || result.short_answer || '';
+            
+            summarySection.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: 1rem;">Summary</h3>
+                        <div class="comparison-query">
+                            <strong>Query:</strong> ${escapeHtml(query)}
+                        </div>
+                        <div class="comparison-answer">
+                            ${markdownToHtml(summaryText)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderChartsFromArray(charts) {
+            chartsSection.innerHTML = '';
+            
+            if (!charts || charts.length === 0) {
+                chartsSection.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <p style="color: var(--gray-500); text-align: center;">
+                                No numerical data available for visualization. See detailed analysis below.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const chartCard = document.createElement('div');
+            chartCard.className = 'card';
+            chartCard.innerHTML = `
+                <div class="card-body">
+                    <h3 style="margin-bottom: 1.5rem;">Visual Comparison</h3>
+                    <div class="charts-grid" id="chartsGrid"></div>
+                </div>
+            `;
+            chartsSection.appendChild(chartCard);
+            
+            const chartsGrid = chartCard.querySelector('#chartsGrid');
+            
+            charts.forEach((artifact, i) => {
+                if (artifact.artifact_type !== 'chart' || !artifact.chart) return;
+                
+                const chart = artifact.chart;
+                const chartDiv = document.createElement('div');
+                chartDiv.className = 'chart-artifact';
+                chartDiv.innerHTML = `
+                    <div class="chart-title">${escapeHtml(chart.title)}</div>
+                    <div class="chart-container">
+                        <canvas id="visual-chart-${i}"></canvas>
+                    </div>
+                    ${chart.source ? `<div class="chart-source">Source: ${escapeHtml(chart.source)}</div>` : ''}
+                `;
+                chartsGrid.appendChild(chartDiv);
+                
+                // Render chart after DOM is ready
+                setTimeout(() => {
+                    renderChart(`visual-chart-${i}`, chart);
+                }, 50);
+            });
+        }
+
+        function renderCharts(result) {
+            chartsSection.innerHTML = '';
+            
+            // If we have an artifact with a chart, render it
+            if (result.artifact && result.artifact.artifact_type === 'chart' && result.artifact.chart) {
+                const chartCard = document.createElement('div');
+                chartCard.className = 'card';
+                chartCard.innerHTML = `
+                    <div class="card-body">
+                        <h3 style="margin-bottom: 1rem;">Visual Comparison</h3>
+                        <div class="chart-artifact">
+                            <div class="chart-title">${escapeHtml(result.artifact.chart.title)}</div>
+                            <div class="chart-container" style="max-width: 600px; margin: 0 auto;">
+                                <canvas id="comparison-chart-main"></canvas>
+                            </div>
+                            ${result.artifact.chart.source ? `<div class="chart-source">Source: ${escapeHtml(result.artifact.chart.source)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+                chartsSection.appendChild(chartCard);
+                
+                // Render the chart
+                setTimeout(() => {
+                    renderChart('comparison-chart-main', result.artifact.chart);
+                }, 100);
+            } else {
+                // Try to extract data and create charts from the evidence
+                const extractedData = extractComparisonData(result);
+                if (extractedData.length > 0) {
+                    const chartCard = document.createElement('div');
+                    chartCard.className = 'card';
+                    chartCard.innerHTML = `
+                        <div class="card-body">
+                            <h3 style="margin-bottom: 1rem;">Visual Comparison</h3>
+                            <div id="extracted-charts"></div>
+                        </div>
+                    `;
+                    chartsSection.appendChild(chartCard);
+                    
+                    const chartsContainer = chartCard.querySelector('#extracted-charts');
+                    extractedData.forEach((data, i) => {
+                        const chartDiv = document.createElement('div');
+                        chartDiv.className = 'chart-artifact';
+                        chartDiv.innerHTML = `
+                            <div class="chart-title">${escapeHtml(data.title)}</div>
+                            <div class="chart-container" style="max-width: 500px; margin: 0 auto;">
+                                <canvas id="extracted-chart-${i}"></canvas>
+                            </div>
+                        `;
+                        chartsContainer.appendChild(chartDiv);
+                        
+                        setTimeout(() => {
+                            renderChart(`extracted-chart-${i}`, data);
+                        }, 100);
+                    });
+                }
+            }
+        }
+
+        function extractComparisonData(result) {
+            // Try to extract numerical comparison data from the justification
+            const justification = result.justification || '';
+            const charts = [];
+            
+            // Look for survival percentages
+            const survivalPattern = /(\d+(?:\.\d+)?)\s*%\s*(?:vs\.?|versus|compared to)\s*(\d+(?:\.\d+)?)\s*%/gi;
+            const matches = [...justification.matchAll(survivalPattern)];
+            
+            if (matches.length > 0) {
+                const match = matches[0];
+                charts.push({
+                    type: 'bar',
+                    title: 'Outcome Comparison',
+                    labels: ['Treatment A', 'Treatment B'],
+                    datasets: [{
+                        label: 'Rate',
+                        data: [parseFloat(match[1]), parseFloat(match[2])],
+                        backgroundColor: ['rgba(59, 130, 246, 0.8)', 'rgba(16, 185, 129, 0.8)'],
+                        borderColor: ['rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)'],
+                    }],
+                    unit: '%'
+                });
+            }
+            
+            return charts;
+        }
+
+        function renderChart(canvasId, chartConfig) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || typeof Chart === 'undefined') {
+                console.error('[Chart] Canvas not found or Chart.js not loaded');
+                return;
+            }
+            
+            try {
+                const ctx = canvas.getContext('2d');
+                
+                const config = {
+                    type: chartConfig.type || 'bar',
+                    data: {
+                        labels: chartConfig.labels || [],
+                        datasets: chartConfig.datasets.map((ds, i) => ({
+                            label: ds.label || `Dataset ${i + 1}`,
+                            data: ds.data || [],
+                            backgroundColor: ds.backgroundColor || [
+                                'rgba(59, 130, 246, 0.8)',
+                                'rgba(16, 185, 129, 0.8)',
+                                'rgba(245, 158, 11, 0.8)',
+                                'rgba(239, 68, 68, 0.8)',
+                            ],
+                            borderColor: ds.borderColor || [
+                                'rgba(59, 130, 246, 1)',
+                                'rgba(16, 185, 129, 1)',
+                                'rgba(245, 158, 11, 1)',
+                                'rgba(239, 68, 68, 1)',
+                            ],
+                            borderWidth: 1,
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: chartConfig.datasets.length > 1,
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        label += context.parsed.y || context.parsed;
+                                        if (chartConfig.unit) label += chartConfig.unit;
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: chartConfig.type !== 'pie' && chartConfig.type !== 'doughnut' ? {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: !!chartConfig.unit,
+                                    text: chartConfig.unit || ''
+                                }
+                            }
+                        } : undefined
+                    }
+                };
+                
+                const chart = new Chart(ctx, config);
+                chartInstances.push(chart);
+                console.log('[Chart] Rendered:', chartConfig.title);
+            } catch (error) {
+                console.error('[Chart] Error:', error);
+            }
+        }
+
+        function renderAnalysis(result) {
+            // Handle both new (detailed_analysis) and old (justification) formats
+            const analysis = result.detailed_analysis || result.justification || '';
+            if (!analysis) {
+                analysisSection.innerHTML = '';
+                return;
+            }
+            
+            analysisSection.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: 1rem;">Detailed Analysis</h3>
+                        <div class="analysis-content">
+                            ${markdownToHtml(analysis)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSources(sources) {
+            if (!sources || sources.length === 0) {
+                sourcesSection.innerHTML = '';
+                return;
+            }
+            
+            const sourcesHtml = sources.slice(0, 10).map((source, i) => {
+                const title = source.title || 'Unknown Study';
+                const author = source.author || '';
+                const year = source.year || '';
+                const doi = source.doi || '';
+                
+                // Build citation display with author
+                let citationDisplay = '';
+                if (author) {
+                    citationDisplay = year ? `${author} (${year})` : author;
+                } else if (year) {
+                    citationDisplay = `(${year})`;
+                }
+                
+                return `
+                    <div class="source-item">
+                        <div class="source-number">${i + 1}</div>
+                        <div class="source-content">
+                            <div class="source-title">${escapeHtml(title)}</div>
+                            ${citationDisplay ? `<div class="source-meta"><span>${escapeHtml(citationDisplay)}</span></div>` : ''}
+                            ${doi ? `<a href="https://doi.org/${doi}" target="_blank" class="source-doi">DOI: ${doi}</a>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            sourcesSection.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <h3 style="margin-bottom: 1rem;">Supporting Evidence (${sources.length} sources)</h3>
+                        <div class="sources-list">
+                            ${sourcesHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderStudyBreakdown(sources, detailedAnalysis, studyProfiles) {
+            // Clear both sections — we combine analysis + sources into one view
+            analysisSection.innerHTML = '';
+            sourcesSection.innerHTML = '';
+
+            if ((!sources || sources.length === 0) && !detailedAnalysis && (!studyProfiles || studyProfiles.length === 0)) {
+                return;
+            }
+
+            // Build a profile lookup by doc_id
+            const profileMap = new Map();
+            (studyProfiles || []).forEach(p => {
+                const did = p.doc_id || p.study_details?.doc_id?.value || '';
+                if (did) profileMap.set(did, p);
+            });
+
+            // Group raw chunks by study (doc_id) as fallback
+            const studyMap = new Map();
+            (sources || []).forEach(chunk => {
+                const key = chunk.doc_id || chunk.title || 'unknown';
+                if (!studyMap.has(key)) {
+                    studyMap.set(key, {
+                        doc_id: chunk.doc_id || '',
+                        title: chunk.title || 'Unknown Study',
+                        author: chunk.author || '',
+                        citation: chunk.citation || '',
+                        doi: chunk.doi || '',
+                        pmid: chunk.pmid || '',
+                        year: chunk.year || '',
+                        category: chunk.category || '',
+                        chunks: []
+                    });
+                }
+                studyMap.get(key).chunks.push({
+                    section: chunk.section || chunk.chunk_type || 'General',
+                    content: chunk.content || '',
+                    score: chunk.score || 0
+                });
+            });
+
+            // Merge: prefer structured profiles, fall back to raw chunks
+            const studies = [];
+            const usedDocIds = new Set();
+
+            // First add all studies that have structured profiles
+            profileMap.forEach((profile, docId) => {
+                usedDocIds.add(docId);
+                const rawStudy = studyMap.get(docId);
+                const bestScore = rawStudy ? Math.max(...rawStudy.chunks.map(c => c.score || 0)) : 0;
+                studies.push({ profile, rawStudy, docId, score: bestScore });
+            });
+
+            // Then add studies that only have raw chunks (no profile)
+            studyMap.forEach((rawStudy, key) => {
+                if (!usedDocIds.has(key)) {
+                    studies.push({ profile: null, rawStudy, docId: key, score: Math.max(...rawStudy.chunks.map(c => c.score || 0)) });
+                }
+            });
+
+            // Sort by relevance score
+            studies.sort((a, b) => b.score - a.score);
+
+            // Render detailed analysis as a collapsible section at the top
+            let analysisHtml = '';
+            if (detailedAnalysis) {
+                analysisHtml = `
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div class="card-body">
+                            <button type="button" class="study-breakdown-toggle" aria-expanded="false" data-target="analysis-content">
+                                <span class="study-breakdown-title">Detailed Analysis</span>
+                                <span class="study-breakdown-arrow"><svg viewBox="0 0 10 6" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></span>
+                            </button>
+                            <div id="analysis-content" class="study-breakdown-body" style="display: none;">
+                                <div class="analysis-content" style="margin-top: 1rem;">
+                                    ${markdownToHtml(detailedAnalysis)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Render each study card
+            const studyCards = studies.map((entry, idx) => {
+                const studyId = `study-breakdown-${idx}`;
+                const profile = entry.profile;
+                const raw = entry.rawStudy;
+
+                // Determine display info
+                const title = profile ? (profile.title || getProfileField(profile, 'study_details', 'study_name') || 'Unknown Study') : (raw ? raw.title : 'Unknown Study');
+                const year = profile ? (getProfileField(profile, 'study_details', 'publish_date') || '') : (raw ? raw.year : '');
+                const yearStr = year ? ` (${year})` : '';
+                const citation = raw ? raw.citation : '';
+                const docId = entry.docId;
+                const doi = raw ? raw.doi : '';
+                const pmid = raw ? raw.pmid : '';
+                const nPatients = profile ? getProfileField(profile, 'study_details', 'number_of_patients') : null;
+                const studyType = profile ? getProfileField(profile, 'study_details', 'study_type') : null;
+                const studyPhase = profile ? getProfileField(profile, 'study_details', 'study_phase') : null;
+
+                // Meta line
+                let metaParts = [];
+                if (citation) metaParts.push(escapeHtml(citation));
+                if (nPatients) metaParts.push(`${escapeHtml(String(nPatients))} patients`);
+                if (studyType) metaParts.push(escapeHtml(String(studyType)));
+                if (studyPhase) metaParts.push(escapeHtml(String(studyPhase)));
+                if (!profile && raw) metaParts.push(`${raw.chunks.length} evidence section${raw.chunks.length !== 1 ? 's' : ''}`);
+                const metaStr = metaParts.join(' | ');
+
+                // Study Details button
+                let detailsBtn = '';
+                if (docId || pmid || doi) {
+                    const eid = (docId || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const epmid = (pmid || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const edoi = (doi || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const etitle = (title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    detailsBtn = `<button class="study-details-btn" onclick="openStudyDetailsFromSource({doc_id:'${eid}',pmid:'${epmid}',doi:'${edoi}',title:'${etitle}'})" title="View detailed study information">Study Details</button>`;
+                }
+
+                // Build body content
+                let bodyContent = '';
+                if (profile && profile.abstract) {
+                    bodyContent = renderAbstract(profile.abstract, profile);
+                } else if (profile) {
+                    bodyContent = renderStructuredProfile(profile);
+                } else if (raw) {
+                    bodyContent = renderRawChunks(raw);
+                }
+
+                let reviewBtnLegacy = '';
+                if (docId) {
+                    const inTray = isStudyInComparisonTray(docId);
+                    const reviewLabel = inTray ? 'In Review Queue' : 'Add to Study Review';
+                    const reviewClass = inTray ? 'btn-primary' : 'btn-outline';
+                    reviewBtnLegacy = `<button class="btn ${reviewClass} btn-sm add-to-review-btn" data-doc-id="${escapeHtml(docId)}" data-title="${escapeHtml(title)}" data-doi="${escapeHtml(doi || '')}" data-year="${escapeHtml(String(year || ''))}" style="font-size: 0.75rem;">${reviewLabel}</button>`;
+                }
+
+                return `
+                    <div class="card" style="margin-bottom: 0.75rem;">
+                        <div class="card-body" style="padding: 1rem;">
+                            <button type="button" class="study-breakdown-toggle" aria-expanded="false" data-target="${studyId}">
+                                <div style="flex: 1; text-align: left;">
+                                    <span class="study-breakdown-title">${escapeHtml(title)}${yearStr}</span>
+                                    <div class="study-breakdown-meta">${metaStr}</div>
+                                </div>
+                                <span class="study-breakdown-arrow"><svg viewBox="0 0 10 6" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></span>
+                            </button>
+                            <div id="${studyId}" class="study-breakdown-body" style="display: none;">
+                                <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                    ${detailsBtn}
+                                    ${reviewBtnLegacy}
+                                    ${doi ? `<a href="https://doi.org/${doi}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="font-size: 0.75rem;">DOI</a>` : ''}
+                                </div>
+                                <div class="study-profile-sections" style="margin-top: 0.75rem;">
+                                    ${bodyContent}
+                                </div>
+                                <div class="inline-qa-trigger" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
+                                    <button type="button" class="btn btn-outline btn-sm inline-qa-btn" data-study-id="${escapeHtml(docId)}" data-study-title="${escapeHtml(title)}" data-study-doi="${escapeHtml(doi || '')}" data-study-pmid="${escapeHtml(pmid || '')}" style="width: 100%; font-size: 0.82rem;">Have questions about this trial?</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Combine into the sources section
+            sourcesSection.innerHTML = `
+                <h3 style="margin-bottom: 1rem;">Matched Studies (${studies.length})</h3>
+                ${analysisHtml}
+                ${studyCards}
+            `;
+
+            // Wire up toggle buttons
+            sourcesSection.querySelectorAll('.study-breakdown-toggle').forEach(btn => {
+                btn.addEventListener('click', function handleStudyToggle() {
+                    const targetId = btn.dataset.target;
+                    const body = document.getElementById(targetId);
+                    if (!body) return;
+                    const expanded = btn.getAttribute('aria-expanded') === 'true';
+                    btn.setAttribute('aria-expanded', String(!expanded));
+                    body.style.display = expanded ? 'none' : 'block';
+                    const arrow = btn.querySelector('.study-breakdown-arrow');
+                    if (arrow) arrow.style.transform = expanded ? '' : 'rotate(180deg)';
+                });
+            });
+        }
+
+        // Render per-arm grouped results (new pipeline)
+        function renderArmBreakdown(treatmentArms, detailedAnalysis) {
+            analysisSection.innerHTML = '';
+            sourcesSection.innerHTML = '';
+
+            if (!treatmentArms || treatmentArms.length === 0) return;
+
+            // Detailed analysis shown prominently (NOT collapsed)
+            let analysisHtml = '';
+            if (detailedAnalysis) {
+                analysisHtml = `
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div class="card-body">
+                            <h4 style="margin-bottom: 1rem;">Comparative Analysis</h4>
+                            <div class="analysis-content comparison-analysis">
+                                ${markdownToHtml(detailedAnalysis)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Render each treatment arm as a section
+            const armSections = treatmentArms.map(function renderArm(arm, armIdx) {
+                const armId = `arm-section-${armIdx}`;
+                const sources = arm.retrieval_results || [];
+                const profiles = arm.study_profiles || [];
+
+                // Build profile lookup for this arm
+                const profileMap = new Map();
+                profiles.forEach(function mapProfile(p) {
+                    const did = p.doc_id || p.study_details?.doc_id?.value || '';
+                    if (did) profileMap.set(did, p);
+                });
+
+                // Group chunks by study
+                const studyMap = new Map();
+                sources.forEach(function groupChunk(chunk) {
+                    const key = chunk.doc_id || chunk.title || 'unknown';
+                    if (!studyMap.has(key)) {
+                        studyMap.set(key, {
+                            doc_id: chunk.doc_id || '',
+                            title: chunk.title || 'Unknown Study',
+                            author: chunk.author || '',
+                            citation: chunk.citation || '',
+                            doi: chunk.doi || '',
+                            pmid: chunk.pmid || '',
+                            year: chunk.year || '',
+                            category: chunk.category || '',
+                            chunks: []
+                        });
+                    }
+                    studyMap.get(key).chunks.push({
+                        section: chunk.section || chunk.chunk_type || 'General',
+                        content: chunk.content || '',
+                        score: chunk.score || 0
+                    });
+                });
+
+                // Merge profiles + raw chunks
+                const studies = [];
+                const usedDocIds = new Set();
+
+                profileMap.forEach(function addProfileStudy(profile, docId) {
+                    usedDocIds.add(docId);
+                    const rawStudy = studyMap.get(docId);
+                    const bestScore = rawStudy ? Math.max(...rawStudy.chunks.map(function getScore(c) { return c.score || 0; })) : 0;
+                    studies.push({ profile, rawStudy, docId, score: bestScore });
+                });
+
+                studyMap.forEach(function addRawStudy(rawStudy, key) {
+                    if (!usedDocIds.has(key)) {
+                        studies.push({ profile: null, rawStudy, docId: key, score: Math.max(...rawStudy.chunks.map(function getScore(c) { return c.score || 0; })) });
+                    }
+                });
+
+                studies.sort(function sortByScore(a, b) { return b.score - a.score; });
+
+                // Render study cards for this arm
+                const studyCards = studies.map(function renderStudyCard(entry, idx) {
+                    const studyId = `arm-${armIdx}-study-${idx}`;
+                    const profile = entry.profile;
+                    const raw = entry.rawStudy;
+
+                    const title = profile ? (profile.title || getProfileField(profile, 'study_details', 'study_name') || 'Unknown Study') : (raw ? raw.title : 'Unknown Study');
+                    const year = profile ? (getProfileField(profile, 'study_details', 'publish_date') || '') : (raw ? raw.year : '');
+                    const yearStr = year ? ` (${year})` : '';
+                    const citation = raw ? raw.citation : '';
+                    const docId = entry.docId;
+                    const doi = raw ? raw.doi : '';
+                    const pmid = raw ? raw.pmid : '';
+                    const nPatients = profile ? getProfileField(profile, 'study_details', 'number_of_patients') : null;
+                    const studyType = profile ? getProfileField(profile, 'study_details', 'study_type') : null;
+                    const studyPhase = profile ? getProfileField(profile, 'study_details', 'study_phase') : null;
+
+                    let metaParts = [];
+                    if (citation) metaParts.push(escapeHtml(citation));
+                    if (nPatients) metaParts.push(`${escapeHtml(String(nPatients))} patients`);
+                    if (studyType) metaParts.push(escapeHtml(String(studyType)));
+                    if (studyPhase) metaParts.push(escapeHtml(String(studyPhase)));
+                    if (!profile && raw) metaParts.push(`${raw.chunks.length} evidence section${raw.chunks.length !== 1 ? 's' : ''}`);
+                    const metaStr = metaParts.join(' | ');
+
+                    let detailsBtn = '';
+                    if (docId || pmid || doi) {
+                        const eid = (docId || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const epmid = (pmid || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const edoi = (doi || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const etitle = (title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        detailsBtn = `<button class="study-details-btn" onclick="openStudyDetailsFromSource({doc_id:'${eid}',pmid:'${epmid}',doi:'${edoi}',title:'${etitle}'})" title="View detailed study information">Study Details</button>`;
+                    }
+
+                    let bodyContent = '';
+                    if (profile && profile.abstract) {
+                        bodyContent = renderAbstract(profile.abstract, profile);
+                    } else if (profile) {
+                        bodyContent = renderStructuredProfile(profile);
+                    } else if (raw) {
+                        bodyContent = renderRawChunks(raw);
+                    }
+
+                    let reviewBtn = '';
+                    if (docId) {
+                        const inTray = isStudyInComparisonTray(docId);
+                        const reviewLabel = inTray ? 'In Review Queue' : 'Add to Study Review';
+                        const reviewClass = inTray ? 'btn-primary' : 'btn-outline';
+                        reviewBtn = `<button class="btn ${reviewClass} btn-sm add-to-review-btn" data-doc-id="${escapeHtml(docId)}" data-title="${escapeHtml(title)}" data-doi="${escapeHtml(doi || '')}" data-year="${escapeHtml(String(year || ''))}" style="font-size: 0.75rem;">${reviewLabel}</button>`;
+                    }
+
+                    return `
+                        <div class="card" style="margin-bottom: 0.5rem; border-left: 3px solid var(--accent-color);">
+                            <div class="card-body" style="padding: 0.75rem 1rem;">
+                                <button type="button" class="study-breakdown-toggle" aria-expanded="false" data-target="${studyId}">
+                                    <div style="flex: 1; text-align: left;">
+                                        <span class="study-breakdown-title">${escapeHtml(title)}${yearStr}</span>
+                                        <div class="study-breakdown-meta">${metaStr}</div>
+                                    </div>
+                                    <span class="study-breakdown-arrow"><svg viewBox="0 0 10 6" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></span>
+                                </button>
+                                <div id="${studyId}" class="study-breakdown-body" style="display: none;">
+                                    <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                        ${detailsBtn}
+                                        ${reviewBtn}
+                                        ${doi ? `<a href="https://doi.org/${doi}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="font-size: 0.75rem;">DOI</a>` : ''}
+                                    </div>
+                                    <div class="study-profile-sections" style="margin-top: 0.75rem;">
+                                        ${bodyContent}
+                                    </div>
+                                    <div class="inline-qa-trigger" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
+                                        <button type="button" class="btn btn-outline btn-sm inline-qa-btn" data-study-id="${escapeHtml(docId)}" data-study-title="${escapeHtml(title)}" data-study-doi="${escapeHtml(doi || '')}" data-study-pmid="${escapeHtml(pmid || '')}" style="width: 100%; font-size: 0.82rem;">Have questions about this trial?</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="treatment-arm-section" style="margin-bottom: 2rem;">
+                        <div class="treatment-arm-header" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--accent-color);">
+                            <h3 style="margin: 0; font-size: 1.1rem;">${escapeHtml(arm.arm_label)}</h3>
+                            <span style="color: var(--gray-500); font-size: 0.85rem;">${studies.length} ${studies.length === 1 ? 'study' : 'studies'}</span>
+                        </div>
+                        ${studyCards || '<p style="color: var(--gray-500);">No studies found for this treatment arm.</p>'}
+                    </div>
+                `;
+            }).join('');
+
+            const totalStudies = treatmentArms.reduce(function countStudies(sum, arm) {
+                const sources = arm.retrieval_results || [];
+                const docIds = new Set();
+                sources.forEach(function collectDocId(s) { if (s.doc_id) docIds.add(s.doc_id); });
+                return sum + docIds.size;
+            }, 0);
+
+            sourcesSection.innerHTML = `
+                <h3 style="margin-bottom: 1rem;">Evaluate Treatment Options (${totalStudies} studies across ${treatmentArms.length} arms)</h3>
+                ${analysisHtml}
+                ${armSections}
+            `;
+
+            // Wire up toggle buttons
+            sourcesSection.querySelectorAll('.study-breakdown-toggle').forEach(function wireToggle(btn) {
+                btn.addEventListener('click', function handleArmToggle() {
+                    const targetId = btn.dataset.target;
+                    const body = document.getElementById(targetId);
+                    if (!body) return;
+                    const expanded = btn.getAttribute('aria-expanded') === 'true';
+                    btn.setAttribute('aria-expanded', String(!expanded));
+                    body.style.display = expanded ? 'none' : 'block';
+                    const arrow = btn.querySelector('.study-breakdown-arrow');
+                    if (arrow) arrow.style.transform = expanded ? '' : 'rotate(180deg)';
+                });
+            });
+        }
+
+        // Helper: get a scalar value from a profile section
+        function getProfileField(profile, section, field) {
+            const sec = profile[section];
+            if (!sec) return null;
+            const f = sec[field];
+            if (!f) return null;
+            if (typeof f === 'object' && f.value !== undefined) return f.value;
+            return f;
+        }
+
+        // Render abstract with key study metadata
+        function renderAbstract(abstractText, profile) {
+            let html = '';
+
+            // Key metadata pills
+            const pills = [];
+            const studyType = getProfileField(profile, 'study_details', 'study_type');
+            const studyPhase = getProfileField(profile, 'study_details', 'study_phase');
+            const nPatients = getProfileField(profile, 'study_details', 'number_of_patients');
+            const cancerLoc = getProfileField(profile, 'diagnosis', 'cancer_location');
+            const cancerType = getProfileField(profile, 'diagnosis', 'cancer_type');
+
+            if (studyType) pills.push(escapeHtml(String(studyType)));
+            if (studyPhase) pills.push(escapeHtml(String(studyPhase)));
+            if (nPatients) pills.push(escapeHtml(String(nPatients)) + ' patients');
+            if (cancerLoc) pills.push(escapeHtml(String(cancerLoc)));
+            if (cancerType && cancerType !== cancerLoc) pills.push(escapeHtml(String(cancerType)));
+
+            if (pills.length > 0) {
+                html += '<div class="study-meta-pills" style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem;">';
+                pills.forEach(function renderPill(pill) {
+                    html += `<span style="background: var(--gray-100); color: var(--gray-700); font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 9999px;">${pill}</span>`;
+                });
+                html += '</div>';
+            }
+
+            // Abstract text
+            html += `<div class="study-abstract" style="font-size: 0.9rem; line-height: 1.6; color: var(--gray-700);">${escapeHtml(abstractText)}</div>`;
+
+            // Key outcomes summary if available
+            const outcomes = profile.outcomes || {};
+            const outcomeLines = [];
+            for (const [key, val] of Object.entries(outcomes)) {
+                if (!val || val.value === null || val.value === undefined) continue;
+                const label = val.label || key.replace(/_/g, ' ').replace(/\b\w/g, function capitalize(l) { return l.toUpperCase(); });
+                outcomeLines.push(`<strong>${escapeHtml(label)}:</strong> ${escapeHtml(String(val.value))}`);
+            }
+            if (outcomeLines.length > 0) {
+                html += `<div class="profile-section" style="margin-top: 0.75rem;">
+                    <div class="profile-section-label">Key Outcomes</div>
+                    ${outcomeLines.map(function wrapLine(line) { return '<div class="profile-item">' + line + '</div>'; }).join('')}
+                </div>`;
+            }
+
+            return html;
+        }
+
+        // Render structured profile sections (treatment-focused)
+        function renderStructuredProfile(profile) {
+            let html = '';
+
+            // Treatment Arms
+            const arms = profile.treatment?.study_arms || [];
+            if (arms.length > 0) {
+                html += renderProfileSection('Study Arms', arms.map(arm => {
+                    const lines = [];
+                    if (arm.arm_name) lines.push(`<strong>${escapeHtml(arm.arm_name)}</strong>`);
+                    if (arm.number_of_patients) lines.push(`N=${escapeHtml(String(arm.number_of_patients))}`);
+                    if (arm.description) lines.push(escapeHtml(arm.description));
+                    return { lines, evidence: arm.evidence_quote };
+                }));
+            }
+
+            // Chemotherapy Regimens
+            const chemo = profile.treatment?.chemotherapy_regimens || [];
+            if (chemo.length > 0) {
+                html += renderProfileSection('Chemotherapy Regimens', chemo.map(r => {
+                    const lines = [];
+                    if (r.regimen_name) lines.push(`<strong>${escapeHtml(r.regimen_name)}</strong>`);
+                    if (r.drugs) {
+                        const drugList = Array.isArray(r.drugs) ? r.drugs.join(', ') : r.drugs;
+                        lines.push(`Drugs: ${escapeHtml(drugList)}`);
+                    }
+                    if (r.dosage_info) lines.push(escapeHtml(r.dosage_info));
+                    if (r.schedule_info) lines.push(`Schedule: ${escapeHtml(r.schedule_info)}`);
+                    if (r.number_of_cycles) lines.push(`${escapeHtml(String(r.number_of_cycles))} cycles`);
+                    return { lines, evidence: r.evidence_quote };
+                }));
+            }
+
+            // Radiation Details
+            const radiation = profile.treatment?.radiation_details || [];
+            if (radiation.length > 0) {
+                html += renderProfileSection('Radiation Details', radiation.map(r => {
+                    const lines = [];
+                    if (r.radiation_type) lines.push(`<strong>${escapeHtml(r.radiation_type)}</strong>`);
+                    if (r.total_dose) lines.push(`Dose: ${escapeHtml(r.total_dose)}`);
+                    if (r.fractionation) lines.push(`Fractionation: ${escapeHtml(r.fractionation)}`);
+                    if (r.technique) lines.push(`Technique: ${escapeHtml(r.technique)}`);
+                    if (r.target_volume) lines.push(`Target: ${escapeHtml(r.target_volume)}`);
+                    return { lines, evidence: r.evidence_quote };
+                }));
+            }
+
+            // Surgery Details
+            const surgery = profile.treatment?.surgery_details || [];
+            if (surgery.length > 0) {
+                html += renderProfileSection('Surgery Details', surgery.map(s => {
+                    const lines = [];
+                    if (s.surgery_type) lines.push(`<strong>${escapeHtml(s.surgery_type)}</strong>`);
+                    if (s.description) lines.push(escapeHtml(s.description));
+                    return { lines, evidence: s.evidence_quote };
+                }));
+            }
+
+            // Outcomes
+            const outcomes = profile.outcomes || {};
+            const outcomeItems = [];
+            for (const [key, val] of Object.entries(outcomes)) {
+                if (!val || val.value === null || val.value === undefined) continue;
+                const label = val.label || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                outcomeItems.push({
+                    lines: [`<strong>${escapeHtml(label)}:</strong> ${escapeHtml(String(val.value))}`],
+                    evidence: val.evidence_quote
+                });
+            }
+            if (outcomeItems.length > 0) {
+                html += renderProfileSection('Outcomes', outcomeItems);
+            }
+
+            // Toxicity
+            const toxicity = profile.toxicity || [];
+            if (toxicity.length > 0) {
+                html += renderProfileSection('Toxicity', toxicity.map(t => {
+                    const lines = [];
+                    if (t.toxicity_type) lines.push(`<strong>${escapeHtml(t.toxicity_type)}</strong>`);
+                    if (t.grade) lines.push(`Grade: ${escapeHtml(t.grade)}`);
+                    if (t.frequency) lines.push(`Frequency: ${escapeHtml(t.frequency)}`);
+                    if (t.number_of_patients) lines.push(`Patients: ${escapeHtml(String(t.number_of_patients))}`);
+                    if (t.timing) lines.push(`Timing: ${escapeHtml(t.timing)}`);
+                    return { lines, evidence: t.evidence_quote };
+                }));
+            }
+
+            // Patient Characteristics (brief)
+            const pc = profile.patient_characteristics || {};
+            const pcItems = [];
+            for (const [key, val] of Object.entries(pc)) {
+                if (Array.isArray(val)) continue; // skip criteria arrays
+                if (!val || val.value === null || val.value === undefined) continue;
+                const label = val.label || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                pcItems.push({
+                    lines: [`<strong>${escapeHtml(label)}:</strong> ${escapeHtml(String(val.value))}`],
+                    evidence: null
+                });
+            }
+            if (pcItems.length > 0) {
+                html += renderProfileSection('Patient Characteristics', pcItems);
+            }
+
+            // Diagnosis
+            const diag = profile.diagnosis || {};
+            const diagItems = [];
+            for (const [key, val] of Object.entries(diag)) {
+                if (!val || val.value === null || val.value === undefined) continue;
+                const label = val.label || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                diagItems.push({
+                    lines: [`<strong>${escapeHtml(label)}:</strong> ${escapeHtml(String(val.value))}`],
+                    evidence: null
+                });
+            }
+            if (diagItems.length > 0) {
+                html += renderProfileSection('Diagnosis', diagItems);
+            }
+
+            if (!html) {
+                html = '<div class="study-chunk-text" style="color: var(--gray-500);">No structured treatment data available for this study.</div>';
+            }
+
+            return html;
+        }
+
+        // Render a single profile section with items
+        function renderProfileSection(title, items) {
+            let itemsHtml = items.map(item => {
+                const content = item.lines.join('<br>');
+                const evidenceHtml = item.evidence ? `<div class="profile-evidence-quote">${escapeHtml(item.evidence)}</div>` : '';
+                return `<div class="profile-item">${content}${evidenceHtml}</div>`;
+            }).join('');
+
+            return `
+                <div class="profile-section">
+                    <div class="profile-section-label">${escapeHtml(title)}</div>
+                    ${itemsHtml}
+                </div>
+            `;
+        }
+
+        // Fallback: render raw Qdrant chunks grouped by section
+        function renderRawChunks(study) {
+            const sectionMap = new Map();
+            study.chunks.forEach(c => {
+                const sec = c.section || 'General';
+                if (!sectionMap.has(sec)) sectionMap.set(sec, []);
+                sectionMap.get(sec).push(c);
+            });
+
+            let html = '';
+            sectionMap.forEach((chunks, section) => {
+                const sectionLabel = section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `<div class="study-chunk-section"><div class="study-chunk-section-label">${escapeHtml(sectionLabel)}</div>`;
+                chunks.forEach(c => {
+                    const text = c.content.length > 600 ? c.content.substring(0, 600) + '...' : c.content;
+                    html += `<div class="study-chunk-text">${escapeHtml(text)}</div>`;
+                });
+                html += '</div>';
+            });
+            return html;
+        }
+
+        // Simple markdown to HTML
+        function markdownToHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // Report generation
+        reportBtnComparison.addEventListener('click', async function handleReportClick() {
+            if (!lastComparisonResult) return;
+            reportBtnComparison.disabled = true;
+            try {
+                await api.downloadReport('treatment-comparison', lastComparisonResult, 'treatment-comparison-report.pdf');
+            } catch (e) {
+                alert('Could not generate report: ' + (e.message || 'Unknown error'));
+            }
+            reportBtnComparison.disabled = false;
+        });
+
+        // Advanced Analytics links — pass cancer type context from the comparison query
+        function handleAnalyticsNav(e) {
+            const query = comparisonQuery.value.trim();
+            if (query) {
+                e.preventDefault();
+                sessionStorage.setItem('followupContext', JSON.stringify({
+                    query: query,
+                    timestamp: Date.now()
+                }));
+                console.log('[TreatmentComparison] Passing query context to Advanced Analytics');
+                window.location.href = 'analytics.html';
+            }
+        }
+
+        const analyticsNavLink = document.getElementById('analyticsNavLink');
+        if (analyticsNavLink) {
+            analyticsNavLink.addEventListener('click', handleAnalyticsNav);
+        }
+
+        const bottomAnalyticsLink = document.getElementById('bottomAnalyticsLink');
+        if (bottomAnalyticsLink) {
+            bottomAnalyticsLink.addEventListener('click', handleAnalyticsNav);
+        }
+
+        // Initialize split view
+        splitViewManager.init();
+
+        // ── Review Queue Full Modal ──
+        function showReviewQueueModal(pendingDocId, pendingTitle, pendingDoi, pendingYear) {
+            // Remove existing modal if any
+            var existing = document.getElementById('reviewQueueModal');
+            if (existing) existing.remove();
+
+            var tray = getComparisonTray();
+
+            var overlay = document.createElement('div');
+            overlay.id = 'reviewQueueModal';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+            var modal = document.createElement('div');
+            modal.style.cssText = 'background:#fff;border-radius:12px;padding:1.5rem;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
+
+            var title = document.createElement('h3');
+            title.style.cssText = 'margin:0 0 0.25rem 0;font-size:1rem;color:#0f172a;';
+            title.textContent = 'Maximum number of studies has been reached.';
+            modal.appendChild(title);
+
+            var subtitle = document.createElement('p');
+            subtitle.style.cssText = 'margin:0 0 1rem 0;font-size:0.85rem;color:#64748b;';
+            subtitle.textContent = 'Choose one or more studies to remove:';
+            modal.appendChild(subtitle);
+
+            var list = document.createElement('div');
+            list.id = 'reviewQueueModalList';
+            list.style.cssText = 'display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.25rem;';
+
+            function renderModalList() {
+                list.innerHTML = '';
+                var currentTray = getComparisonTray();
+                currentTray.forEach(function renderItem(study) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;';
+
+                    var removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.textContent = '-';
+                    removeBtn.style.cssText = 'width:28px;height:28px;border-radius:50%;border:1px solid #e2e8f0;background:#fff;color:#ef4444;font-size:1.1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;';
+                    removeBtn.addEventListener('mouseenter', function() { removeBtn.style.background = '#fef2f2'; });
+                    removeBtn.addEventListener('mouseleave', function() { removeBtn.style.background = '#fff'; });
+                    removeBtn.addEventListener('click', function handleModalRemove() {
+                        var t = getComparisonTray();
+                        var idx = t.findIndex(function findS(s) { return s.doc_id === study.doc_id; });
+                        if (idx >= 0) {
+                            t.splice(idx, 1);
+                            saveComparisonTray(t);
+                            // Update the corresponding page button if visible
+                            var pageBtn = document.querySelector('.add-to-review-btn[data-doc-id="' + study.doc_id + '"]');
+                            if (pageBtn) {
+                                pageBtn.textContent = 'Add to Study Review';
+                                pageBtn.classList.remove('btn-primary');
+                                pageBtn.classList.add('btn-outline');
+                            }
+                            updateComparisonBadge();
+                            console.log('[TreatmentComparison] Removed from review queue via modal:', study.doc_id);
+                        }
+                        renderModalList();
+                    });
+
+                    var label = document.createElement('span');
+                    label.style.cssText = 'font-size:0.85rem;color:#334155;line-height:1.3;';
+                    label.textContent = study.title || study.doc_id || 'Unknown Study';
+
+                    row.appendChild(removeBtn);
+                    row.appendChild(label);
+                    list.appendChild(row);
+                });
+
+                if (currentTray.length === 0) {
+                    var empty = document.createElement('p');
+                    empty.style.cssText = 'color:#94a3b8;font-size:0.85rem;text-align:center;margin:0.5rem 0;';
+                    empty.textContent = 'No studies in queue.';
+                    list.appendChild(empty);
+                }
+            }
+
+            renderModalList();
+            modal.appendChild(list);
+
+            var doneBtn = document.createElement('button');
+            doneBtn.type = 'button';
+            doneBtn.textContent = 'Done';
+            doneBtn.style.cssText = 'width:100%;padding:0.5rem 1rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;transition:background 0.15s;';
+            doneBtn.addEventListener('mouseenter', function() { doneBtn.style.background = '#1d4ed8'; });
+            doneBtn.addEventListener('mouseleave', function() { doneBtn.style.background = '#2563eb'; });
+            doneBtn.addEventListener('click', function handleModalDone() {
+                overlay.remove();
+                // If there is now room, auto-add the pending study
+                var t = getComparisonTray();
+                if (t.length < 4 && pendingDocId) {
+                    var alreadyIn = t.some(function checkDup(s) { return s.doc_id === pendingDocId; });
+                    if (!alreadyIn) {
+                        t.push({ doc_id: pendingDocId, title: pendingTitle, doi: pendingDoi, year: pendingYear });
+                        saveComparisonTray(t);
+                        var pageBtn = document.querySelector('.add-to-review-btn[data-doc-id="' + pendingDocId + '"]');
+                        if (pageBtn) {
+                            pageBtn.textContent = 'In Review Queue';
+                            pageBtn.classList.remove('btn-outline');
+                            pageBtn.classList.add('btn-primary');
+                        }
+                        updateComparisonBadge();
+                        console.log('[TreatmentComparison] Auto-added after modal:', pendingDocId);
+                    }
+                }
+            });
+            modal.appendChild(doneBtn);
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            // Close on overlay click (outside modal)
+            overlay.addEventListener('click', function handleOverlayClick(e) {
+                if (e.target === overlay) {
+                    doneBtn.click();
+                }
+            });
+        }
+
+        // Delegated click handler for "Add to Study Review" buttons
+        document.addEventListener('click', function handleReviewQueueClick(e) {
+            const btn = e.target.closest('.add-to-review-btn');
+            if (!btn) return;
+
+            const docId = btn.dataset.docId;
+            const studyTitle = btn.dataset.title;
+            const doi = btn.dataset.doi;
+            const year = btn.dataset.year;
+
+            if (!docId) return;
+
+            var tray = getComparisonTray();
+            var index = tray.findIndex(function findStudy(s) { return s.doc_id === docId; });
+
+            if (index >= 0) {
+                tray.splice(index, 1);
+                saveComparisonTray(tray);
+                btn.textContent = 'Add to Study Review';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline');
+                console.log('[TreatmentComparison] Removed from review queue:', docId);
+            } else {
+                if (tray.length >= 4) {
+                    showReviewQueueModal(docId, studyTitle, doi, year);
+                    return;
+                }
+                tray.push({ doc_id: docId, title: studyTitle, doi: doi, year: year });
+                saveComparisonTray(tray);
+                btn.textContent = 'In Review Queue';
+                btn.classList.remove('btn-outline');
+                btn.classList.add('btn-primary');
+                console.log('[TreatmentComparison] Added to review queue:', docId);
+            }
+
+            updateComparisonBadge();
+        });
+
+        // ── Inline Study Q&A ──
+        var inlineQAConversations = {};
+
+        function buildInlineQAHtml(studyId, studyTitle) {
+            var truncTitle = studyTitle.length > 70 ? studyTitle.substring(0, 70) + '...' : studyTitle;
+            return '<div class="inline-qa-panel" data-qa-study="' + escapeHtml(studyId) + '">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
+                    '<div style="font-weight:600;font-size:0.88rem;color:var(--gray-800);">Ask about this study</div>' +
+                    '<button type="button" class="inline-qa-close" style="background:none;border:none;font-size:1.2rem;color:var(--gray-400);cursor:pointer;padding:0 0.25rem;" title="Close">&times;</button>' +
+                '</div>' +
+                '<div class="inline-qa-study-name" style="font-size:0.78rem;color:var(--gray-500);margin-bottom:0.75rem;line-height:1.3;" title="' + escapeHtml(studyTitle) + '">' + escapeHtml(truncTitle) + '</div>' +
+                '<div class="inline-qa-messages" style="max-height:300px;overflow-y:auto;margin-bottom:0.75rem;">' +
+                    '<div class="inline-qa-welcome" style="color:var(--gray-500);font-size:0.82rem;">' +
+                        '<p style="margin:0 0 0.5rem 0;">Ask me anything about this study. For example:</p>' +
+                        '<div style="display:flex;flex-direction:column;gap:0.35rem;">' +
+                            '<button type="button" class="inline-qa-example btn btn-outline btn-sm" style="font-size:0.75rem;text-align:left;">What were the primary endpoints?</button>' +
+                            '<button type="button" class="inline-qa-example btn btn-outline btn-sm" style="font-size:0.75rem;text-align:left;">What were the inclusion criteria?</button>' +
+                            '<button type="button" class="inline-qa-example btn btn-outline btn-sm" style="font-size:0.75rem;text-align:left;">What toxicities were reported?</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:flex;gap:0.5rem;">' +
+                    '<textarea class="inline-qa-input form-input" placeholder="Ask a question about this study..." rows="1" style="flex:1;font-size:0.82rem;padding:0.4rem 0.6rem;resize:none;min-height:36px;"></textarea>' +
+                    '<button type="button" class="inline-qa-send btn btn-accent btn-sm" style="padding:0.4rem 0.75rem;font-size:0.88rem;align-self:flex-end;">Send</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function addInlineQAMessage(messagesEl, content, role, isLoading) {
+            var welcomeEl = messagesEl.querySelector('.inline-qa-welcome');
+            if (welcomeEl) welcomeEl.remove();
+
+            var msgDiv = document.createElement('div');
+            msgDiv.style.cssText = 'display:flex;gap:0.5rem;margin-bottom:0.5rem;' + (role === 'user' ? 'flex-direction:row-reverse;' : '');
+
+            if (isLoading) {
+                msgDiv.className = 'inline-qa-loading';
+                msgDiv.innerHTML = '<div style="padding:0.4rem 0.75rem;background:var(--gray-100);border-radius:8px;font-size:0.82rem;color:var(--gray-500);">Thinking...</div>';
+            } else {
+                var avatarLabel = role === 'user' ? 'You' : 'AI';
+                var avatarBg = role === 'user' ? 'var(--primary)' : 'var(--gray-200)';
+                var avatarColor = role === 'user' ? '#fff' : 'var(--gray-700)';
+                var bubbleBg = role === 'user' ? 'var(--primary)' : 'var(--gray-100)';
+                var bubbleColor = role === 'user' ? '#fff' : 'var(--gray-800)';
+
+                msgDiv.innerHTML = '<div style="width:24px;height:24px;border-radius:50%;background:' + avatarBg + ';color:' + avatarColor + ';display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;">' + avatarLabel + '</div>' +
+                    '<div style="padding:0.4rem 0.75rem;background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:8px;font-size:0.82rem;line-height:1.5;max-width:85%;">' + formatInlineQAMessage(content) + '</div>';
+            }
+
+            messagesEl.appendChild(msgDiv);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            return msgDiv;
+        }
+
+        function formatInlineQAMessage(content) {
+            if (!content) return '';
+            return escapeHtml(content).replace(/\n/g, '<br>');
+        }
+
+        async function sendInlineQAQuestion(panelEl) {
+            var studyId = panelEl.dataset.qaStudy;
+            var inputEl = panelEl.querySelector('.inline-qa-input');
+            var messagesEl = panelEl.querySelector('.inline-qa-messages');
+            var question = inputEl ? inputEl.value.trim() : '';
+            if (!question || !messagesEl) return;
+
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+
+            var conv = inlineQAConversations[studyId] || { history: [], meta: {} };
+            inlineQAConversations[studyId] = conv;
+
+            addInlineQAMessage(messagesEl, question, 'user', false);
+            var loadingEl = addInlineQAMessage(messagesEl, '', 'assistant', true);
+
+            try {
+                var response = await fetch(CONFIG.API_BASE + '/rag/query/study', {
+                    method: 'POST',
+                    headers: Object.assign(
+                        { 'Content-Type': 'application/json' },
+                        localStorage.getItem('exueed_token') ? { 'Authorization': 'Bearer ' + localStorage.getItem('exueed_token') } : {}
+                    ),
+                    body: JSON.stringify({
+                        question: question,
+                        study_id: conv.meta.studyId || studyId,
+                        study_doi: conv.meta.doi || '',
+                        study_pmid: conv.meta.pmid || '',
+                        study_title: conv.meta.title || '',
+                        conversation_history: conv.history
+                    })
+                });
+
+                if (loadingEl) loadingEl.remove();
+
+                if (!response.ok) {
+                    var err = await response.json().catch(function() { return {}; });
+                    console.error('[InlineQA] Error response:', err);
+                    addInlineQAMessage(messagesEl, 'Error: ' + (err.detail || response.status), 'assistant', false);
+                    return;
+                }
+
+                var data = await response.json();
+                addInlineQAMessage(messagesEl, data.answer, 'assistant', false);
+
+                conv.history.push({ role: 'user', content: question });
+                conv.history.push({ role: 'assistant', content: data.answer });
+
+            } catch (error) {
+                if (loadingEl) loadingEl.remove();
+                console.error('[InlineQA] Error:', error);
+                addInlineQAMessage(messagesEl, 'Error: ' + error.message, 'assistant', false);
+            }
+        }
+
+        // Delegated handler for inline QA buttons and interactions
+        document.addEventListener('click', function handleInlineQAClick(e) {
+            // "Have questions about this trial?" button
+            var qaBtn = e.target.closest('.inline-qa-btn');
+            if (qaBtn) {
+                var triggerDiv = qaBtn.closest('.inline-qa-trigger');
+                if (!triggerDiv) return;
+
+                // Check if QA panel already exists
+                var existingPanel = triggerDiv.querySelector('.inline-qa-panel');
+                if (existingPanel) {
+                    existingPanel.style.display = existingPanel.style.display === 'none' ? 'block' : 'none';
+                    return;
+                }
+
+                var studyId = qaBtn.dataset.studyId || '';
+                var studyTitle = qaBtn.dataset.studyTitle || '';
+                var studyDoi = qaBtn.dataset.studyDoi || '';
+                var studyPmid = qaBtn.dataset.studyPmid || '';
+
+                // Store metadata for this study's conversation
+                inlineQAConversations[studyId] = {
+                    history: [],
+                    meta: { studyId: studyId, title: studyTitle, doi: studyDoi, pmid: studyPmid }
+                };
+
+                // Hide the button, insert QA panel
+                qaBtn.style.display = 'none';
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = buildInlineQAHtml(studyId, studyTitle);
+                var panel = wrapper.firstChild;
+                panel.style.cssText = 'margin-top:0.75rem;padding:1rem;background:var(--gray-50, #f8fafc);border:1px solid var(--gray-200);border-radius:8px;';
+                triggerDiv.appendChild(panel);
+
+                var inputEl = panel.querySelector('.inline-qa-input');
+                if (inputEl) {
+                    inputEl.addEventListener('input', function handleQAInputResize() {
+                        this.style.height = 'auto';
+                        this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+                    });
+                    inputEl.addEventListener('keydown', function handleQAInputKeydown(ev) {
+                        if (ev.key === 'Enter' && !ev.shiftKey) {
+                            ev.preventDefault();
+                            sendInlineQAQuestion(panel);
+                        }
+                    });
+                    inputEl.focus();
+                }
+
+                console.log('[InlineQA] Opened Q&A for study:', studyId);
+                return;
+            }
+
+            // Close button
+            var closeBtn = e.target.closest('.inline-qa-close');
+            if (closeBtn) {
+                var panel = closeBtn.closest('.inline-qa-panel');
+                if (panel) {
+                    var trigger = panel.closest('.inline-qa-trigger');
+                    var origBtn = trigger ? trigger.querySelector('.inline-qa-btn') : null;
+                    panel.remove();
+                    if (origBtn) origBtn.style.display = '';
+                }
+                return;
+            }
+
+            // Example question buttons
+            var exampleBtn = e.target.closest('.inline-qa-example');
+            if (exampleBtn) {
+                var panel = exampleBtn.closest('.inline-qa-panel');
+                if (panel) {
+                    var inputEl = panel.querySelector('.inline-qa-input');
+                    if (inputEl) {
+                        inputEl.value = exampleBtn.textContent;
+                        sendInlineQAQuestion(panel);
+                    }
+                }
+                return;
+            }
+
+            // Send button
+            var sendBtn = e.target.closest('.inline-qa-send');
+            if (sendBtn) {
+                var panel = sendBtn.closest('.inline-qa-panel');
+                if (panel) sendInlineQAQuestion(panel);
+                return;
+            }
+        });
+    </script>
+</body>
+</html>

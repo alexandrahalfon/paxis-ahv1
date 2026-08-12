@@ -1,0 +1,19 @@
+-r base.txt
+
+# FastAPI and web server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# CORS and security
+fastapi-cors>=0.0.6
+
+# Auth
+passlib[bcrypt]>=1.7.4
+python-jose>=3.3.0
+email-validator>=2.1.1
+bcrypt<4.0
+
+# Report generation
+jinja2>=3.1.0
+reportlab>=4.0.0

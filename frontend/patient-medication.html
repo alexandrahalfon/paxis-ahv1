@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About My Medication - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .pt-wrap { max-width: 800px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .pt-head { margin-bottom: var(--spacing-lg); }
+        .pt-head h1 { font-size: 1.7rem; margin-bottom: var(--spacing-xs); }
+        .pt-head p { color: var(--gray-600); margin: 0; }
+        .pt-note { font-size: 0.85rem; color: var(--gray-600); background: var(--gray-50);
+            border-left: 3px solid var(--primary); border-radius: var(--radius-sm);
+            padding: var(--spacing-sm) var(--spacing-md); margin: var(--spacing-md) 0; line-height: 1.55; }
+        .pt-row { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; }
+        .pt-row .form-group { flex: 1; min-width: 240px; margin-bottom: 0; }
+        .pt-result { margin-top: var(--spacing-lg); }
+        .pt-result .card { padding: var(--spacing-lg); }
+        .pt-result h2, .pt-result h3 { font-size: 1.02rem; margin: var(--spacing-md) 0 var(--spacing-xs); }
+        .pt-result h2:first-child, .pt-result h3:first-child { margin-top: 0; }
+        .pt-result p, .pt-result li { color: var(--gray-700); line-height: 1.65; }
+        .pt-result ul { margin: 0 0 var(--spacing-md) 1.1rem; }
+        .pt-sources { font-size: 0.8rem; color: var(--gray-500); margin-top: var(--spacing-md);
+            padding-top: var(--spacing-md); border-top: 1px solid var(--gray-200); }
+        .pt-msg { padding: var(--spacing-md); border-radius: var(--radius-md); font-size: 0.9rem;
+            margin-top: var(--spacing-md); display: none; }
+        .pt-msg.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger-dark); display: block; }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height:48px;width:auto;">
+                </a>
+                <ul class="nav-links">
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="pt-wrap">
+            <div class="pt-head">
+                <h1>About my medication</h1>
+                <p>Enter a treatment you're on or have been told about, and get a plain-language summary of what it is and what the research looks at.</p>
+            </div>
+
+            <div class="card" style="padding: var(--spacing-lg);">
+                <div class="pt-row">
+                    <div class="form-group">
+                        <label class="form-label" for="medInput">Medication name</label>
+                        <input class="form-input" type="text" id="medInput"
+                               placeholder="e.g. pembrolizumab, or the name on your bottle">
+                    </div>
+                    <button class="btn btn-primary" id="medBtn">Look it up</button>
+                </div>
+                <div class="pt-note">
+                    This explains what researchers have found in groups of people. It can't tell
+                    you what will happen for you, and it won't suggest changing anything about
+                    your treatment. Those are conversations for your care team.
+                </div>
+                <div class="pt-msg" id="medMsg"></div>
+            </div>
+
+            <div class="pt-result is-hidden" id="medResult">
+                <div class="card">
+                    <div id="medAnswer"></div>
+                    <div class="pt-sources is-hidden" id="medSources"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('medication', 'patient');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var input = document.getElementById('medInput');
+        var btn = document.getElementById('medBtn');
+        var msg = document.getElementById('medMsg');
+
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function showErr(t) { msg.className = 'pt-msg err'; msg.textContent = t; }
+
+        if (!token) { showErr('Please log in to use this.'); btn.disabled = true; return; }
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); run(); }
+        });
+        btn.addEventListener('click', run);
+
+        async function run() {
+            var med = input.value.trim();
+            if (!med) { showErr('Enter a medication name first.'); return; }
+            msg.className = 'pt-msg';
+            btn.disabled = true; btn.textContent = 'Looking...';
+            try {
+                var res = await fetch(BASE + '/portal/medication', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ medication: med })
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Could not look that up');
+
+                // Escape before markdown: the renderer passes raw HTML through
+                // and this is model output.
+                document.getElementById('medAnswer').innerHTML =
+                    (typeof markdownToHtml === 'function')
+                        ? markdownToHtml(esc(data.answer || ''))
+                        : esc(data.answer || '');
+
+                var srcEl = document.getElementById('medSources');
+                if (data.sources && data.sources.length) {
+                    srcEl.innerHTML = '<strong>Based on:</strong> ' + data.sources.map(function (s) {
+                        return esc((s.title || 'Source').substring(0, 70)) + (s.year ? ' (' + esc(s.year) + ')' : '');
+                    }).join('; ') + (data.used_web_search
+                        ? '<br>These came from recent published research rather than our reviewed library, so they may be more technical.'
+                        : '');
+                    srcEl.classList.remove('is-hidden');
+                } else {
+                    srcEl.classList.add('is-hidden');
+                }
+                document.getElementById('medResult').classList.remove('is-hidden');
+            } catch (e) {
+                showErr(e.message);
+            } finally {
+                btn.disabled = false; btn.textContent = 'Look it up';
+            }
+        }
+    })();
+    </script>
+</body>
+</html>

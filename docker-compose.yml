@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-exueed_kb_latest}
+      - CACHE_POSTGRES_HOST=${CACHE_POSTGRES_HOST}
+      - CACHE_POSTGRES_PORT=${CACHE_POSTGRES_PORT}
+      - CACHE_POSTGRES_USER=${CACHE_POSTGRES_USER}
+      - CACHE_POSTGRES_PASSWORD=${CACHE_POSTGRES_PASSWORD}
+      - CACHE_POSTGRES_DATABASE=${CACHE_POSTGRES_DATABASE}
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./processed_documents:/app/processed_documents
+      - ./downloads:/app/downloads
+      - ./cache:/app/cache
+      - ./ingestion_output:/app/ingestion_output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    restart: unless-stopped

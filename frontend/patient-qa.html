@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For Patients - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Page-specific only. The chat itself uses the shared .chat-*
+           and .message-* classes from styles.css, so it matches the
+           clinician chat rather than being a second, smaller design. */
+        .pq-wrap { max-width: 900px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .pq-head { text-align: center; margin-bottom: var(--spacing-lg); }
+        .pq-head h1 { font-size: 1.7rem; margin-bottom: var(--spacing-xs); }
+        .pq-head p { color: var(--gray-600); margin: 0; }
+
+        .pq-notice {
+            background: #fff7f9; border: 1px solid #fbcfe0;
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            font-size: 0.875rem; color: var(--gray-700); line-height: 1.6;
+        }
+        .pq-notice strong { color: var(--gray-900); }
+
+        /* Follow-up question and the escalation offer read as assistant
+           messages, so they reuse .message.ai and only tint the bubble. */
+        .message.ai .message-content.pq-followup {
+            background: #fff7f9; border-color: #fbcfe0;
+        }
+        .message-sources { font-size: 0.8rem; color: var(--gray-500); }
+        .message-sources a { color: var(--primary); }
+        .pq-clear {
+            background: none; border: none; cursor: pointer;
+            font-size: 0.82rem; font-weight: 700; color: var(--gray-500);
+        }
+        .pq-clear:hover { color: var(--primary); }
+        .pq-chat-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-bottom: 1px solid var(--gray-200); background: var(--gray-50);
+        }
+        .pq-chat-head span { font-weight: 700; color: var(--gray-800); }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                                        <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Side Navigation (injected by sideNav.js) -->
+
+    <!-- Main Content -->
+    <section class="section">
+        <div class="pq-wrap">
+            <div class="pq-head">
+                <h1>Ask about your care</h1>
+                <p>
+                    Plain-language answers about your diagnosis, treatment, and what to expect.
+                    Ask before a visit to work out what to raise, or after one to make sense of
+                    what you were told.
+                </p>
+            </div>
+
+            <div class="pq-notice">
+                <strong>Important notice.</strong>
+                This assistant helps you understand your care in simple terms. It is
+                <strong>not</strong> a substitute for advice from your doctor or nurse,
+                and it will <strong>not</strong> recommend changes to your treatment plan.
+                Always contact your care team with specific medical concerns.
+            </div>
+
+            <div class="chat-container">
+                <div class="pq-chat-head">
+                    <span>Your questions</span>
+                    <span>
+                        <button class="pq-clear" id="prepBtn" title="Turn what you've asked into a list for your next visit">Prepare for a visit</button>
+                        <button class="pq-clear" id="clearBtn" style="margin-left:var(--spacing-md);">Clear conversation</button>
+                    </span>
+                </div>
+                <div class="chat-messages" id="patientMessages"></div>
+                <div class="chat-input-container">
+                    <textarea
+                        class="chat-input"
+                        id="patientInput"
+                        placeholder="Tell me what's going on, or ask a question..."
+                        rows="2"
+                    ></textarea>
+                    <button class="btn btn-primary" id="patientSendBtn">Send</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. For educational purposes only, not a substitute for professional medical advice.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('ask', 'patient');
+    </script>
+    <script>
+    (function() {
+        var conversationHistory = [];
+        var messagesEl = document.getElementById('patientMessages');
+        var inputEl = document.getElementById('patientInput');
+        var sendBtn = document.getElementById('patientSendBtn');
+        var clearBtn = document.getElementById('clearBtn');
+
+        // Auto-resize textarea
+        inputEl.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Send on Enter (Shift+Enter = newline)
+        inputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+        clearBtn.addEventListener('click', function() {
+            conversationHistory = [];
+            messagesEl.innerHTML = '';
+            greet();
+        });
+
+        /**
+         * Renders into the shared .message / .message-avatar /
+         * .message-content structure from styles.css, so this chat looks
+         * identical to the clinician one rather than being a second,
+         * smaller design.
+         */
+        function appendMessage(role, html, disclaimer, sources, extraClass) {
+            var isUser = role === 'user';
+            var wrap = document.createElement('div');
+            wrap.className = 'message ' + (isUser ? 'user' : 'ai');
+
+            var avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = isUser ? 'You' : 'P';
+
+            var content = document.createElement('div');
+            content.className = 'message-content' + (extraClass ? ' ' + extraClass : '');
+            content.innerHTML = html;
+
+            if (!isUser && sources && sources.length > 0) {
+                var srcHtml = '<div class="message-sources"><strong>Sources:</strong> ';
+                srcHtml += sources.map(function (s) {
+                    var label = (s.title || 'Source').substring(0, 60);
+                    if (s.doi) {
+                        return '<a href="https://doi.org/' + escHtml(s.doi) +
+                               '" target="_blank" rel="noopener">' + escHtml(label) + '</a>';
+                    }
+                    return escHtml(label) + (s.year ? ' (' + s.year + ')' : '');
+                }).join('; ');
+                content.innerHTML += srcHtml + '</div>';
+            }
+            if (!isUser && disclaimer) {
+                content.innerHTML += '<div class="message-sources">' + escHtml(disclaimer) + '</div>';
+            }
+
+            wrap.appendChild(avatar);
+            wrap.appendChild(content);
+            messagesEl.appendChild(wrap);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            return content;
+        }
+
+        function escHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function showLoading() {
+            var wrap = document.createElement('div');
+            wrap.className = 'message ai';
+            wrap.id = 'patientLoading';
+            wrap.innerHTML =
+                '<div class="message-avatar">P</div>' +
+                '<div class="message-content"><em>Thinking...</em></div>';
+            messagesEl.appendChild(wrap);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function hideLoading() {
+            var el = document.getElementById('patientLoading');
+            if (el) el.remove();
+        }
+
+        // Signed-in patients use the portal endpoint, which adds safety
+        // triage, memory, their linked diagnosis, and the ability to send
+        // a question to their doctor. Signed-out visitors keep the
+        // original open endpoint so the page still works without an
+        // account (that endpoint now runs the same triage server-side).
+        var token = localStorage.getItem('exueed_token');
+        var conversationId = null;
+        var lastQuestion = null;
+        var API = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+
+        function renderFollowup(text) {
+            appendMessage('assistant', escHtml(text), null, null, 'pq-followup');
+        }
+
+        function renderEscalateOffer() {
+            var wrap = appendMessage('assistant',
+                '<div style="margin-bottom:.6rem;">This is really a question for your care team. ' +
+                'Would you like me to send it to them, along with a summary of what you asked?</div>',
+                null, null, 'pq-followup');
+            var btn = document.createElement('button');
+            btn.className = 'btn btn-primary btn-sm';
+            btn.textContent = 'Send to my doctor';
+            btn.addEventListener('click', async function () {
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+                try {
+                    var r = await fetch(API + '/portal/escalate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify({
+                            question: lastQuestion,
+                            conversation_id: conversationId
+                        })
+                    });
+                    var body = await r.json();
+                    btn.textContent = r.ok ? 'Sent to your doctor' : (body.detail || 'Could not send');
+                } catch (e) {
+                    btn.textContent = 'Could not send';
+                }
+            });
+            wrap.appendChild(btn);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        async function sendMessage() {
+            var question = inputEl.value.trim();
+            if (!question) return;
+
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+            sendBtn.disabled = true;
+            lastQuestion = question;
+
+            appendMessage('user', escHtml(question));
+            conversationHistory.push({ role: 'user', content: question });
+
+            showLoading();
+
+            try {
+                var resp;
+                if (token) {
+                    resp = await fetch(API + '/portal/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify({
+                            message: question,
+                            conversation_id: conversationId,
+                            conversation_history: conversationHistory.slice(-10)
+                        })
+                    });
+                } else {
+                    resp = await fetch(API + '/rag/patient-query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            question: question,
+                            conversation_history: conversationHistory.slice(-10)
+                        })
+                    });
+                }
+
+                hideLoading();
+
+                if (!resp.ok) {
+                    appendMessage('assistant',
+                        '<span style="color:#dc2626;">Sorry, something went wrong. Please try again.</span>',
+                        null, null);
+                    return;
+                }
+
+                var data = await resp.json();
+                if (data.conversation_id) conversationId = data.conversation_id;
+
+                // Escape before markdown rendering. markdownToHtml passes raw
+                // HTML straight through, and this text is model output that a
+                // prompt-injected message could steer into emitting a script
+                // tag. Escaping first still renders markdown correctly, since
+                // bold/lists/headings contain no angle brackets.
+                var answerHtml = (typeof markdownToHtml === 'function')
+                    ? markdownToHtml(escHtml(data.answer || ''))
+                    : escHtml(data.answer || '');
+
+                // Emergencies are shown without sources or disclaimer so
+                // nothing competes with the instruction to get help.
+                var isEmergency = data.safety_category === 'emergency';
+                appendMessage(
+                    'assistant',
+                    answerHtml,
+                    isEmergency ? null : data.disclaimer,
+                    isEmergency ? null : data.sources
+                );
+                conversationHistory.push({ role: 'assistant', content: data.answer || '' });
+
+                if (data.used_web_search) {
+                    var note = document.createElement('div');
+                    note.className = 'message-sources';
+                    note.style.marginTop = '0.35rem';
+                    note.textContent =
+                        'These came from recent published research rather than our ' +
+                        'reviewed library, so they may be more technical.';
+                    var lastBubble = messagesEl.lastElementChild.querySelector('.message-content');
+                    if (lastBubble) lastBubble.appendChild(note);
+                }
+
+                if (data.followup_question) renderFollowup(data.followup_question);
+                if (data.offer_escalation && token) renderEscalateOffer();
+
+            } catch (e) {
+                hideLoading();
+                appendMessage('assistant',
+                    '<span style="color:#dc2626;">Network error, please check your connection and try again.</span>',
+                    null, null);
+            } finally {
+                sendBtn.disabled = false;
+                inputEl.focus();
+            }
+        }
+
+        /**
+         * Opening message. Invites the patient to describe their situation in
+         * their own words rather than presenting an empty box, which is
+         * intimidating when you don't know the right terminology. Adapts to
+         * whether a care team is connected; being unconnected is presented as
+         * completely normal, not as something missing.
+         */
+        async function greet() {
+            var name = '';
+            var linked = false;
+            if (token) {
+                try {
+                    var res = await fetch(API + '/portal/me', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (res.ok) {
+                        var d = await res.json();
+                        linked = !!d.linked;
+                        name = (d.user && d.user.first_name) ? d.user.first_name : '';
+                    }
+                } catch (e) { /* greet generically */ }
+            }
+
+            var hello = name ? ('Hi ' + escHtml(name) + '.') : 'Hi there.';
+            var body;
+            if (linked) {
+                body = "I can see your diagnosis and treatment from your care team, so you " +
+                       "don't need to explain the background. What's on your mind today?";
+            } else {
+                body = "Tell me a bit about what's going on, in whatever words feel natural. " +
+                       "You don't need to know any medical terms, and it's completely fine if " +
+                       "you're not sure of the details. You can also just ask a question straight away.";
+            }
+
+            appendMessage('assistant', '<strong>' + hello + '</strong><br>' + body);
+        }
+
+        /**
+         * Turn what they have been asking about into a list of questions
+         * for their next appointment. Uses their saved messages server
+         * side, so it works across sessions rather than only this tab.
+         */
+        var prepBtn = document.getElementById('prepBtn');
+        if (prepBtn) {
+            prepBtn.addEventListener('click', async function () {
+                if (!token) {
+                    appendMessage('assistant',
+                        'Log in and ask a few questions first, then I can turn them into a list for your visit.');
+                    return;
+                }
+                prepBtn.disabled = true;
+                var original = prepBtn.textContent;
+                prepBtn.textContent = 'Preparing...';
+                showLoading();
+                try {
+                    var res = await fetch(API + '/portal/question-prep', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+                    });
+                    var data = await res.json();
+                    hideLoading();
+                    if (!res.ok) throw new Error(data.detail || 'Could not prepare a list');
+                    var html = (typeof markdownToHtml === 'function')
+                        ? markdownToHtml(escHtml(data.answer || ''))
+                        : escHtml(data.answer || '');
+                    var bubble = appendMessage('assistant', html, null, null, 'pq-followup');
+
+                    var print = document.createElement('button');
+                    print.className = 'btn btn-outline btn-sm';
+                    print.style.marginTop = '0.6rem';
+                    print.textContent = 'Print this list';
+                    print.addEventListener('click', function () { window.print(); });
+                    bubble.appendChild(print);
+                } catch (e) {
+                    hideLoading();
+                    appendMessage('assistant',
+                        '<span style="color:#dc2626;">' + escHtml(e.message) + '</span>');
+                } finally {
+                    prepBtn.disabled = false;
+                    prepBtn.textContent = original;
+                }
+            });
+        }
+
+        /**
+         * A question typed on the home page hero is handed over via
+         * sessionStorage, so it never appears in a URL or browser history.
+         * Greet first, then ask it, so the flow reads naturally.
+         */
+        function consumePendingQuestion() {
+            var pending = sessionStorage.getItem('paxis_pending_question');
+            if (!pending) return false;
+            sessionStorage.removeItem('paxis_pending_question');
+            inputEl.value = pending;
+            setTimeout(sendMessage, 350);
+            return true;
+        }
+
+        greet();
+        consumePendingQuestion();
+    })();
+    </script>
+</body>
+</html>

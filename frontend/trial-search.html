@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trial Finder - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/studyDetails.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html" class="active">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <section class="section">
+        <div class="container">
+            <div style="max-width: 900px; margin: 0 auto;">
+                <div class="page-logo">
+                    <img src="assets/paxis-mark.png" alt="Paxis mark">
+                </div>
+                <div class="feature-nav">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                    <a href="trial-search.html" class="btn btn-secondary btn-sm">Trial Finder</a>
+                </div>
+                <h1 class="text-center" style="margin-bottom: 0.5rem;">Trial Finder</h1>
+                <p class="text-center" style="color: var(--gray-600); margin-bottom: 0.75rem;">
+                    Search ClinicalTrials.gov using a patient case or structured details.
+                </p>
+                <div class="text-center" style="margin-bottom: 1.5rem;">
+                    <button type="button" class="btn-how-to-use" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                        How to use
+                    </button>
+                    <div class="how-to-use-panel" style="display: none;">
+                        <p><strong>Trial Finder</strong> searches ClinicalTrials.gov for clinical trials that may be relevant to your patient.</p>
+                        <ol>
+                            <li>Describe your patient case in the text box — include cancer type, stage, biomarkers, age, ECOG, and any prior treatments.</li>
+                            <li>The system extracts structured details automatically using AI.</li>
+                            <li>Optionally expand <em>Advanced fields &amp; filters</em> to override or add details (e.g., location, recruiting status, trial phase).</li>
+                            <li>Results are ranked by how well each trial matches your patient profile.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <form id="trialSearchForm">
+                            <div class="form-group">
+                                <label class="form-label" for="trialQuery">Patient/case description</label>
+                                <textarea
+                                    id="trialQuery"
+                                    class="form-input"
+                                    rows="4"
+                                    placeholder="e.g., 65-year-old male with metastatic NSCLC, EGFR+, ECOG 1, progressed after osimertinib."
+                                ></textarea>
+                                <p style="font-size: 0.875rem; color: var(--gray-500); margin-top: 0.5rem;">
+                                    Include age, sex, cancer type/site, stage, histology, biomarkers, ECOG if known.
+                                </p>
+                            </div>
+
+                            <details class="advanced-fields-toggle">
+                                <summary class="btn btn-outline btn-sm" style="cursor: pointer; margin-bottom: 1rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                                    <span class="toggle-arrow">▸</span> Advanced fields &amp; filters
+                                </summary>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label">Cancer Type</label>
+                                        <input type="text" id="cancer_type" class="form-input" placeholder="e.g., NSCLC">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Anatomical Site</label>
+                                        <input type="text" id="anatomical_site" class="form-input" placeholder="e.g., lung">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Stage</label>
+                                        <input type="text" id="cancer_stage" class="form-input" placeholder="e.g., III or IV">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Histology</label>
+                                        <input type="text" id="histology" class="form-input" placeholder="e.g., adenocarcinoma">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Biomarkers</label>
+                                        <input type="text" id="molecular_markers" class="form-input" placeholder="e.g., EGFR+, PD-L1 (comma-separated)">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Gender</label>
+                                        <select id="gender" class="form-select">
+                                            <option value="">Any</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Age</label>
+                                        <input type="number" id="age" class="form-input" min="0" max="120" placeholder="Age">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Performance Status</label>
+                                        <select id="performance_status" class="form-select">
+                                            <option value="">Any</option>
+                                            <option value="0">ECOG 0</option>
+                                            <option value="1">ECOG 1</option>
+                                            <option value="2">ECOG 2</option>
+                                            <option value="3">ECOG 3</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Smoking Status</label>
+                                        <select id="smoking_status" class="form-select">
+                                            <option value="">Any</option>
+                                            <option value="never">Never</option>
+                                            <option value="former">Former</option>
+                                            <option value="current">Current</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Prior Treatments</label>
+                                        <input type="text" id="prior_treatments" class="form-input" placeholder="e.g., osimertinib, chemotherapy (comma-separated)">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Location</label>
+                                        <input type="text" id="location" class="form-input" placeholder="City, State, Country">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Recruiting Status</label>
+                                        <select id="recruiting_status" class="form-select" multiple size="4">
+                                            <option value="Recruiting">Recruiting</option>
+                                            <option value="Not yet recruiting">Not yet recruiting</option>
+                                            <option value="Active, not recruiting">Active, not recruiting</option>
+                                            <option value="Completed">Completed</option>
+                                        </select>
+                                        <small class="form-help">Hold Ctrl/Cmd to select multiple</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Phase</label>
+                                        <select id="phase" class="form-select" multiple size="4">
+                                            <option value="I">Phase I</option>
+                                            <option value="II">Phase II</option>
+                                            <option value="III">Phase III</option>
+                                            <option value="IV">Phase IV</option>
+                                        </select>
+                                        <small class="form-help">Hold Ctrl/Cmd to select multiple</small>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <button type="submit" class="btn btn-secondary btn-lg" style="width: 100%; margin-top: 1rem;">
+                                Search Clinical Trials
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="results" class="results-container" style="display: none;">
+                    <h2 style="margin-bottom: 1rem;">Results</h2>
+                    <div id="extractedProfileCard" class="card" style="margin-bottom: 1.5rem; display: none;"></div>
+                    <div id="resultsList"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/trialSearch.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/cross-module.js"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script src="js/patientSignal.js?v=4"></script>
+    <script>DemoBanner.init(); SideNav.init('trials');</script>
+    <script>
+        // Cross-module: check if we arrived via a cross-module action
+        (function handleCrossModuleEntry() {
+            const incoming = CrossModule.checkIncoming();
+            if (!incoming || !incoming.query) return;
+            window._scrollToResultsOnLoad = true;
+            document.getElementById('trialQuery').value = incoming.query;
+            setTimeout(() => {
+                document.getElementById('trialSearchForm')
+                    .dispatchEvent(new Event('submit', { cancelable: true }));
+            }, 300);
+        })();
+    </script>
+</body>
+</html>

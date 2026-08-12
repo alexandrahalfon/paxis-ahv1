@@ -1,0 +1,86 @@
+{
+  "_readme": [
+    "Ground-truth doc_ids for the PostgreSQL structured study matcher audit.",
+    "",
+    "Each top-level key is a fixture name from matcher_golden_queries.py.",
+    "For each fixture the user populates:",
+    "  - description:                    one-line human summary of the case",
+    "  - expected_doc_ids_relevant:      studies the matcher SHOULD return in the top ~50",
+    "  - expected_doc_ids_must_not_return:  studies the matcher MUST NOT return (clear mismatches)",
+    "  - notes:                          any caveats / comments",
+    "",
+    "The integration script scripts/test_matcher_live.py reads this file,",
+    "runs the matcher against the live Postgres, and reports:",
+    "  - precision@10 = fraction of top-10 returned that are in expected_doc_ids_relevant",
+    "  - recall@50    = fraction of expected_doc_ids_relevant that made the top-50",
+    "  - any must-not-return doc_ids that were actually returned (hard fail)",
+    "",
+    "Leave a list empty ([]) if you don't have ground-truth for that fixture;",
+    "the script will still run it and print top-K results for manual eyeballing.",
+    "",
+    "Doc_ids should match exactly what is stored in the Postgres 'studies.doc_id' column."
+  ],
+
+  "simple_lung_adeno": {
+    "description": "Stage IV NSCLC with EGFR mutation — baseline lung biomarker flow",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": ""
+  },
+
+  "hn_scc_multi_axis": {
+    "description": "80yo M recurrent left oral tongue SCC, CPS 100, post-glossectomy, progressing on pembrolizumab (canonical audit-log case)",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "Highest priority fixture — we already know the matcher hard-filtered ARTSCAN III and SCC of Unknown Primary as mismatches due to the upstream histology mislabel. Add doc_ids for the correct reference studies (EXTREME, KEYNOTE-040, KEYNOTE-048, RTOG 9610, etc.) and the known-wrong NSCLC studies that should never appear."
+  },
+
+  "triple_negative_breast": {
+    "description": "55yo F stage III TNBC, neoadjuvant setting",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "Validates the TNBC special case path and HER2- trastuzumab exclusion."
+  },
+
+  "prostate_crpc": {
+    "description": "72yo M metastatic castration-resistant prostate cancer with BRCA mutation",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "Validates prostate site + PARP-relevant biomarker handling."
+  },
+
+  "colorectal_msi_high": {
+    "description": "62yo stage IV MSI-high KRAS wild-type metastatic colorectal cancer",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "Validates the MSI JSONB Tier-1 path and GI site filter."
+  },
+
+  "breast_her2_neg_liver_mets": {
+    "description": "58yo F ER+/PR+/HER2- metastatic breast cancer with liver mets",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "Stress test: the matcher currently hard-filters to %breast% only. Any studies about hepatic metastasis management in breast cancer that live under cancer_location LIKE %liver% will be silently dropped. Populate expected_doc_ids_relevant with a few of those to measure the recall hit."
+  },
+
+  "empty_query": {
+    "description": "Completely empty query — should short-circuit before touching the DB",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "Ground truth is 'empty result'; the script still runs it as a sanity check."
+  },
+
+  "biomarker_only": {
+    "description": "KRAS G12C mutation, no cancer site specified",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "No hard site filter applied. The matcher OR-joins all scoring conditions — can return studies from any cancer site that score positive on KRAS G12C."
+  },
+
+  "cps_score_of_100_raw": {
+    "description": "The literal 'CPS score of 100' string from the live /rag audit log — bug record",
+    "expected_doc_ids_relevant": [],
+    "expected_doc_ids_must_not_return": [],
+    "notes": "The parser collapses 'CPS score of 100' to ('CPS SCORE OF 100', None) and searches for JSONB key 'CPS SCORE OF 100', which never exists. This fixture documents the bug; leave relevant empty — recall will be ~0."
+  }
+}

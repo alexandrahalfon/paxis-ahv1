@@ -1,0 +1,3124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paxis - Medical Literature AI Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/studyDetails.css">
+    <style>
+        /* Split Panel Styles */
+        .split-panel {
+            position: fixed;
+            top: 0;
+            right: -40%;
+            width: 40%;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s ease;
+        }
+
+        .split-panel.open {
+            right: 0;
+        }
+
+        .split-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+
+        .split-panel-title {
+            margin: 0;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .split-panel-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-500);
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .split-panel-close:hover {
+            color: var(--gray-700);
+        }
+
+        .split-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .split-panel-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+
+        .split-panel-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .split-panel-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Desktop: 60/40 split */
+        .chat-container.split-active {
+            width: 60%;
+            transition: width 0.3s ease;
+        }
+
+        /* Split panel loading state */
+        .split-panel-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            gap: 1rem;
+            color: var(--gray-500);
+        }
+
+        /* Split panel error state */
+        .split-panel-error {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray-600);
+        }
+
+        .split-panel-error p {
+            margin-bottom: 1rem;
+        }
+
+        /* Panel sections */
+        .panel-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-section h4 {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .panel-summary {
+            color: var(--gray-700);
+            line-height: 1.6;
+        }
+
+        .panel-empty {
+            color: var(--gray-500);
+            font-style: italic;
+        }
+
+        /* Source items */
+        .panel-source-item {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .source-num {
+            color: var(--gray-400);
+            font-size: 0.875rem;
+        }
+
+        .source-title {
+            flex: 1;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+        }
+
+        .source-year {
+            color: var(--gray-500);
+            font-size: 0.75rem;
+        }
+
+        /* Match items */
+        .panel-match-item {
+            padding: 0.75rem;
+            background: var(--gray-50);
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .match-title {
+            font-weight: 500;
+            color: var(--gray-800);
+            font-size: 0.875rem;
+        }
+
+        .match-score {
+            background: var(--primary);
+            color: white;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .match-meta {
+            margin-top: 0.25rem;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        /* Study items */
+        .panel-study-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .study-title {
+            font-weight: 500;
+            color: var(--gray-800);
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .study-meta {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        /* Treatment Arms */
+        .treatment-arms-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .treatment-arm-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            background: var(--gray-50);
+            border-radius: 6px;
+        }
+
+        .arm-label {
+            font-size: 0.875rem;
+            color: var(--gray-700);
+        }
+
+        .arm-count {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        /* Match reasons/tags */
+        .match-reasons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+
+        .match-tag {
+            font-size: 0.6875rem;
+            background: var(--primary-light, #e0f2fe);
+            color: var(--primary, #2563eb);
+            padding: 0.125rem 0.375rem;
+            border-radius: 3px;
+        }
+
+        .match-actions, .study-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        /* Study details button */
+        .study-details-btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            background: #fff;
+            border: 1px solid var(--gray-200);
+            border-radius: 4px;
+            color: var(--primary, #2563eb);
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .study-details-btn:hover {
+            background: var(--primary-light, #eff6ff);
+            border-color: var(--primary, #2563eb);
+        }
+
+        /* Extracted profile */
+        .extracted-profile-details {
+            background: var(--gray-50);
+            border-radius: 6px;
+            padding: 0.5rem;
+        }
+
+        .extracted-profile-details summary {
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--primary, #2563eb);
+            padding: 0.25rem;
+        }
+
+        .extracted-profile-content {
+            padding: 0.75rem;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+        }
+
+        .profile-grid div {
+            color: var(--gray-700);
+        }
+
+        .profile-grid strong {
+            color: var(--gray-500);
+        }
+
+        /* Comparison categories */
+        .comparison-categories {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .comparison-category {
+            padding: 0.75rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .category-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .comparison-narrative {
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: var(--gray-700);
+        }
+
+        .query-interpretation {
+            font-size: 0.8125rem;
+            color: var(--gray-600);
+            padding: 0.5rem 0.75rem;
+            background: var(--gray-100);
+            border-radius: 6px;
+        }
+
+        /* Setup UI for module configuration */
+        .panel-setup {
+            padding: 0.5rem;
+        }
+
+        .setup-intro {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+        }
+
+        .setup-hint {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .link-accent {
+            color: var(--primary, #2563eb);
+            text-decoration: none;
+        }
+
+        .link-accent:hover {
+            text-decoration: underline;
+        }
+
+        /* Criteria sliders */
+        .criteria-sliders {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .criteria-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .criteria-slider-label {
+            flex: 0 0 140px;
+            font-size: 0.8125rem;
+            color: var(--gray-700);
+        }
+
+        .criteria-slider-input {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--gray-200);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .criteria-slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary, #2563eb);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .criteria-slider-input::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--primary, #2563eb);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .criteria-slider-value {
+            flex: 0 0 45px;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-align: right;
+        }
+
+        /* Study selection tray */
+        .study-selection-tray {
+            background: var(--gray-50);
+            border: 2px dashed var(--gray-300);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .study-selection-tray.has-studies {
+            border-style: solid;
+            border-color: var(--primary, #2563eb);
+        }
+
+        .tray-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .tray-label {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .tray-count {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .tray-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tray-empty {
+            font-size: 0.8125rem;
+            color: var(--gray-500);
+            font-style: italic;
+            padding: 0.5rem 0;
+        }
+
+        .tray-item {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            padding: 0.375rem 0.5rem;
+            font-size: 0.75rem;
+            max-width: 200px;
+        }
+
+        .tray-item-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--gray-700);
+        }
+
+        .tray-item-remove {
+            background: none;
+            border: none;
+            color: var(--gray-400);
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .tray-item-remove:hover {
+            color: var(--danger, #dc2626);
+        }
+
+        /* Study search list */
+        .study-search-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .study-search-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.625rem 0.75rem;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+        }
+
+        .study-search-item:hover {
+            border-color: var(--primary, #2563eb);
+        }
+
+        .study-search-item.selected {
+            background: var(--primary-light, #eff6ff);
+            border-color: var(--primary, #2563eb);
+        }
+
+        .study-search-info {
+            flex: 1;
+            min-width: 0;
+            margin-right: 0.75rem;
+        }
+
+        .study-search-title {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--gray-800);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .study-search-meta {
+            font-size: 0.6875rem;
+            color: var(--gray-500);
+            margin-top: 0.125rem;
+        }
+
+        .study-toggle-btn {
+            flex-shrink: 0;
+        }
+
+        /* Back row */
+        .panel-back-row {
+            margin-bottom: 1rem;
+        }
+
+        /* Compared studies list */
+        .compared-studies-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .compared-study-item {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+        }
+
+        .compared-study-item .study-num {
+            color: var(--gray-400);
+        }
+
+        .compared-study-item .study-title {
+            color: var(--gray-700);
+        }
+
+        /* Mobile: full-width overlay */
+        @media (max-width: 1023px) {
+            .split-panel {
+                width: 100%;
+                right: -100%;
+            }
+            
+            .split-panel.open {
+                right: 0;
+            }
+            
+            .chat-container.split-active {
+                width: 100%;
+            }
+            
+            body.panel-open-mobile {
+                overflow: hidden;
+            }
+
+            .criteria-slider-label {
+                flex: 0 0 100px;
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Patient Matching Prompt in Chat */
+        .patient-matching-prompt {
+            padding: 0.5rem 0;
+        }
+
+        .patient-matching-prompt p {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .match-criteria-toggle {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .match-criteria-panel {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .criteria-intro {
+            font-size: 0.8125rem;
+            color: var(--gray-600);
+            margin: 0 0 0.75rem 0;
+        }
+
+        /* Study Review Form in Chat */
+        .study-review-form {
+            padding: 0.5rem 0;
+        }
+
+        .study-review-form p {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .study-review-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .study-review-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+        }
+
+        .study-review-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+            min-width: 0;
+            cursor: pointer;
+        }
+
+        .study-review-checkbox input[type="checkbox"] {
+            flex-shrink: 0;
+        }
+
+        .study-review-title {
+            font-size: 0.8125rem;
+            color: var(--gray-700);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-remove-study {
+            background: none;
+            border: none;
+            color: var(--gray-400);
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 0.875rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .btn-remove-study:hover {
+            color: var(--danger, #dc2626);
+        }
+
+        .study-review-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* Module Complete Message */
+        .module-complete {
+            padding: 0.5rem 0;
+        }
+
+        .module-complete p {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        /* Study Selection Modal Overlay */
+        .study-selection-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .study-selection-modal {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .study-selection-modal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .study-selection-modal .modal-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--gray-900);
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: var(--gray-400);
+            cursor: pointer;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .modal-close-btn:hover {
+            color: var(--gray-600);
+        }
+
+        .modal-subtitle {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin: 0 0 0.75rem 0;
+        }
+
+        .modal-study-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal-study-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+        }
+
+        .modal-study-info {
+            flex: 1;
+            min-width: 0;
+            margin-right: 0.5rem;
+        }
+
+        .modal-study-title {
+            font-size: 0.8125rem;
+            color: var(--gray-700);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-empty-message {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+            text-align: center;
+            padding: 1rem 0;
+            font-style: italic;
+        }
+
+        .study-selection-modal .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        /* Exit fullscreen button in chat header */
+        .btn-exit-fullscreen {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: none;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            padding: 0.3rem 0.65rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-exit-fullscreen:hover {
+            background: var(--gray-100);
+            color: var(--gray-800);
+            border-color: var(--gray-400);
+        }
+
+        /* Web fallback banner — shown when results come from PubMed/ClinicalTrials instead of KB */
+        .web-fallback-banner {
+            background: #fffbeb;
+            border-left: 3px solid #f59e0b;
+            padding: 0.45rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #92400e;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        /* Web supplement banner — shown when KB results are augmented with online sources */
+        .web-supplement-banner {
+            background: #eff6ff;
+            border-left: 3px solid #3b82f6;
+            padding: 0.45rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            color: #1e40af;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html" class="active">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Side Navigation (injected by sideNav.js) -->
+
+    <!-- Main Content -->
+    <section class="section hero">
+        <!-- Preferences Button (top-right corner of hero) -->
+        <div class="preferences-trigger">
+            <label class="preferences-toggle-inline" title="Toggle search filters on/off">
+                <input type="checkbox" id="preferencesActiveToggle" checked>
+                <span class="preferences-toggle-slider"></span>
+            </label>
+            <button class="btn btn-outline btn-sm" id="openPreferences" title="Search Preferences">
+                Preferences
+            </button>
+            <span class="preferences-status" id="preferencesStatus"></span>
+        </div>
+        <div class="container">
+            <div class="hero-inner">
+                <div class="hero-logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis">
+                </div>
+
+                <div class="hero-search" id="heroSearch">
+                    <textarea
+                        id="messageInput"
+                        class="hero-input"
+                        placeholder="Ask any oncology question or enter a patient diagnosis..."
+                        rows="1"
+                    ></textarea>
+                    <button id="sendButton" class="hero-button" aria-label="Search">
+                        <span class="hero-arrow">›</span>
+                    </button>
+                </div>
+
+                <!-- Trial Match Toggle -->
+                <div class="trial-match-toggle" id="trialMatchToggle">
+                    <label class="toggle-switch-inline">
+                        <input type="checkbox" id="trialMatchEnabled">
+                        <span class="toggle-slider-sm"></span>
+                        <span class="toggle-label-sm">Trial Match</span>
+                        <span class="toggle-hint" title="When enabled, analyzes patient descriptions to find matching clinical trials. Disable for faster general questions.">ⓘ</span>
+                    </label>
+                </div>
+
+                <div class="mode-select" style="display: none;">
+                    <label class="form-label" for="modeSelect" style="margin-bottom: 0.25rem;">Mode</label>
+                    <select id="modeSelect" class="form-select">
+                        <option value="single" selected>Single question</option>
+                        <option value="conversational">Conversational</option>
+                    </select>
+                </div>
+
+                <details class="hero-examples">
+                    <summary>Explore example questions</summary>
+                    <div class="hero-example-grid">
+                        <button type="button" class="btn btn-outline btn-sm example-btn" data-example="What is the standard RT dose for breast cancer?">RT dose for breast cancer</button>
+                        <button type="button" class="btn btn-outline btn-sm example-btn" data-example="Compare pembrolizumab vs chemotherapy for lung cancer.">Compare treatments for lung cancer</button>
+                        <button type="button" class="btn btn-outline btn-sm example-btn" data-example="What treatments are recommended for HER2-positive breast cancer?">HER2-positive breast cancer treatments</button>
+                        <button type="button" class="btn btn-outline btn-sm example-btn" data-example="What are the survival rates for stage III lung cancer?">Survival rates for stage III lung cancer</button>
+                    </div>
+                </details>
+
+                <!-- Hero actions moved to side panel, keeping hidden for reference -->
+                <div class="hero-actions" id="heroActions" style="display: none;">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                    <button type="button" id="reportBtnQuery" class="btn btn-outline btn-sm" disabled title="Ask a question to enable">Generate Report (PDF)</button>
+                </div>
+
+                <div id="heroChat" class="hero-chat">
+                    <div class="chat-header" id="chatHeader" style="display: none;">
+                        <span class="chat-header-title">Conversation</span>
+                        <div class="chat-header-actions">
+                            <button type="button" class="btn-exit-fullscreen" id="fullscreenToggle" title="Exit fullscreen">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                Exit
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chat-messages" id="chatMessages"></div>
+                </div>
+                
+                <!-- New Conversation Button - visible only when chat history exists -->
+                <div class="conversation-indicator" id="conversationIndicator" style="display: none;">
+                    <button type="button" class="btn btn-outline btn-sm" id="newConversationBtn">
+                        Start a New Conversation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Preferences Sidebar -->
+    <div class="preferences-sidebar" id="preferencesSidebar">
+        <div class="sidebar-header">
+            <h3>My Preferences</h3>
+            <button class="btn-close-sidebar" aria-label="Close">×</button>
+        </div>
+        
+        <div class="sidebar-content">
+            <!-- Active Filters Toggle -->
+            <div class="preference-section">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="filtersActive" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Apply filters automatically</span>
+                </label>
+            </div>
+            
+            <!-- User Uploads Toggle -->
+            <div class="preference-section">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="includeUserUploads" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Include my uploaded studies</span>
+                </label>
+                <small class="form-help">Disable to search only the knowledge base (faster queries)</small>
+            </div>
+            
+            <hr class="sidebar-divider">
+            
+            <!-- Study Type Filter -->
+            <div class="preference-section">
+                <h4>Study Type</h4>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_type" value="prospective">
+                    Prospective
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_type" value="retrospective">
+                    Retrospective
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_type" value="randomized">
+                    Randomized Controlled Trial (RCT)
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_type" value="meta-analysis">
+                    Meta-Analysis
+                </label>
+            </div>
+            
+            <!-- Study Phase Filter -->
+            <div class="preference-section">
+                <h4>Study Phase</h4>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_phase" value="I">
+                    Phase I
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_phase" value="II">
+                    Phase II
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_phase" value="III">
+                    Phase III
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_phase" value="I/II">
+                    Phase I/II
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="study_phase" value="II/III">
+                    Phase II/III
+                </label>
+            </div>
+            
+            <!-- Cancer Type Filter -->
+            <div class="preference-section">
+                <h4>Cancer Type</h4>
+                <select name="cancer_type" class="form-select" multiple size="5">
+                    <option value="">All Types</option>
+                    <option value="lung">Lung Cancer</option>
+                    <option value="breast">Breast Cancer</option>
+                    <option value="prostate">Prostate Cancer</option>
+                    <option value="colorectal">Colorectal Cancer</option>
+                    <option value="brain">Brain Cancer</option>
+                    <option value="head_neck">Head & Neck Cancer</option>
+                    <option value="esophageal">Esophageal Cancer</option>
+                    <option value="gastric">Gastric Cancer</option>
+                    <option value="pancreatic">Pancreatic Cancer</option>
+                    <option value="liver">Liver Cancer</option>
+                    <option value="cervical">Cervical Cancer</option>
+                    <option value="endometrial">Endometrial Cancer</option>
+                    <option value="ovarian">Ovarian Cancer</option>
+                    <option value="bladder">Bladder Cancer</option>
+                    <option value="kidney">Kidney Cancer</option>
+                    <option value="lymphoma">Lymphoma</option>
+                    <option value="leukemia">Leukemia</option>
+                    <option value="melanoma">Melanoma</option>
+                </select>
+                <small class="form-help">Hold Ctrl/Cmd to select multiple</small>
+            </div>
+            
+            <!-- Number of Patients Filter -->
+            <div class="preference-section">
+                <h4>Number of Patients</h4>
+                <div class="range-inputs">
+                    <input type="number" name="min_patients"
+                            placeholder="Min (e.g., 50)"
+                            class="form-input form-input-sm">
+                    <span>to</span>
+                    <input type="number" name="max_patients"
+                            placeholder="Max (optional)"
+                            class="form-input form-input-sm">
+                </div>
+            </div>
+            
+            <!-- Analysis Type Filter -->
+            <div class="preference-section">
+                <h4>Analysis Type</h4>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="analysis_type" value="intention_to_treat">
+                    Intention-to-Treat (ITT)
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="analysis_type" value="per_protocol">
+                    Per-Protocol
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="analysis_type" value="subgroup">
+                    Subgroup Analysis
+                </label>
+            </div>
+            
+            <!-- Treatment Modality Filter -->
+            <div class="preference-section">
+                <h4>Treatment Modality</h4>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="radiation">
+                    Radiation Therapy
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="chemotherapy">
+                    Chemotherapy
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="surgery">
+                    Surgery
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="immunotherapy">
+                    Immunotherapy
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="targeted_therapy">
+                    Targeted Therapy
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="hormone_therapy">
+                    Hormone Therapy
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="brachytherapy">
+                    Brachytherapy
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="treatment_modality" value="sbrt">
+                    SBRT/SRS
+                </label>
+            </div>
+            
+            <!-- Country Filter -->
+            <div class="preference-section">
+                <h4>Country</h4>
+                <div class="autocomplete-container">
+                    <input type="text" 
+                           id="countrySearch" 
+                           class="form-input form-input-sm autocomplete-input"
+                           placeholder="Search countries..."
+                           autocomplete="off">
+                    <div id="countryDropdown" class="autocomplete-dropdown"></div>
+                </div>
+                <div id="selectedCountries" class="selected-tags">
+                    <span class="no-selection">None selected</span>
+                </div>
+            </div>
+            
+            <!-- Institution Filter -->
+            <div class="preference-section">
+                <h4>Institution</h4>
+                <div class="autocomplete-container">
+                    <input type="text" 
+                           id="institutionSearch" 
+                           class="form-input form-input-sm autocomplete-input"
+                           placeholder="Search institutions..."
+                           autocomplete="off">
+                    <div id="institutionDropdown" class="autocomplete-dropdown"></div>
+                </div>
+                <div id="selectedInstitutions" class="selected-tags">
+                    <span class="no-selection">None selected</span>
+                </div>
+            </div>
+            
+            <hr class="sidebar-divider">
+            
+            <!-- Race/Ethnicity Filter -->
+            <div class="preference-section">
+                <h4>Patient Demographics</h4>
+                <small class="form-help" style="margin-bottom: 0.5rem; display: block;">Filter by study population race/ethnicity</small>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="race_ethnicity" value="White">
+                    White/Caucasian
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="race_ethnicity" value="Black">
+                    Black/African American
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="race_ethnicity" value="Asian">
+                    Asian
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="race_ethnicity" value="Hispanic/Latino">
+                    Hispanic/Latino
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="race_ethnicity" value="Native American">
+                    Native American
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="race_ethnicity" value="Pacific Islander">
+                    Pacific Islander
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="race_ethnicity" value="Mixed/Other">
+                    Mixed/Other
+                </label>
+                <hr style="margin: 0.75rem 0; border-color: var(--gray-200);">
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="include_unknown_race" value="true" checked>
+                    Include studies without race data
+                </label>
+            </div>
+            
+            <hr class="sidebar-divider">
+            
+            <!-- Temporal Preferences -->
+            <div class="preference-section">
+                <h4>Publication Year</h4>
+                <div class="range-inputs">
+                    <input type="number" name="min_publication_year"
+                            placeholder="From (e.g., 2015)"
+                            class="form-input form-input-sm"
+                            min="1990" max="2030">
+                    <span>to</span>
+                    <input type="number" name="max_publication_year"
+                            placeholder="To (e.g., 2024)"
+                            class="form-input form-input-sm"
+                            min="1990" max="2030">
+                </div>
+            </div>
+            
+            <!-- Evidence Quality -->
+            <div class="preference-section">
+                <h4>Evidence Quality</h4>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="require_peer_reviewed" value="true">
+                    Peer-reviewed only
+                </label>
+                <div class="range-inputs" style="margin-top: 0.5rem;">
+                    <label style="font-size: 0.85rem; color: var(--gray-600);">Min follow-up:</label>
+                    <input type="number" name="min_followup_months"
+                            placeholder="months"
+                            class="form-input form-input-sm"
+                            style="width: 80px;"
+                            min="0" max="240">
+                </div>
+            </div>
+            
+            <!-- Required Outcomes -->
+            <div class="preference-section">
+                <h4>Required Outcomes</h4>
+                <small class="form-help" style="margin-bottom: 0.5rem; display: block;">Only show studies reporting these</small>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="required_outcomes" value="overall_survival">
+                    Overall Survival (OS)
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="required_outcomes" value="progression_free_survival">
+                    Progression-Free Survival (PFS)
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="required_outcomes" value="local_control">
+                    Local Control
+                </label>
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="required_outcomes" value="disease_free_survival">
+                    Disease-Free Survival (DFS)
+                </label>
+            </div>
+            
+            <hr class="sidebar-divider">
+            
+            <!-- Sorting Preferences -->
+            <div class="preference-section">
+                <h4>Sort Results By</h4>
+                <select name="sort_by" class="form-select">
+                    <option value="relevance">Relevance (Default)</option>
+                    <option value="patient_relevance">Patient Match (Best Fit First)</option>
+                    <option value="population">Population Size (High to Low)</option>
+                    <option value="date">Trial Date (Newest First)</option>
+                    <option value="citations">Citations (Most Cited First)</option>
+                    <option value="outcomes">Outcomes (Best to Worst)</option>
+                </select>
+                <small class="form-hint">Patient Match boosts studies matching your patient's cancer type, stage, and characteristics</small>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="sidebar-actions">
+                <button class="btn btn-primary btn-block" id="savePreferences">
+                    Save Preferences
+                </button>
+                <button class="btn btn-outline btn-block" id="clearPreferences">
+                    Clear All Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay when sidebar is open -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                    <a href="/api/rag/stats" target="_blank">Collection Stats</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Study Details Panel (for split view) -->
+    <div id="study-details-panel" class="study-details-panel">
+        <div class="panel-placeholder">Select a study to view details</div>
+    </div>
+
+    <!-- Chart.js for inline visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <script src="js/config.js"></script>
+    <script src="js/conversationContext.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/preferences.js"></script>
+    <script src="js/studyDetails.js"></script>
+    <script src="js/studyDetailsRenderer.js"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/treatmentEvaluation.js?v=3"></script>
+    <script src="js/inChatModules.js?v=4"></script>
+    <script src="js/conversationManager.js"></script>
+    <script src="js/chartUtils.js?v=2"></script>
+    <script src="js/litAnalyticsPanel.js"></script>
+    <script src="js/splitPanel.js?v=2"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script src="js/patientSignal.js?v=4"></script>
+    <script>
+        console.log('[Init] Starting initialization...');
+        try {
+            // Demo banner (dismissible) must run before SideNav so the
+            // sidebar's header-height measurement accounts for it
+            DemoBanner.init();
+            // "For Patients" switch in the header, plus a soft redirect
+            // if a patient account lands on the clinician interface
+            InterfaceSwitch.init('clinician');
+            InterfaceSwitch.guardClinicianPage();
+            // Initialize side navigation
+            SideNav.init('home');
+            console.log('[Init] SideNav initialized');
+            
+            // Initialize split view manager
+            splitViewManager.init();
+            console.log('[Init] splitViewManager initialized');
+        } catch (e) {
+            console.error('[Init] Error during initialization:', e);
+        }
+    </script>
+    <script>
+        console.log('[Init] Starting main script...');
+        console.log('[Init] PaxisAPI available:', typeof PaxisAPI);
+        console.log('[Init] ConversationContextManager available:', typeof ConversationContextManager);
+        console.log('[Init] InChatModules available:', typeof InChatModules);
+        
+        let api;
+        try {
+            api = new PaxisAPI();
+            console.log('[Init] PaxisAPI instance created');
+        } catch (e) {
+            console.error('[Init] Error creating PaxisAPI:', e);
+        }
+        
+        let conversationMode = 'single';
+        let conversationHistory = [];
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const heroChat = document.getElementById('heroChat');
+        const heroActions = document.getElementById('heroActions');
+        const heroSearch = document.getElementById('heroSearch');
+        const modeSelect = document.getElementById('modeSelect');
+        const heroExamples = document.querySelector('.hero-examples');
+        const reportBtnQuery = document.getElementById('reportBtnQuery');
+        const conversationIndicator = document.getElementById('conversationIndicator');
+        const newConversationBtn = document.getElementById('newConversationBtn');
+        let lastQueryQuestion = null;
+        let lastQueryResult = null;
+
+        console.log('[Init] DOM elements:', {
+            chatMessages: !!chatMessages,
+            messageInput: !!messageInput,
+            sendButton: !!sendButton,
+            heroChat: !!heroChat
+        });
+
+        // Global storage for matching trials data (used by openTrialDetails)
+        window._matchingTrialsData = [];
+
+        // Abstract cache (Task 7) — avoids re-fetching
+        const _abstractCache = new Map();
+
+        /**
+         * Toggle inline abstract for a trial card (Task 7)
+         */
+        window.toggleTrialAbstract = async function(btn, doi, pmid, title, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (container.style.display !== 'none') {
+                container.style.display = 'none';
+                btn.textContent = 'Read Abstract';
+                return;
+            }
+
+            const cacheKey = doi || pmid || title;
+            if (_abstractCache.has(cacheKey)) {
+                container.innerHTML = _abstractCache.get(cacheKey);
+                container.style.display = 'block';
+                btn.textContent = 'Hide Abstract';
+                return;
+            }
+
+            btn.textContent = 'Loading...';
+            btn.disabled = true;
+            try {
+                const details = await api.getStudyDetails({ doi, pmid, title });
+                const abstract = (details && details.study_details && details.study_details.abstract)
+                    || (details && details.abstract)
+                    || 'Abstract not available.';
+                const html = `<div class="abstract-label">Abstract</div>${markdownToHtml(abstract)}`;
+                _abstractCache.set(cacheKey, html);
+                container.innerHTML = html;
+                container.style.display = 'block';
+                btn.textContent = 'Hide Abstract';
+            } catch (e) {
+                container.innerHTML = '<em>Could not load abstract.</em>';
+                container.style.display = 'block';
+                btn.textContent = 'Hide Abstract';
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        /**
+         * Select trial search mode (Task 8)
+         */
+        window.selectTrialMode = function(mode) {
+            window._trialSearchMode = mode;
+            document.querySelectorAll('.trial-mode-btn').forEach(btn => btn.classList.remove('selected'));
+            const activeId = mode === 'active' ? 'modeActiveBtn' : 'modePublishedBtn';
+            const btn = document.getElementById(activeId);
+            if (btn) btn.classList.add('selected');
+        };
+
+        /**
+         * Execute trial search after mode selection (Task 8)
+         */
+        window.executeTrialSearch = async function() {
+            const question = window._pendingTrialQuestion || '';
+            const mode = window._trialSearchMode || 'published';
+            if (!question) return;
+
+            // Hide selector
+            const selector = document.getElementById('trialModeSelector');
+            if (selector) selector.style.display = 'none';
+
+            if (mode === 'active') {
+                // Active Trials → ClinicalTrials.gov
+                const loadId = addMessage('Searching ClinicalTrials.gov...', 'ai', true);
+                try {
+                    const trialsResult = await api.searchClinicalTrials({ query: question, max_results: 10 });
+                    removeMessage(loadId);
+                    const trials = trialsResult.trials || [];
+                    if (trials.length > 0) {
+                        let html = `<strong>Active Trials (${trials.length} found)</strong>`;
+                        html += `<div class="trials-list" style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.5rem;">`;
+                        trials.forEach((t, i) => {
+                            const pct = t.match_score ? Math.round(t.match_score * 100) : '';
+                            const badge = pct ? ` <span style="color:var(--primary);font-weight:500;">[${pct}%]</span>` : '';
+                            const nct = t.nct_id ? ` <a href="https://clinicaltrials.gov/study/${t.nct_id}" target="_blank" style="font-size:0.75rem;color:#0369a1;">${t.nct_id}</a>` : '';
+                            const status = t.status ? ` <em style="font-size:0.75rem;color:#6b7280;">${t.status}</em>` : '';
+                            html += `<div class="source-item" style="padding:0.5rem;background:var(--gray-50);border-radius:0.375rem;">
+                                ${i+1}. <strong>${escapeHtml(t.title || 'Untitled')}</strong>${badge}${nct}${status}
+                            </div>`;
+                        });
+                        html += '</div>';
+                        addMessage(html, 'ai');
+                    } else {
+                        addMessage('No active trials found matching your query.', 'ai');
+                    }
+                } catch (err) {
+                    removeMessage(loadId);
+                    addMessage(`Error searching active trials: ${err.message}`, 'ai');
+                }
+            } else {
+                // Published Evidence → analyzeIntent (existing flow)
+                window._executePublishedTrialMatch = true;
+                messageInput.value = question;
+                sendMessage();
+            }
+        };
+
+        /**
+         * Open trial details from matching trials list
+         * @param {number} index - Index in the _matchingTrialsData array
+         */
+        window.openTrialDetails = function(index) {
+            console.log('[TrialDetails] openTrialDetails called with index:', index);
+            console.log('[TrialDetails] _matchingTrialsData length:', window._matchingTrialsData?.length);
+            console.log('[TrialDetails] _matchingTrialsData:', window._matchingTrialsData);
+            
+            const trial = window._matchingTrialsData[index];
+            if (!trial) {
+                console.error('[TrialDetails] Trial not found at index:', index);
+                return;
+            }
+            
+            console.log('[TrialDetails] Found trial:', trial.title);
+            console.log('[TrialDetails] Trial DOI:', trial.doi);
+            
+            // Pass both the source reference and the full trial data for fallback
+            openStudyDetailsFromSource(
+                {
+                    doc_id: '',
+                    pmid: '',
+                    doi: trial.doi || '',
+                    title: trial.title || ''
+                },
+                trial  // Pass full trial data for fallback display
+            );
+        };
+
+        // Show/hide new conversation button based on chat history
+        // Requirements: 4.3, 9.3, 9.4
+        function updateConversationIndicator() {
+            // Show button only when chat messages exist
+            const hasMessages = chatMessages && chatMessages.children.length > 0;
+            if (conversationIndicator) {
+                conversationIndicator.style.display = hasMessages ? 'flex' : 'none';
+            }
+        }
+
+        // Start a new conversation - clear context and reset UI
+        // Requirements: 4.1, 4.2, 4.3, 9.5
+        function startNewConversation() {
+            // Clear conversation context via API
+            api.clearConversationContext();
+            
+            // Clear localStorage conversation history
+            // Requirements: 6.7
+            if (window.conversationManager) {
+                window.conversationManager.clearConversation();
+                console.log('[ConversationManager] Conversation cleared');
+            }
+            
+            // Clear clinical context for modules
+            if (typeof InChatModules !== 'undefined') {
+                InChatModules.clearClinicalContext();
+            }
+            
+            // Clear all session storage related to conversation
+            sessionStorage.removeItem('followupContext');
+            sessionStorage.removeItem('treatmentEvalContext');
+            sessionStorage.removeItem('treatmentEvalClinicalContext');
+            
+            // Reset conversation state
+            conversationMode = 'single';
+            conversationHistory = [];
+            if (modeSelect) {
+                modeSelect.value = 'single';
+            }
+            
+            // Clear chat display
+            if (chatMessages) {
+                chatMessages.innerHTML = '';
+            }
+            
+            // Reset UI to initial state
+            if (heroChat) {
+                heroChat.classList.remove('chat-expanded');
+                heroChat.classList.remove('chat-fullscreen');
+            }
+            if (document.body) {
+                document.body.classList.remove('chat-fullscreen-active');
+            }
+            if (heroSearch && heroChat && heroChat.contains(heroSearch)) {
+                // Move search box back to original position
+                const heroInner = document.querySelector('.hero-inner');
+                if (heroInner) {
+                    const heroLogo = heroInner.querySelector('.hero-logo');
+                    if (heroLogo && heroLogo.nextSibling) {
+                        heroInner.insertBefore(heroSearch, heroLogo.nextSibling);
+                    }
+                }
+                heroSearch.classList.remove('chat-composer');
+            }
+            if (chatHeader) {
+                chatHeader.style.display = 'none';
+            }
+            if (heroExamples) {
+                heroExamples.classList.remove('hidden');
+            }
+            
+            // Reset input placeholder
+            if (messageInput) {
+                messageInput.placeholder = 'Ask any oncology question or enter a patient diagnosis...';
+                messageInput.value = '';
+            }
+            
+            // Reset fullscreen state
+            isFullscreen = false;
+            
+            // Clear last query data
+            lastQueryQuestion = null;
+            lastQueryResult = null;
+            if (reportBtnQuery) {
+                reportBtnQuery.disabled = true;
+                reportBtnQuery.title = 'Ask a question to enable';
+            }
+            
+            // Hide the new conversation button
+            updateConversationIndicator();
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Focus input
+            if (messageInput) {
+                messageInput.focus();
+            }
+            
+            console.log('[NewConversation] Context cleared and UI reset');
+        }
+
+        // New conversation button handler
+        if (newConversationBtn) {
+            newConversationBtn.addEventListener('click', startNewConversation);
+        }
+
+        // Chat header and fullscreen toggle
+        const chatHeader = document.getElementById('chatHeader');
+        const fullscreenToggle = document.getElementById('fullscreenToggle');
+        let isFullscreen = false;
+
+        function activateChatLayout() {
+            heroChat.classList.add('chat-expanded');
+            heroActions?.classList.add('shift-left');
+            if (heroSearch && !heroChat.contains(heroSearch)) {
+                heroSearch.classList.add('chat-composer');
+                heroChat.appendChild(heroSearch);
+            }
+            // Move conversation indicator after the search box
+            if (conversationIndicator && !heroChat.contains(conversationIndicator)) {
+                heroChat.appendChild(conversationIndicator);
+            }
+            if (heroExamples) {
+                heroExamples.classList.add('hidden');
+            }
+            // Show chat header when chat is active
+            if (chatHeader) {
+                chatHeader.style.display = 'flex';
+            }
+            // Auto-enter fullscreen on first query (Task 6)
+            if (!isFullscreen) {
+                toggleFullscreen();
+            }
+        }
+
+        // Toggle fullscreen mode
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+
+            if (isFullscreen) {
+                heroChat.classList.add('chat-fullscreen');
+                document.body.classList.add('chat-fullscreen-active');
+            } else {
+                heroChat.classList.remove('chat-fullscreen');
+                document.body.classList.remove('chat-fullscreen-active');
+            }
+            
+            // Scroll to bottom of messages
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Fullscreen toggle click handler
+        fullscreenToggle?.addEventListener('click', toggleFullscreen);
+
+        // Exit fullscreen on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                toggleFullscreen();
+            }
+        });
+
+        // Trial Match toggle
+        const trialMatchEnabled = document.getElementById('trialMatchEnabled');
+
+        /**
+         * Detect if user is requesting a specific module action
+         * Returns module name if detected, null otherwise
+         */
+        function detectModuleRequest(question) {
+            const q = question.toLowerCase().trim();
+            
+            // Treatment comparison patterns
+            if (q.match(/^(compare|evaluate|assess)\s+(treatment|therapy|therapies|options)/i) ||
+                q.match(/treatment\s+(comparison|options|evaluation)/i) ||
+                q.match(/^compare\s+\w+\s+(vs|versus|and|to)\s+/i)) {
+                return 'treatment-comparison';
+            }
+            
+            // Patient matching patterns
+            if (q.match(/^(find|search|match)\s+(matching\s+)?stud(y|ies)/i) ||
+                q.match(/patient\s+match/i) ||
+                q.match(/^match\s+(this\s+)?patient/i)) {
+                return 'patient-matching';
+            }
+            
+            // Clinical trial finder patterns
+            if (q.match(/^(find|search)\s+(clinical\s+)?trial/i) ||
+                q.match(/clinical\s*trial\s*(search|finder)/i) ||
+                q.match(/^trial\s+(search|finder)/i)) {
+                return 'trial-finder';
+            }
+            
+            // Analytics patterns
+            if (q.match(/^(show|view|display)\s+(analytics|statistics|stats)/i) ||
+                q.match(/knowledge\s*base\s+analytics/i) ||
+                q.match(/^analytics/i)) {
+                return 'analytics';
+            }
+            
+            return null;
+        }
+
+        // Send message - uses queryEnhanced for short_answer + justification
+        async function sendMessage() {
+            console.log('[sendMessage] Function called');
+            const question = messageInput.value.trim();
+            console.log('[sendMessage] Question:', question);
+            if (!question) {
+                console.log('[sendMessage] Empty question, returning');
+                return;
+            }
+
+            // Check if user is requesting a specific module
+            const moduleRequest = detectModuleRequest(question);
+
+            // Treatment comparisons get their own page instead of running
+            // inline in chat: the dedicated page has room for the full
+            // structured breakdown (summary, charts, detailed analysis,
+            // sources) that doesn't fit in a chat bubble. Uses a dedicated
+            // sessionStorage key (not the shared "followupContext" one, to
+            // avoid changing behavior for the other pages/flows that key
+            // is used by) so the destination page can auto-fill and
+            // auto-run the comparison without the user re-typing it.
+            if (moduleRequest === 'treatment-comparison') {
+                const contextQuery = InChatModules?.lastQueryContext?.query || question;
+                sessionStorage.setItem('exueed_autorun_treatment_comparison', JSON.stringify({
+                    query: contextQuery,
+                    timestamp: Date.now(),
+                }));
+                messageInput.value = '';
+                window.location.href = 'treatment-comparison.html';
+                return;
+            }
+
+            if (moduleRequest && typeof InChatModules !== 'undefined') {
+                // Get the context query (use last query if this is a module command)
+                const contextQuery = InChatModules.lastQueryContext?.query || question;
+
+                addMessage(question, 'user');
+                messageInput.value = '';
+                resetTextareaSize();
+                activateChatLayout();
+
+                try {
+                    await InChatModules.executeModule(moduleRequest, contextQuery);
+                } catch (error) {
+                    console.error('[sendMessage] Module execution error:', error);
+                    InChatModules.addModuleError(moduleRequest, error.message);
+                }
+                return;
+            }
+
+            // Check if Trial Match mode is enabled
+            const useTrialMatch = trialMatchEnabled?.checked || false;
+
+            // Add user message
+            addMessage(question, 'user');
+            messageInput.value = '';
+            resetTextareaSize();
+            sendButton.disabled = true;
+            activateChatLayout();
+
+            // Show loading
+            const loadingId = addMessage(useTrialMatch ? 'Gathering evidence...<br><span style="font-size: 0.85em; font-style: italic; color: var(--gray-500);">(This may take a minute)</span>' : 'Thinking...', 'ai', true);
+
+            try {
+                // When Trial Match toggle is ON, show mode selector (Task 8) before searching
+                // Skip selector if already explicitly executing published trial search
+                if (useTrialMatch && !window._executePublishedTrialMatch) {
+                    removeMessage(loadingId);
+                    sendButton.disabled = false;
+
+                    // Smart default: if staging/treatment terms → Published Evidence
+                    const publishedTerms = /\b(stage|treatment|therapy|adjuvant|definitive|recurrence|received|underwent|s\/p)\b/i;
+                    const defaultMode = publishedTerms.test(question) ? 'published' : 'active';
+                    window._pendingTrialQuestion = question;
+                    window._trialSearchMode = defaultMode;
+
+                    const selectorHtml = `
+                        <div class="trial-mode-selector" id="trialModeSelector">
+                            <span class="selector-label">Search for:</span>
+                            <button class="trial-mode-btn ${defaultMode === 'active' ? 'selected' : ''}"
+                                    id="modeActiveBtn"
+                                    onclick="selectTrialMode('active')">Active Trials</button>
+                            <button class="trial-mode-btn ${defaultMode === 'published' ? 'selected' : ''}"
+                                    id="modePublishedBtn"
+                                    onclick="selectTrialMode('published')">Published Evidence</button>
+                            <button class="trial-mode-go-btn" onclick="executeTrialSearch()">Go</button>
+                        </div>`;
+                    addMessage(selectorHtml, 'ai');
+                    return;
+                }
+                window._executePublishedTrialMatch = false; // reset flag
+
+                // When Trial Match toggle is ON, use intent analysis for structured response
+                // with summary, inclusion/exclusion criteria, population, treatment, patient fit
+                if (useTrialMatch) {
+                    const result = await api.analyzeIntent(question, true);  // force_trial_match = true
+                    removeMessage(loadingId);
+                    
+                    if (result.matching_trials && result.matching_trials.length > 0) {
+                        // Store matches globally for onclick access (convert to expected format)
+                        window._matchingTrialsData = result.matching_trials.map(trial => ({
+                            title: trial.title,
+                            author: trial.author,
+                            year: trial.year,
+                            doi: trial.doi,
+                            match_score: trial.match_score,
+                            match_reasons: trial.match_reasons,
+                            treatment: trial.treatment,
+                            relevant_excerpt: trial.relevant_excerpt,
+                            inclusion_criteria: trial.inclusion_criteria,
+                            exclusion_criteria: trial.exclusion_criteria,
+                            eligibility_notes: trial.eligibility_notes,
+                            population_details: trial.population_details
+                        }));
+                        
+                        // Use the pre-formatted response from backend (has structured format)
+                        let formattedHtml = '';
+                        if (result.formatted_response) {
+                            formattedHtml = markdownToHtml(result.formatted_response);
+                        } else {
+                            // Fallback: build from patient_summary and matching_trials
+                            let markdown = `**Patient Summary**\n\n${result.patient_summary || 'Patient information extracted.'}\n\n`;
+                            markdown += `---\n\n**Matching Studies (${result.matching_trials.length} found)**\n\n`;
+                            
+                            result.matching_trials.slice(0, 5).forEach((trial, i) => {
+                                const matchPct = Math.round(trial.match_score * 100);
+                                markdown += `**${i + 1}. ${trial.title}**`;
+                                if (trial.author || trial.year) {
+                                    markdown += ` (${trial.author || ''}${trial.author && trial.year ? ', ' : ''}${trial.year || ''})`;
+                                }
+                                markdown += `\n\n`;
+                                
+                                if (trial.relevant_excerpt) {
+                                    markdown += `*Summary:* ${trial.relevant_excerpt}\n\n`;
+                                }
+                                if (trial.treatment) {
+                                    markdown += `*Treatment:* ${trial.treatment}\n\n`;
+                                }
+                                if (trial.population_details) {
+                                    markdown += `*Population:* ${trial.population_details}\n\n`;
+                                }
+                                if (trial.inclusion_criteria || trial.exclusion_criteria) {
+                                    let eligibility = '*Eligibility:* ';
+                                    if (trial.inclusion_criteria) eligibility += `Inclusion: ${trial.inclusion_criteria}`;
+                                    if (trial.inclusion_criteria && trial.exclusion_criteria) eligibility += '; ';
+                                    if (trial.exclusion_criteria) eligibility += `Exclusion: ${trial.exclusion_criteria}`;
+                                    markdown += eligibility + '\n\n';
+                                }
+                                if (trial.eligibility_notes && trial.eligibility_notes.length > 0) {
+                                    markdown += `*Patient Fit:* ${trial.eligibility_notes.join(' ')}\n\n`;
+                                } else {
+                                    // Default fit based on score
+                                    if (matchPct >= 70) {
+                                        markdown += `*Patient Fit:* Strong match (${matchPct}%) - patient characteristics align well with study population.\n\n`;
+                                    } else if (matchPct >= 50) {
+                                        markdown += `*Patient Fit:* Moderate match (${matchPct}%) - patient may be eligible pending additional criteria review.\n\n`;
+                                    } else {
+                                        markdown += `*Patient Fit:* Partial match (${matchPct}%) - some criteria align; review full eligibility requirements.\n\n`;
+                                    }
+                                }
+                            });
+                            
+                            formattedHtml = markdownToHtml(markdown);
+                        }
+                        
+                        // Build trials list with Study Details buttons
+                        let trialsHtml = '<div class="matching-trials-sources" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">';
+                        trialsHtml += '<strong style="display: block; margin-bottom: 0.75rem;">View Study Details:</strong>';
+                        trialsHtml += '<div class="trials-list" style="display: flex; flex-direction: column; gap: 0.5rem;">';
+                        
+                        result.matching_trials.forEach((trial, index) => {
+                            const title = trial.title || 'Untitled';
+                            const author = trial.author || '';
+                            const year = trial.year || '';
+                            const matchPct = Math.round(trial.match_score * 100);
+                            const trialDoi = (trial.doi || '').replace(/'/g, "\\'");
+                            const trialPmid = (trial.pmid || '').replace(/'/g, "\\'");
+
+                            let citation = title;
+                            if (author) citation += ` (${author}`;
+                            if (year) citation += author ? `, ${year})` : ` (${year})`;
+                            else if (author) citation += ')';
+
+                            const abstractContainerId = `trial-abstract-${index}-${Date.now()}`;
+                            trialsHtml += `
+                                <div class="source-item" style="flex-direction: column; padding: 0.5rem; background: var(--gray-50); border-radius: 0.375rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <span class="source-citation" style="flex: 1; font-size: 0.875rem; color: var(--gray-700);">${index + 1}. ${escapeHtml(citation)} <span style="color: var(--primary); font-weight: 500;">[${matchPct}%]</span></span>
+                                        <button class="study-details-btn"
+                                                onclick="openTrialDetails(${index})"
+                                                title="View detailed study information"
+                                                style="padding: 0.375rem 0.75rem; font-size: 0.75rem; background: var(--primary); color: white; border: none; border-radius: 0.25rem; cursor: pointer;">
+                                            Study Details
+                                        </button>
+                                        <button class="read-abstract-btn"
+                                                onclick="toggleTrialAbstract(this, '${trialDoi}', '${trialPmid}', '${escapeHtml(title).replace(/'/g, "\\'")}', '${abstractContainerId}')"
+                                                title="Read abstract">
+                                            Read Abstract
+                                        </button>
+                                    </div>
+                                    <div id="${abstractContainerId}" class="trial-abstract-container" style="display:none;"></div>
+                                </div>
+                            `;
+                        });
+                        trialsHtml += '</div></div>';
+                        
+                        // Build follow-up options from backend suggestions
+                        let followUpHtml = '';
+                        if (result.follow_up_options && result.follow_up_options.length > 0) {
+                            followUpHtml = '<div class="follow-up-options" style="margin-top: 1rem;">';
+                            followUpHtml += '<strong style="display: block; margin-bottom: 0.5rem; color: var(--gray-700);">Follow-up questions:</strong>';
+                            result.follow_up_options.slice(0, 4).forEach(opt => {
+                                followUpHtml += `<button class="follow-up-btn" data-query="${escapeHtml(opt.query_template)}" style="display: block; margin: 0.5rem 0; padding: 0.5rem 1rem; background: var(--gray-100); border: 1px solid var(--gray-300); border-radius: 4px; cursor: pointer; text-align: left; width: 100%;">${escapeHtml(opt.label)}</button>`;
+                            });
+                            followUpHtml += '</div>';
+                        }
+                        
+                        // Prepare response data for saving (Trial Match mode)
+                        const trialMatchResponseData = {
+                            answer: result.formatted_response || result.patient_summary || '',
+                            sources: result.matching_trials.map(t => ({
+                                title: t.title,
+                                doi: t.doi,
+                                author: t.author,
+                                year: t.year,
+                                match_score: t.match_score,
+                                match_reasons: t.match_reasons,
+                                treatment: t.treatment,
+                                population_details: t.population_details
+                            })),
+                            metadata: {
+                                mode: 'trial_match',
+                                patient_summary: result.patient_summary,
+                                total_matches: result.matching_trials.length
+                            }
+                        };
+                        
+                        // Add message with formatted response + trials + follow-up options
+                        addMessageWithSources(formattedHtml + trialsHtml + followUpHtml, '', question, true, [], null, trialMatchResponseData);
+                        
+                        // Store context for in-chat module execution (Trial Match mode)
+                        // This enables modules like "Match Patient to Trials" to use the clinical context
+                        if (typeof InChatModules !== 'undefined') {
+                            // Build a result-like object with metadata for context extraction
+                            // Note: analyze-intent returns patient_profile, not extracted_profile
+                            const profile = result.patient_profile || {};
+                            const trialMatchResultForContext = {
+                                metadata: {
+                                    query_structure: {
+                                        cancer: {
+                                            site: profile.cancer_type || null,
+                                            stage: profile.stage || null,
+                                            histology: profile.histology || null
+                                        },
+                                        patient: {
+                                            age: profile.age || null
+                                        },
+                                        treatment: {
+                                            modality: profile.prior_treatment || null
+                                        }
+                                    }
+                                },
+                                // Also include extracted_profile for fallback (using patient_profile data)
+                                extracted_profile: profile,
+                                patient_summary: result.patient_summary || null
+                            };
+                            InChatModules.setQueryContext(question, trialMatchResultForContext, conversationHistory);
+                            console.log('[sendMessage] Set InChatModules context from Trial Match result');
+                        }
+                        
+                        // Save to ConversationManager for persistence
+                        // Requirements: 6.1, 6.5, 7.1
+                        if (window.conversationManager) {
+                            window.conversationManager.addEntry({
+                                query: question,
+                                response: result.formatted_response || result.patient_summary || '',
+                                action_type: 'query',
+                                doc_ids: (result.matching_trials || []).map(t => t.doc_id).filter(Boolean),
+                                doc_titles: (result.matching_trials || []).map(t => t.title).filter(Boolean)
+                            });
+                            console.log('[ConversationManager] Trial Match entry saved');
+                        }
+                        
+                        // Add click handlers for follow-up buttons
+                        setTimeout(() => {
+                            document.querySelectorAll('.follow-up-btn').forEach(btn => {
+                                btn.addEventListener('click', () => {
+                                    const query = btn.getAttribute('data-query');
+                                    messageInput.value = query;
+                                    sendMessage();
+                                });
+                            });
+                        }, 100);
+                        
+                    } else {
+                        // No matches found - show patient summary and suggestions
+                        let noMatchHtml = `<div class="alert alert-info">
+                            No matching studies found. Try adding more detail (cancer type, stage, or biomarkers) or rephrasing.
+                        </div>`;
+                        if (result.patient_summary) {
+                            noMatchHtml += `<div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--gray-50); border-radius: 0.25rem;">
+                                <strong>We searched for:</strong> ${escapeHtml(result.patient_summary)}
+                            </div>`;
+                        }
+                        // Show follow-up options even when no matches
+                        if (result.follow_up_options && result.follow_up_options.length > 0) {
+                            noMatchHtml += '<div class="follow-up-options" style="margin-top: 1rem;">';
+                            noMatchHtml += '<strong style="display: block; margin-bottom: 0.5rem; color: var(--gray-700);">Try these instead:</strong>';
+                            result.follow_up_options.slice(0, 4).forEach(opt => {
+                                noMatchHtml += `<button class="follow-up-btn" data-query="${escapeHtml(opt.query_template)}" style="display: block; margin: 0.5rem 0; padding: 0.5rem 1rem; background: var(--gray-100); border: 1px solid var(--gray-300); border-radius: 4px; cursor: pointer; text-align: left; width: 100%;">${escapeHtml(opt.label)}</button>`;
+                            });
+                            noMatchHtml += '</div>';
+                        }
+                        
+                        // Prepare response data for no-match case
+                        const noMatchResponseData = {
+                            answer: result.patient_summary || 'No matching studies found.',
+                            sources: [],
+                            metadata: {
+                                mode: 'trial_match',
+                                patient_summary: result.patient_summary,
+                                total_matches: 0
+                            }
+                        };
+                        
+                        addMessageWithSources(noMatchHtml, '', question, true, [], null, noMatchResponseData);
+                        
+                        // Store context for in-chat module execution (Trial Match no-match case)
+                        // Even with no matches, we may have extracted profile data
+                        if (typeof InChatModules !== 'undefined') {
+                            // Note: analyze-intent returns patient_profile, not extracted_profile
+                            const profile = result.patient_profile || {};
+                            const trialMatchResultForContext = {
+                                metadata: {
+                                    query_structure: {
+                                        cancer: {
+                                            site: profile.cancer_type || null,
+                                            stage: profile.stage || null,
+                                            histology: profile.histology || null
+                                        },
+                                        patient: {
+                                            age: profile.age || null
+                                        },
+                                        treatment: {
+                                            modality: profile.prior_treatment || null
+                                        }
+                                    }
+                                },
+                                extracted_profile: profile,
+                                patient_summary: result.patient_summary || null
+                            };
+                            InChatModules.setQueryContext(question, trialMatchResultForContext, conversationHistory);
+                            console.log('[sendMessage] Set InChatModules context from Trial Match (no matches)');
+                        }
+                        
+                        // Add click handlers for follow-up buttons
+                        setTimeout(() => {
+                            document.querySelectorAll('.follow-up-btn').forEach(btn => {
+                                btn.addEventListener('click', () => {
+                                    const query = btn.getAttribute('data-query');
+                                    messageInput.value = query;
+                                    sendMessage();
+                                });
+                            });
+                        }, 100);
+                    }
+                    
+                    sendButton.disabled = false;
+                    messageInput.focus();
+                    return;
+                }
+                
+                // Regular RAG query path (Trial Match toggle OFF)
+
+                // Regular RAG query (fast path)
+                removeMessage(loadingId);
+                let loadingId2 = addMessage('Thinking...', 'ai', true);
+                
+                const historyToSend = conversationMode === 'conversational' ? conversationHistory : [];
+                const queryMode = conversationMode === 'conversational' ? 'conversation' : 'basic';
+                console.log('[Query] Mode:', queryMode, 'History:', historyToSend);
+                // Use queryEnhanced for better short_answer + justification response
+                const result = await api.queryEnhanced(question, queryMode, 5, historyToSend);
+
+                // Remove loading
+                removeMessage(loadingId2);
+
+                if (result.error) {
+                    addMessage(`Error: ${result.error}`, 'ai');
+                } else {
+                    // Get short_answer and justification from API
+                    let shortAnswer = result.short_answer || '';
+                    let justification = result.justification || '';
+                    
+                    // If short_answer is too long (>300 chars), extract first sentence
+                    if (shortAnswer.length > 300) {
+                        const firstPeriod = shortAnswer.search(/\.\s+[A-Z]/);
+                        if (firstPeriod > 20 && firstPeriod < 250) {
+                            const extractedShort = shortAnswer.substring(0, firstPeriod + 1);
+                            const extractedJustification = shortAnswer.substring(firstPeriod + 2);
+                            shortAnswer = extractedShort;
+                            if (justification && justification !== result.short_answer) {
+                                justification = extractedJustification + '\n\n' + justification;
+                            } else {
+                                justification = extractedJustification;
+                            }
+                        }
+                    }
+                    
+                    // Avoid duplication - check for exact match or if justification starts with short_answer
+                    if (justification === shortAnswer || justification === result.short_answer) {
+                        justification = '';
+                    }
+                    // Also check if justification is contained within short_answer or vice versa
+                    if (justification && shortAnswer) {
+                        const shortNormalized = shortAnswer.replace(/\s+/g, ' ').trim().toLowerCase();
+                        const justNormalized = justification.replace(/\s+/g, ' ').trim().toLowerCase();
+                        
+                        // If short answer contains most of justification, clear justification
+                        if (shortNormalized.includes(justNormalized.substring(0, Math.min(200, justNormalized.length)))) {
+                            justification = '';
+                        }
+                        // If justification starts with short answer, remove the duplicate part
+                        else if (justNormalized.startsWith(shortNormalized.substring(0, Math.min(100, shortNormalized.length)))) {
+                            // Find where the overlap ends and keep only the new content
+                            const overlapEnd = justification.toLowerCase().indexOf(shortAnswer.toLowerCase().substring(0, 50));
+                            if (overlapEnd >= 0) {
+                                const afterOverlap = justification.substring(overlapEnd + shortAnswer.length).trim();
+                                justification = afterOverlap || '';
+                            }
+                        }
+                    }
+                    
+                    let shortAnswerHtml = markdownToHtml(shortAnswer || 'No answer provided.');
+
+                    // Evidence-relevance badge — top of response.
+                    // Shows the BEST relevance_score across the cited
+                    // sources (cross-encoder chunk-to-query match,
+                    // already normalised 0–100 by the backend's
+                    // _normalize_crossencoder_score sigmoid). Per-source
+                    // relevance is no longer rendered next to each
+                    // citation; the per-source row instead carries the
+                    // patient_match_score badge.
+                    //
+                    // Bucketed for display because cross-encoder scores
+                    // are the noisiest signal in the pipeline — a 47%
+                    // and a 52% don't represent a meaningfully different
+                    // quality of evidence. Tiers:
+                    //   High      ≥ 75% (green)
+                    //   Moderate  40–74% (yellow)
+                    //   Low       < 40% (grey)
+                    // Exact value lives in the tooltip.
+                    const retrievalResults = result.retrieval_results || [];
+                    const topRelevance = retrievalResults.reduce((best, r) => {
+                        const v = r && r.relevance_score;
+                        return (typeof v === 'number' && v > best) ? v : best;
+                    }, 0);
+                    if (topRelevance > 0) {
+                        const r = Math.round(topRelevance);
+                        let cls, label;
+                        if (r >= 75)      { cls = 'relevance-high';     label = 'High relevance'; }
+                        else if (r >= 40) { cls = 'relevance-moderate'; label = 'Moderate relevance'; }
+                        else              { cls = 'relevance-low';      label = 'Limited relevance'; }
+                        const tooltip = `Cross-encoder relevance of cited evidence to your query: ${r}%`;
+                        shortAnswerHtml += `<span class="relevance-badge ${cls}" `
+                            + `title="${tooltip}">${label}</span>`;
+                    }
+
+                    // Structured summary card (Task 2)
+                    let structuredSummaryHtml = '';
+                    if (result.structured_summary) {
+                        const ss = result.structured_summary;
+                        const lvl = (ss.evidence_level || '').toLowerCase().replace(/\s+/g, '-');
+                        const caveats = ss.caveats ? `<p class="summary-caveats">${ss.caveats}</p>` : '';
+                        structuredSummaryHtml = `
+                            <div class="structured-summary-card">
+                                <div class="summary-header">
+                                    <span class="evidence-badge evidence-${lvl}">${ss.evidence_level} Evidence</span>
+                                    <span class="rec-strength">${ss.recommendation_strength}</span>
+                                </div>
+                                <p class="key-finding">${ss.key_finding}</p>
+                                ${caveats}
+                            </div>`;
+                    }
+
+                    // Guideline alignment card (Task 5)
+                    let guidelineAlignmentHtml = '';
+                    if (result.guideline_alignment) {
+                        const ga = result.guideline_alignment;
+                        const statusClass = ga.alignment_status === 'Consistent' ? 'alignment-consistent'
+                            : ga.alignment_status === 'Inconsistent' ? 'alignment-inconsistent'
+                            : 'alignment-not-addressed';
+                        const icon = ga.alignment_status === 'Consistent' ? '✓'
+                            : ga.alignment_status === 'Inconsistent' ? '✗' : '—';
+                        guidelineAlignmentHtml = `
+                            <div class="guideline-alignment-card">
+                                <span class="alignment-icon">${icon}</span>
+                                <div class="alignment-body">
+                                    <span class="alignment-label ${statusClass}">${ga.guideline_body} — ${ga.alignment_status}</span>
+                                    <p class="alignment-note">${ga.guideline_note}</p>
+                                </div>
+                            </div>`;
+                    }
+
+                    let justificationHtml = justification ? markdownToHtml(justification) : '';
+
+                    // Format sources with Study Details buttons
+                    const sources = result.retrieval_results || [];
+                    let sourcesHtml = sources.length > 0 ? formatSources(sources) : '';
+
+                    // Build collapsible "More Information" content
+                    let moreInfoHtml = '';
+                    if (justificationHtml) {
+                        moreInfoHtml += '<div class="justification"><strong>Detailed Explanation:</strong><br>' + justificationHtml + '</div>';
+                    }
+
+                    // Prepend web-fallback or web-supplement banner (fallback takes priority)
+                    let webFallbackBanner = '';
+                    if (result.web_fallback === true) {
+                        webFallbackBanner = '<div class="web-fallback-banner">' +
+                            'Results sourced from <strong>PubMed / ClinicalTrials.gov</strong> — ' +
+                            'no matching studies were found in the knowledge base.' +
+                            '</div>';
+                    } else if (result.web_supplement === true) {
+                        webFallbackBanner = '<div class="web-supplement-banner">' +
+                            'Supplemented with <strong>PubMed / ClinicalTrials.gov</strong>' +
+                            '</div>';
+                    }
+
+                    // Prepend summary/guideline cards to shortAnswerHtml
+                    shortAnswerHtml = webFallbackBanner + structuredSummaryHtml + guidelineAlignmentHtml + shortAnswerHtml;
+                    if (sourcesHtml) {
+                        if (moreInfoHtml) moreInfoHtml += '<hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--gray-200);">';
+                        moreInfoHtml += '<div class="sources-section"><strong>Sources:</strong>' + sourcesHtml + '</div>';
+                    }
+
+                    // Get suggested follow-ups - prioritize dynamic follow-ups from Follow_Up_Generator
+                    let suggestedFollowups = [];
+                    
+                    // Get module classification (used for metadata and fallback follow-ups)
+                    const moduleClassification = result.module_classification || null;
+
+                    // First priority: Dynamic follow-ups from Follow_Up_Generator
+                    if (result.follow_up_suggestions && result.follow_up_suggestions.length > 0) {
+                        // Convert from {type, text} format to plain text for display
+                        suggestedFollowups = result.follow_up_suggestions.map(s => s.text || s);
+                        console.log('[FollowUp] Using dynamic follow-ups:', suggestedFollowups);
+                    }
+                    // Second priority: Module classification follow-ups
+                    else if (moduleClassification && moduleClassification.suggested_follow_ups && moduleClassification.suggested_follow_ups.length > 0) {
+                        suggestedFollowups = moduleClassification.suggested_follow_ups;
+                        console.log('[Module] Using module follow-ups:', moduleClassification.module, suggestedFollowups);
+                    }
+                    // Third priority: Legacy suggested_followups
+                    else if (result.suggested_followups && result.suggested_followups.length > 0) {
+                        suggestedFollowups = result.suggested_followups;
+                        console.log('[FollowUp] Using legacy follow-ups');
+                    }
+                    
+                    // Get artifact for visualization
+                    const artifact = result.artifact || null;
+                    
+                    // Prepare response data for saving
+                    const responseData = {
+                        answer: shortAnswer + (justification ? '\n\n' + justification : ''),
+                        sources: sources.map(s => ({
+                            title: s.title || s.metadata?.title,
+                            doi: s.doi || s.metadata?.doi,
+                            pmid: s.pmid || s.metadata?.pmid,
+                            author: s.author || s.metadata?.author,
+                            year: s.year || s.metadata?.year,
+                            excerpt: s.text || s.content
+                        })),
+                        metadata: {
+                            query_mode: queryMode,
+                            artifact: artifact,
+                            module_classification: moduleClassification
+                        }
+                    };
+
+                    // Store query structure for study details match tags
+                    if (result.metadata && result.metadata.query_structure) {
+                        window._lastQueryStructure = result.metadata.query_structure;
+                        console.log('[Query] Stored query_structure:', window._lastQueryStructure);
+                    } else {
+                        window._lastQueryStructure = null;
+                    }
+
+                    addMessageWithSources(shortAnswerHtml, moreInfoHtml, question, true, suggestedFollowups, artifact, responseData);
+
+                    if (conversationMode === 'conversational') {
+                        conversationHistory.push({ role: 'user', content: question });
+                        // Include full answer (short + justification) for complete context
+                        const fullAnswer = shortAnswer + (justification ? '\n\n' + justification : '');
+                        conversationHistory.push({ 
+                            role: 'assistant', 
+                            content: fullAnswer,
+                            sources: result.sources || [],
+                            source_citations: result.source_citations || []
+                        });
+                        console.log('[sendMessage] Updated history with full answer, now length:', conversationHistory.length);
+                    } else {
+                        conversationHistory = [];
+                        console.log('[sendMessage] Cleared history (single mode)');
+                    }
+                    
+                    // Enable report button
+                    lastQueryQuestion = question;
+                    lastQueryResult = result;
+                    reportBtnQuery.disabled = false;
+                    reportBtnQuery.removeAttribute('title');
+                    
+                    // Sync side nav report button
+                    const sideNavReportBtn = document.getElementById('sideNavReportBtn');
+                    if (sideNavReportBtn) {
+                        sideNavReportBtn.disabled = false;
+                        sideNavReportBtn.removeAttribute('title');
+                    }
+                    
+                    // Store context for in-chat module execution
+                    if (typeof InChatModules !== 'undefined') {
+                        InChatModules.setQueryContext(question, result, conversationHistory);
+                    }
+
+                    // Show literature analytics button after each response
+                    if (typeof LitAnalyticsPanel !== 'undefined') {
+                        LitAnalyticsPanel.showButton(question, document.getElementById('chatMessages'));
+                    }
+                    
+                    // Save to ConversationManager for persistence
+                    // Requirements: 6.1, 6.5, 7.1
+                    if (window.conversationManager) {
+                        window.conversationManager.addEntry({
+                            query: question,
+                            response: shortAnswer + (justification ? '\n\n' + justification : ''),
+                            action_type: 'query',
+                            doc_ids: (result.retrieval_results || []).map(r => r.doc_id || (r.metadata && r.metadata.doc_id)).filter(Boolean),
+                            doc_titles: (result.retrieval_results || []).map(r => r.title || (r.metadata && r.metadata.title)).filter(Boolean)
+                        });
+                        console.log('[ConversationManager] Query entry saved');
+                    }
+
+                    // Passive patient-profile capture (patient-centric pivot).
+                    // No-ops if not logged in; never blocks or delays the chat response.
+                    if (typeof PatientSignal !== 'undefined') {
+                        PatientSignal.checkAndPrompt(question);
+                    }
+                }
+            } catch (error) {
+                removeMessage(loadingId);
+                if (typeof loadingId2 !== 'undefined') removeMessage(loadingId2);
+                addMessage(`Sorry, I encountered an error: ${error.message}. Please make sure the API server is running.`, 'ai');
+            } finally {
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // Report button click handler
+        reportBtnQuery.addEventListener('click', async () => {
+            if (!lastQueryQuestion || !lastQueryResult) return;
+            reportBtnQuery.disabled = true;
+            try {
+                const payload = { question: lastQueryQuestion, ...lastQueryResult };
+                await api.downloadReport('query', payload, 'query-report.pdf');
+            } catch (e) {
+                alert('Could not generate report: ' + (e.message || 'Unknown error'));
+            }
+            reportBtnQuery.disabled = false;
+        });
+
+        // Side nav report button handler
+        const sideNavReportBtn = document.getElementById('sideNavReportBtn');
+        if (sideNavReportBtn) {
+            sideNavReportBtn.addEventListener('click', async function handleSideNavReport() {
+                if (!lastQueryQuestion || !lastQueryResult) return;
+                sideNavReportBtn.disabled = true;
+                const textEl = sideNavReportBtn.querySelector('.side-nav-text');
+                const originalText = textEl ? textEl.textContent : '';
+                if (textEl) textEl.textContent = 'Generating...';
+                try {
+                    const payload = { question: lastQueryQuestion, ...lastQueryResult };
+                    await api.downloadReport('query', payload, 'query-report.pdf');
+                } catch (e) {
+                    console.error('[SideNavReport] Error:', e);
+                    alert('Could not generate report: ' + (e.message || 'Unknown error'));
+                }
+                sideNavReportBtn.disabled = false;
+                if (textEl) textEl.textContent = originalText;
+            });
+        }
+
+        // Event listeners
+        console.log('[Init] Attaching sendButton click listener');
+        console.log('[Init] sendButton element:', sendButton);
+        console.log('[Init] messageInput element:', messageInput);
+        if (!sendButton) {
+            console.error('[Init] ERROR: sendButton is null!');
+        }
+        if (!messageInput) {
+            console.error('[Init] ERROR: messageInput is null!');
+        }
+        sendButton.addEventListener('click', sendMessage);
+        console.log('[Init] sendButton listener attached');
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Auto-resize textarea with square expansion
+        function autoResizeTextarea() {
+            const textarea = messageInput;
+            if (!textarea) return;
+            
+            // Reset height to calculate scrollHeight accurately
+            textarea.style.height = 'auto';
+            
+            // Calculate max height based on available space
+            const footer = document.querySelector('.footer');
+            const heroActionsEl = document.getElementById('heroActions');
+            
+            let maxHeight = window.innerHeight * 0.4; // Default: 40vh
+            
+            if (footer && heroActionsEl && !heroChat.classList.contains('chat-expanded')) {
+                const footerTop = footer.getBoundingClientRect().top;
+                const actionsBottom = heroActionsEl.getBoundingClientRect().bottom;
+                const availableSpace = footerTop - actionsBottom - 40; // 40px buffer
+                
+                if (availableSpace > 0) {
+                    maxHeight = Math.min(maxHeight, textarea.scrollHeight + availableSpace);
+                }
+            }
+            
+            // Apply height with constraints
+            const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+            textarea.style.height = Math.max(newHeight, 28) + 'px';
+            
+            // Toggle expanded class for square shape when multiline
+            if (heroSearch) {
+                const isMultiline = newHeight > 50;
+                heroSearch.classList.toggle('expanded', isMultiline);
+            }
+        }
+        
+        // Reset textarea to single line after sending
+        function resetTextareaSize() {
+            if (messageInput) {
+                messageInput.style.height = 'auto';
+            }
+            if (heroSearch) {
+                heroSearch.classList.remove('expanded');
+            }
+        }
+        
+        messageInput.addEventListener('input', autoResizeTextarea);
+        
+        // Also resize on window resize
+        window.addEventListener('resize', autoResizeTextarea);
+
+        // Example question buttons
+        document.querySelectorAll('.example-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const example = btn.dataset.example || btn.textContent.trim();
+                messageInput.value = example;
+                messageInput.dispatchEvent(new Event('input'));
+                sendMessage();
+            });
+        });
+
+        modeSelect?.addEventListener('change', (event) => {
+            conversationMode = event.target.value;
+            if (conversationMode === 'single') {
+                conversationHistory = [];
+                messageInput.placeholder = 'Ask any oncology question or enter a patient diagnosis...';
+            } else {
+                messageInput.placeholder = 'Ask a follow-up question...';
+            }
+            updateConversationIndicator();
+        });
+
+        // Counter for unique message IDs
+        let messageCounter = 0;
+
+        function addMessage(content, type, isLoading = false) {
+            const messageDiv = document.createElement('div');
+            const messageId = `msg-${Date.now()}-${messageCounter++}`;
+            messageDiv.id = messageId;
+            messageDiv.className = `message ${type}`;
+            messageDiv.dataset.messageType = type;
+
+            const avatar = type === 'user' ? 'You' : '<img src="assets/paxis-mark.png" alt="Paxis" style="width:22px;height:20px;object-fit:contain;">';
+            const avatarBg = type === 'user' ? 'var(--primary)' : 'var(--gray-200)';
+            const avatarColor = type === 'user' ? 'white' : 'var(--gray-700)';
+
+            if (isLoading) {
+                // Use content for loading message, default to 'Thinking...'
+                const loadingText = content || 'Thinking...';
+                messageDiv.innerHTML = `
+                    <div class="message-avatar" style="background: ${avatarBg}; color: ${avatarColor};">${avatar}</div>
+                    <div class="message-content">
+                        <div class="loading"><div class="spinner"></div><span>${loadingText}</span></div>
+                    </div>
+                `;
+                messageDiv.dataset.isLoading = 'true';
+            } else {
+                if (type === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="message-avatar" style="background: ${avatarBg}; color: ${avatarColor};">${avatar}</div>
+                        <div class="message-content">
+                            <div style="color: white; line-height: 1.6;">${content}</div>
+                        </div>
+                    `;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="message-avatar" style="background: ${avatarBg}; color: ${avatarColor};">${avatar}</div>
+                        <div class="message-content">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-900);">AI Assistant</div>
+                            <div style="color: var(--gray-700); line-height: 1.6;">${content}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Update new conversation button visibility
+            updateConversationIndicator();
+
+            return messageId;
+        }
+        
+        /**
+         * Render a Chart.js chart from artifact data
+         * @param {string} canvasId - The canvas element ID
+         * @param {Object} chartConfig - Chart configuration from artifact
+         */
+        function renderChartArtifact(canvasId, chartConfig) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || typeof Chart === 'undefined') {
+                console.error('[Chart] Canvas not found or Chart.js not loaded');
+                return;
+            }
+            
+            try {
+                const ctx = canvas.getContext('2d');
+                
+                // Build Chart.js configuration
+                const config = {
+                    type: chartConfig.type || 'bar',
+                    data: {
+                        labels: chartConfig.labels || [],
+                        datasets: chartConfig.datasets.map((ds, i) => ({
+                            label: ds.label || `Dataset ${i + 1}`,
+                            data: ds.data || [],
+                            backgroundColor: ds.backgroundColor || [
+                                'rgba(59, 130, 246, 0.8)',
+                                'rgba(16, 185, 129, 0.8)',
+                                'rgba(245, 158, 11, 0.8)',
+                                'rgba(239, 68, 68, 0.8)',
+                                'rgba(139, 92, 246, 0.8)',
+                            ],
+                            borderColor: ds.borderColor || [
+                                'rgba(59, 130, 246, 1)',
+                                'rgba(16, 185, 129, 1)',
+                                'rgba(245, 158, 11, 1)',
+                                'rgba(239, 68, 68, 1)',
+                                'rgba(139, 92, 246, 1)',
+                            ],
+                            borderWidth: 1,
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: chartConfig.datasets.length > 1,
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        label += context.parsed.y || context.parsed;
+                                        if (chartConfig.unit) label += chartConfig.unit;
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: chartConfig.type !== 'pie' && chartConfig.type !== 'doughnut' ? {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: !!chartConfig.unit,
+                                    text: chartConfig.unit || ''
+                                }
+                            }
+                        } : undefined
+                    }
+                };
+                
+                new Chart(ctx, config);
+                console.log('[Chart] Rendered chart:', chartConfig.title);
+            } catch (error) {
+                console.error('[Chart] Error rendering chart:', error);
+            }
+        }
+
+        // Global map to store response data for saving cases
+        const messageResponseData = new Map();
+
+        /**
+         * Add an AI message with collapsible sources section
+         * @param {string} answerHtml - The answer HTML
+         * @param {string} sourcesHtml - The sources HTML
+         * @param {string} originalQuery - The original user query (for saving)
+         * @param {boolean} showSaveCase - Whether to show the save case button
+         * @param {Array} suggestedFollowups - Suggested follow-up questions
+         * @param {Object} artifact - Visualization artifact (chart, etc.)
+         * @param {Object} responseData - Full response data for saving (answer, sources, metadata)
+         */
+        function addMessageWithSources(answerHtml, sourcesHtml, originalQuery = null, showSaveCase = false, suggestedFollowups = [], artifact = null, responseData = null) {
+            const messageDiv = document.createElement('div');
+            const messageId = `msg-${Date.now()}-${messageCounter++}`;
+            messageDiv.id = messageId;
+            messageDiv.className = 'message ai';
+            
+            // Store response data for later retrieval when saving
+            if (responseData) {
+                messageResponseData.set(messageId, responseData);
+                console.log('[addMessageWithSources] Stored responseData for messageId:', messageId, responseData);
+            }
+
+            // Create collapsible section if sources exist
+            const collapsibleHtml = createCollapsibleSection(messageId, sourcesHtml);
+            
+            // Create chart artifact HTML if present
+            let artifactHtml = '';
+            const chartCanvasId = `chart-${messageId}`;
+            if (artifact && artifact.artifact_type === 'chart' && artifact.chart) {
+                artifactHtml = `
+                    <div class="chart-artifact">
+                        <div class="chart-title">${escapeHtml(artifact.chart.title)}</div>
+                        <div class="chart-container">
+                            <canvas id="${chartCanvasId}"></canvas>
+                        </div>
+                        ${artifact.chart.source ? `<div class="chart-source">Source: ${escapeHtml(artifact.chart.source)}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Create save case button HTML if needed - show for all users
+            let saveCaseHtml = '';
+            if (showSaveCase && originalQuery) {
+                saveCaseHtml = `
+                    <div class="save-case-container">
+                        <button class="save-case-btn" data-query="${encodeURIComponent(originalQuery)}" data-message-id="${messageId}">
+                            <span class="save-case-icon"></span>
+                            <span class="save-case-text">Save this case</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            // Create suggested follow-ups HTML (show for module transfers even in single mode)
+            let followupsHtml = '';
+            let moduleButtonsHtml = '';
+            
+            // Get module buttons (without standalone wrapper)
+            if (originalQuery && typeof InChatModules !== 'undefined') {
+                moduleButtonsHtml = InChatModules.generateModuleButtons(originalQuery, false);
+                console.log('[addMessageWithSources] Generated module buttons for query:', originalQuery);
+            } else {
+                console.log('[addMessageWithSources] Skipping module buttons - originalQuery:', originalQuery, 'InChatModules:', typeof InChatModules);
+            }
+            
+            // Build follow-up question buttons
+            let followupButtonsHtml = '';
+            if (suggestedFollowups && suggestedFollowups.length > 0) {
+                const navPattern = /^\[NAV:([^\]]+)\]/;
+                const reportPattern = /^\[REPORT:([^\]]+)\]/;
+                followupButtonsHtml = suggestedFollowups.map(q => {
+                    const navMatch = q.match(navPattern);
+                    if (navMatch) {
+                        const page = navMatch[1];
+                        const label = q.replace(navPattern, '');
+                        return `<button type="button" class="followup-btn followup-nav" data-nav-page="${page}" data-question="${encodeURIComponent(originalQuery || '')}">${label}</button>`;
+                    }
+                    const reportMatch = q.match(reportPattern);
+                    if (reportMatch) {
+                        const format = reportMatch[1];
+                        const label = q.replace(reportPattern, '');
+                        return `<button type="button" class="followup-btn followup-report" data-report-format="${format}" data-message-id="${messageId}">${label}</button>`;
+                    }
+                    return `<button type="button" class="followup-btn followup-chat" data-question="${encodeURIComponent(q)}" data-original-query="${encodeURIComponent(originalQuery || '')}" data-message-id="${messageId}">${q}</button>`;
+                }).join('');
+            }
+            
+            // Combine into single "Would you like to:" section
+            if (followupButtonsHtml || moduleButtonsHtml) {
+                followupsHtml = `
+                    <div class="suggested-followups">
+                        <span class="followups-label">Would you like to:</span>
+                        <div class="followups-buttons">
+                            ${followupButtonsHtml}
+                            ${moduleButtonsHtml}
+                        </div>
+                    </div>
+                `;
+                console.log('[addMessageWithSources] followupsHtml created with moduleButtonsHtml length:', moduleButtonsHtml.length);
+            } else {
+                console.log('[addMessageWithSources] No followupsHtml - followupButtonsHtml:', !!followupButtonsHtml, 'moduleButtonsHtml:', !!moduleButtonsHtml);
+            }
+
+            // Module actions are now integrated into followupsHtml above
+            let moduleActionsHtml = '';
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar" style="background: var(--gray-200); color: var(--gray-700);"><img src="assets/paxis-mark.png" alt="Paxis" style="width:22px;height:20px;object-fit:contain;"></div>
+                <div class="message-content">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--gray-900);">AI Assistant</div>
+                    <div class="answer-content">${answerHtml}</div>
+                    ${artifactHtml}
+                    ${collapsibleHtml}
+                    ${followupsHtml}
+                    ${moduleActionsHtml}
+                    ${saveCaseHtml}
+                </div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+            
+            // Render chart if artifact exists
+            if (artifact && artifact.artifact_type === 'chart' && artifact.chart) {
+                renderChartArtifact(chartCanvasId, artifact.chart);
+            }
+            
+            // Initialize collapsible toggle if it exists
+            const toggleElement = messageDiv.querySelector('.collapsible-toggle');
+            if (toggleElement) {
+                initCollapsibleToggle(toggleElement);
+            }
+            
+            // Initialize save case button if it exists
+            const saveCaseBtn = messageDiv.querySelector('.save-case-btn');
+            if (saveCaseBtn) {
+                saveCaseBtn.addEventListener('click', handleSaveCase);
+            }
+            
+            // Initialize module action buttons if they exist
+            const moduleActionsContainer = messageDiv.querySelector('.module-actions-container');
+            if (moduleActionsContainer && typeof InChatModules !== 'undefined') {
+                InChatModules.initModuleButtons(moduleActionsContainer);
+            }
+            
+            // Also initialize module buttons in the followups section
+            const followupsContainer = messageDiv.querySelector('.suggested-followups');
+            if (followupsContainer && typeof InChatModules !== 'undefined') {
+                InChatModules.initModuleButtons(followupsContainer);
+            }
+            
+            // Initialize follow-up buttons
+            messageDiv.querySelectorAll('.followup-chat').forEach(btn => {
+                btn.addEventListener('click', function handleFollowupChat() {
+                    const question = decodeURIComponent(btn.dataset.question);
+                    const origQuery = decodeURIComponent(btn.dataset.originalQuery || '');
+                    const msgId = btn.dataset.messageId;
+                    
+                    // Seed conversation mode with the previous exchange
+                    const msgDiv = document.getElementById(msgId);
+                    let answerContent = msgDiv?.querySelector('.answer-content')?.textContent || '';
+                    answerContent = answerContent.trim().replace(/\s+/g, ' ');
+                    if (answerContent.length > 500) {
+                        answerContent = answerContent.substring(0, 500) + '...';
+                    }
+                    
+                    conversationMode = 'conversational';
+                    if (modeSelect) modeSelect.value = 'conversational';
+                    conversationHistory = [
+                        { role: 'user', content: origQuery },
+                        { role: 'assistant', content: answerContent || 'Previous response' }
+                    ];
+                    
+                    updateConversationIndicator();
+                    messageInput.placeholder = 'Ask a follow-up question...';
+                    
+                    // Set the question and auto-send
+                    messageInput.value = question;
+                    console.log('[Followup] Auto-sending in conversation mode:', question);
+                    sendMessage();
+                });
+            });
+            
+            // Initialize navigation follow-up buttons
+            messageDiv.querySelectorAll('.followup-nav').forEach(btn => {
+                btn.addEventListener('click', function handleFollowupNav() {
+                    const page = btn.dataset.navPage;
+                    const origQuery = decodeURIComponent(btn.dataset.question || '');
+                    
+                    // Store context for the target page
+                    const msgDiv = document.getElementById(messageId);
+                    let answerContent = msgDiv?.querySelector('.answer-content')?.textContent || '';
+                    answerContent = answerContent.trim().replace(/\s+/g, ' ');
+                    if (answerContent.length > 1000) {
+                        answerContent = answerContent.substring(0, 1000) + '...';
+                    }
+                    
+                    sessionStorage.setItem('followupContext', JSON.stringify({
+                        query: origQuery,
+                        answer: answerContent,
+                        timestamp: Date.now()
+                    }));
+                    
+                    console.log('[Followup] Navigating to', page, 'with context');
+                    window.location.href = page + '.html';
+                });
+            });
+            
+            // Initialize report generation follow-up buttons
+            messageDiv.querySelectorAll('.followup-report').forEach(btn => {
+                btn.addEventListener('click', async function handleFollowupReport() {
+                    const format = btn.dataset.reportFormat;
+                    if (!lastQueryQuestion || !lastQueryResult) {
+                        console.error('[Report] No query result available for report generation');
+                        return;
+                    }
+                    const originalLabel = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Generating...';
+                    const filenames = { patient_handout: 'patient-handout.pdf', clinic_note: 'clinic-note.pdf' };
+                    try {
+                        const payload = { question: lastQueryQuestion, format: format, ...lastQueryResult };
+                        await api.downloadReport('query', payload, filenames[format] || 'report.pdf');
+                        console.log('[Report] Generated', format, 'report');
+                    } catch (e) {
+                        console.error('[Report] Generation failed:', e);
+                        alert('Could not generate report: ' + (e.message || 'Unknown error'));
+                    }
+                    btn.disabled = false;
+                    btn.textContent = originalLabel;
+                });
+            });
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Update new conversation button visibility
+            updateConversationIndicator();
+
+            return messageId;
+        }
+        
+        /**
+         * Saves the query along with the full response (answer + sources)
+         */
+        async function handleSaveCase(event) {
+            const btn = event.currentTarget;
+            const query = decodeURIComponent(btn.dataset.query);
+            const messageId = btn.dataset.messageId;
+            
+            if (btn.classList.contains('saved')) {
+                return; // Already saved
+            }
+            
+            btn.disabled = true;
+            const saveTextEl = btn.querySelector('.save-case-text');
+            const saveIconEl = btn.querySelector('.save-case-icon');
+            if (saveTextEl) saveTextEl.textContent = 'Saving...';
+            
+            // Get the stored response data for this message
+            const responseData = messageResponseData.get(messageId);
+            console.log('[SaveCase] messageId:', messageId, 'responseData:', responseData);
+            
+            // Also extract the answer text from the DOM as fallback
+            const messageDiv = document.getElementById(messageId);
+            const answerContent = messageDiv?.querySelector('.answer-content')?.textContent?.trim() || '';
+            
+            const token = localStorage.getItem('exueed_token');
+            
+            if (token) {
+                // Logged in - save to database with full response
+                try {
+                    const saveData = responseData || {
+                        answer: answerContent,
+                        sources: [],
+                        metadata: {}
+                    };
+                    console.log('[SaveCase] Saving with data:', saveData);
+                    
+                    const result = await api.saveCase(query, null, saveData);
+                    btn.classList.add('saved');
+                    if (saveIconEl) saveIconEl.textContent = '';
+                    if (saveTextEl) saveTextEl.textContent = `Saved: ${result.case_name}`;
+                    
+                    // Add alert toggle button after successful save
+                    addAlertToggle(btn.parentElement, result.case_id, result.case_name);
+                } catch (error) {
+                    console.error('Save case error:', error);
+                    if (saveTextEl) saveTextEl.textContent = 'Save failed - try again';
+                    btn.disabled = false;
+                }
+            } else {
+                // Not logged in - save to session storage with response data
+                try {
+                    const SESSION_SAVES_KEY = 'exueed_session_saves';
+                    const saves = JSON.parse(sessionStorage.getItem(SESSION_SAVES_KEY) || '[]');
+                    const newCase = {
+                        id: 'session_' + Date.now(),
+                        case_name: `Case ${new Date().toLocaleTimeString()}`,
+                        original_query: query,
+                        query_summary: query.substring(0, 150),
+                        response_answer: responseData?.answer || answerContent,
+                        response_sources: responseData?.sources || [],
+                        created_at: new Date().toISOString(),
+                        is_session: true
+                    };
+                    saves.unshift(newCase);
+                    sessionStorage.setItem(SESSION_SAVES_KEY, JSON.stringify(saves));
+                    
+                    btn.classList.add('saved');
+                    if (saveIconEl) saveIconEl.textContent = '';
+                    if (saveTextEl) saveTextEl.textContent = `Saved (session): ${newCase.case_name}`;
+                } catch (error) {
+                    console.error('Session save error:', error);
+                    if (saveTextEl) saveTextEl.textContent = 'Save failed - try again';
+                    btn.disabled = false;
+                }
+            }
+        }
+        
+        /**
+         * Add alert toggle button after saving a case
+         * @param {HTMLElement} container - Container element to append to
+         * @param {number} caseId - The saved case ID
+         * @param {string} caseName - The case name
+         */
+        function addAlertToggle(container, caseId, caseName) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'case-alert-toggle';
+            alertDiv.innerHTML = `
+                <label class="alert-toggle-label">
+                    <input type="checkbox" class="alert-checkbox" data-case-id="${caseId}">
+                    <span class="alert-toggle-text">Alert me when new matching trials are found</span>
+                </label>
+            `;
+            container.appendChild(alertDiv);
+            
+            // Add event listener for the checkbox
+            const checkbox = alertDiv.querySelector('.alert-checkbox');
+            checkbox.addEventListener('change', async (e) => {
+                const isEnabled = e.target.checked;
+                const toggleText = alertDiv.querySelector('.alert-toggle-text');
+                
+                try {
+                    if (isEnabled) {
+                        await api.enableCaseAlerts(caseId, true);
+                        toggleText.textContent = 'Alerts enabled - you\'ll be notified of new matches';
+                        toggleText.style.color = 'var(--secondary)';
+                    } else {
+                        await api.disableCaseAlerts(caseId);
+                        toggleText.textContent = 'Alert me when new matching trials are found';
+                        toggleText.style.color = '';
+                    }
+                } catch (error) {
+                    console.error('Alert toggle error:', error);
+                    e.target.checked = !isEnabled; // Revert
+                    toggleText.textContent = 'Failed to update alerts';
+                    setTimeout(() => {
+                        toggleText.textContent = isEnabled 
+                            ? 'Alerts enabled - you\'ll be notified of new matches'
+                            : 'Alert me when new matching trials are found';
+                    }, 2000);
+                }
+            });
+        }
+
+        function removeMessage(messageId) {
+            const element = document.getElementById(messageId);
+            if (element) element.remove();
+        }
+
+        // Check API health on load
+        window.addEventListener('load', async () => {
+            try {
+                const health = await api.getHealth();
+                console.log('API Status:', health.status);
+            } catch (error) {
+                console.warn('API not available:', error);
+            }
+            messageInput.focus();
+            
+            // Clear any previous conversation on page load for a fresh start
+            // Users can navigate back to see previous conversations via browser history
+            // Requirements: 6.1, 6.2, 6.3, 6.4
+            if (window.conversationManager) {
+                window.conversationManager.clearConversation();
+                console.log('[ConversationManager] Fresh conversation started');
+            }
+            
+            // Also clear the API conversation context
+            if (api && typeof api.clearConversationContext === 'function') {
+                api.clearConversationContext();
+                console.log('[API] Conversation context cleared');
+            }
+            
+            // Clear sessionStorage context directly as well
+            try {
+                sessionStorage.removeItem('exueed_conversation_context');
+                sessionStorage.removeItem('followupContext');
+                sessionStorage.removeItem('treatmentEvalContext');
+                sessionStorage.removeItem('treatmentEvalClinicalContext');
+                console.log('[Init] Session storage cleared for fresh start');
+            } catch (e) {
+                console.warn('[Init] Could not clear sessionStorage:', e);
+            }
+            
+            // Also clear clinical context for fresh start
+            if (typeof InChatModules !== 'undefined') {
+                InChatModules.clearClinicalContext();
+            }
+        });
+    </script>
+</body>
+</html>

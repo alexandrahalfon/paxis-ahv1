@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html" class="active">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <section class="section">
+        <div class="container">
+            <div style="max-width: 900px; margin: 0 auto;">
+                <div class="page-logo">
+                    <img src="assets/paxis-mark.png" alt="Paxis mark">
+                </div>
+                <div class="feature-nav">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                </div>
+                <!-- Header -->
+                <div style="text-align: center; margin-bottom: 4rem;">
+                    <h1 style="margin-bottom: 1rem;">About Paxis</h1>
+                    <p style="font-size: 1.125rem; color: var(--gray-600); max-width: 700px; margin: 0 auto;">
+                        Paxis is an AI-powered medical literature search platform designed to assist oncologists 
+                        in finding evidence-based information, matching patients to relevant studies, and comparing 
+                        treatment options.
+                    </p>
+                </div>
+
+                <!-- What is Paxis Section -->
+                <div class="card" style="margin-bottom: 3rem;">
+                    <div class="card-body">
+                        <h2 style="margin-bottom: 1rem;">What is Paxis?</h2>
+                        <p style="color: var(--gray-700); line-height: 1.8; margin-bottom: 1rem;">
+                            Paxis is a comprehensive AI-powered platform that transforms how oncologists and medical 
+                            professionals access, analyze, and utilize medical literature. Built specifically for oncology, 
+                            the platform provides instant access to evidence-based information from thousands of peer-reviewed 
+                            research papers, clinical trials, and medical studies.
+                        </p>
+                        <p style="color: var(--gray-700); line-height: 1.8; margin-bottom: 1rem;">
+                            The platform uses advanced artificial intelligence, natural language processing, and semantic 
+                            search technologies to understand complex medical queries and deliver precise, cited answers. 
+                            Instead of spending hours searching through databases, oncologists can ask questions in natural 
+                            language and receive comprehensive, evidence-based responses with proper source attribution.
+                        </p>
+                        <p style="color: var(--gray-700); line-height: 1.8;">
+                            Paxis goes beyond simple search by offering specialized tools for patient matching and treatment 
+                            comparison, enabling clinicians to make more informed decisions based on the latest research evidence.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- How It Works Section -->
+                <div class="card" style="margin-bottom: 3rem;">
+                    <div class="card-body">
+                        <h2 style="margin-bottom: 1rem;">How It Works</h2>
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: var(--gray-900);">1. Document Processing</h4>
+                            <p style="color: var(--gray-700); line-height: 1.8; margin-bottom: 1.5rem;">
+                                Medical literature is processed using OCR and vision models to extract text, tables, and figures. 
+                                Structured study profiles are automatically extracted.
+                            </p>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: var(--gray-900);">2. Semantic Indexing</h4>
+                            <p style="color: var(--gray-700); line-height: 1.8; margin-bottom: 1.5rem;">
+                                Content is converted to vector embeddings and stored for semantic search, 
+                                enabling understanding beyond simple keyword matching.
+                            </p>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: var(--gray-900);">3. Intelligent Retrieval</h4>
+                            <p style="color: var(--gray-700); line-height: 1.8; margin-bottom: 1.5rem;">
+                                Queries are analyzed for intent and matched against the knowledge base using 
+                                hybrid search with relevance reranking.
+                            </p>
+                        </div>
+                        <div>
+                            <h4 style="margin-bottom: 0.75rem; color: var(--gray-900);">4. AI Synthesis</h4>
+                            <p style="color: var(--gray-700); line-height: 1.8;">
+                                Retrieved evidence is synthesized into comprehensive answers with proper citations 
+                                and source attribution.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mission Section -->
+                <div class="card" style="margin-bottom: 3rem;">
+                    <div class="card-body">
+                        <h2 style="margin-bottom: 1rem;">Our Mission</h2>
+                        <p style="color: var(--gray-700); line-height: 1.8; margin-bottom: 1rem;">
+                            Paxis aims to revolutionize how oncologists access and utilize medical literature. 
+                            By leveraging advanced AI and natural language processing, we provide instant access 
+                            to evidence-based information from thousands of research papers, enabling faster and 
+                            more informed clinical decision-making.
+                        </p>
+                        <p style="color: var(--gray-700); line-height: 1.8;">
+                            Our platform combines semantic search, patient matching algorithms, and treatment 
+                            comparison tools to deliver comprehensive, accurate, and actionable insights from 
+                            the latest oncology research.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Features Overview -->
+                <div class="card" style="margin-bottom: 3rem;">
+                    <div class="card-body">
+                        <h2 style="margin-bottom: 1.5rem;">Key Features</h2>
+                        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">AI-Powered Query</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Natural language questions with cited answers from peer-reviewed literature.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Patient Matching</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Match patients to relevant studies by demographics, stage, histology, and markers.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Evaluate Treatment Options</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Side-by-side treatment analysis with efficacy and safety data.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Review Studies</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Compare studies head-to-head on outcomes, populations, and methodology.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Document Upload</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Upload PDFs for processing and integration with the knowledge base.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Analytics</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Aggregate statistics and meta-analysis across the knowledge base.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Section -->
+                <div class="card">
+                    <div class="card-body">
+                        <h2 style="margin-bottom: 2rem; text-align: center;">Our Team</h2>
+                        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+                            <!-- Team Member 1 -->
+                            <div style="text-align: center;">
+                                <div style="width: 120px; height: 120px; border-radius: 50%; background: var(--gray-200); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--gray-400); font-weight: 300;">
+                                    AA
+                                </div>
+                                <h3 style="margin-bottom: 0.5rem; color: var(--gray-900);">Aysha Allahverdiyeva</h3>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; margin-bottom: 0.75rem;">Co-Founder & Developer</p>
+                                <p style="color: var(--gray-500); font-size: 0.875rem; line-height: 1.6;">
+                                    Lead developer and architect of the Paxis platform, specializing in AI/ML systems 
+                                    and medical informatics.
+                                </p>
+                            </div>
+
+                            <!-- Team Member 2 -->
+                            <div style="text-align: center;">
+                                <div style="width: 120px; height: 120px; border-radius: 50%; background: var(--gray-200); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--gray-400); font-weight: 300;">
+                                    AH
+                                </div>
+                                <h3 style="margin-bottom: 0.5rem; color: var(--gray-900);">Alexandra Halfon</h3>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; margin-bottom: 0.75rem;">Co-Founder & Engineer</p>
+                                <p style="color: var(--gray-500); font-size: 0.875rem; line-height: 1.6;">
+                                    Lead backend engineer and systems architect, pioneering retrieval algorithms, 
+                                    data pipelines, and database architecture.
+                                </p>
+                            </div>
+
+                            <!-- Team Member 3 -->
+                            <div style="text-align: center;">
+                                <div style="width: 120px; height: 120px; border-radius: 50%; background: var(--gray-200); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--gray-400); font-weight: 300;">
+                                    JX
+                                </div>
+                                <h3 style="margin-bottom: 0.5rem; color: var(--gray-900);">Dr. Jinyu Xue</h3>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; margin-bottom: 0.75rem;">Co-Founder & Medical Advisor</p>
+                                <p style="color: var(--gray-500); font-size: 0.875rem; line-height: 1.6;">
+                                    Medical expert and co-founder providing clinical guidance, validation of medical content, 
+                                    and ensuring accuracy of evidence-based recommendations.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technology Section -->
+                <div class="card" style="margin-top: 3rem;">
+                    <div class="card-body">
+                        <h2 style="margin-bottom: 1.5rem;">Technology</h2>
+                        <p style="color: var(--gray-700); line-height: 1.8;">
+                            Paxis is built on modern AI infrastructure including vector databases for semantic search, 
+                            large language models for synthesis, and cloud-native architecture for scalability and reliability.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Use Cases Section -->
+                <div class="card" style="margin-top: 3rem;">
+                    <div class="card-body">
+                        <h2 style="margin-bottom: 1.5rem;">Who Can Use Paxis?</h2>
+                        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Oncologists</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Quickly find evidence-based treatment recommendations, compare treatment options, 
+                                    and match patients to relevant clinical trials.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Researchers</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Access comprehensive literature reviews, identify research gaps, and discover 
+                                    relevant studies for your research area.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: var(--gray-900);">Medical Students</h4>
+                                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.6;">
+                                    Learn from the latest research, understand treatment protocols, and explore 
+                                    evidence-based medicine practices.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <!-- <a href="about.html">About</a> -->
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script>
+        const apiDocsLink = document.getElementById('apiDocsLink');
+        if (apiDocsLink) apiDocsLink.href = CONFIG.API_DOCS;
+    </script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Your Doctor - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Page-specific only. Cards, forms and buttons come from styles.css. */
+        .pc-wrap { max-width: 620px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .pc-head { text-align: center; margin-bottom: var(--spacing-lg); }
+        .pc-head h1 { font-size: 1.6rem; margin-bottom: var(--spacing-sm); }
+        .pc-head p { color: var(--gray-600); margin: 0; }
+        .pc-wrap .card { padding: var(--spacing-lg); margin-bottom: var(--spacing-md); }
+        .pc-wrap .card h2 { font-size: 1.05rem; margin-bottom: var(--spacing-xs); }
+        .pc-sub { font-size: 0.875rem; color: var(--gray-600); margin-bottom: var(--spacing-md); }
+        .pc-note { font-size: 0.8rem; color: var(--gray-500); margin-top: var(--spacing-sm); }
+        #inviteCode { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; text-align: center; }
+        .pc-or { text-align: center; color: var(--gray-400); font-size: 0.8rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.06em; margin: var(--spacing-md) 0; }
+        .pc-msg { padding: var(--spacing-md); border-radius: var(--radius-md);
+            font-size: 0.9rem; margin-bottom: var(--spacing-md); display: none; }
+        .pc-msg.ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; display: block; }
+        .pc-msg.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger-dark); display: block; }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                                        <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="pc-wrap">
+            <div class="pc-head">
+                <h1>Connect your doctor</h1>
+                <p>Optional. It lets Paxis use your actual diagnosis, and lets you send questions to your care team.</p>
+            </div>
+
+            <div class="pc-msg" id="pcMsg"></div>
+
+            <div class="card is-hidden" id="pcLinked">
+                <h2>You're connected</h2>
+                <p class="pc-sub">Answers can now take your diagnosis into account.</p>
+                <a href="patient-qa.html" class="btn btn-primary">Ask a question</a>
+            </div>
+
+            <div class="card is-hidden" id="pcPending">
+                <h2>Request sent</h2>
+                <p class="pc-sub">Your doctor will confirm it. You can keep asking questions in the meantime.</p>
+                <a href="patient-qa.html" class="btn btn-primary">Ask a question</a>
+            </div>
+
+            <div id="pcForms" class="is-hidden">
+                <div class="card">
+                    <h2>I have a code</h2>
+                    <p class="pc-sub">Your doctor's office can give you an 8-character code.</p>
+                    <div class="form-group">
+                        <label class="form-label" for="inviteCode">Invite code</label>
+                        <input class="form-input" type="text" id="inviteCode" maxlength="12"
+                               placeholder="ABCD2345" autocomplete="one-time-code">
+                    </div>
+                    <button class="btn btn-primary" id="claimBtn">Connect</button>
+                </div>
+
+                <div class="pc-or">or</div>
+
+                <div class="card">
+                    <h2>Find my doctor</h2>
+                    <p class="pc-sub">Send a request. Your doctor confirms you're their patient before anything connects.</p>
+                    <div class="form-group">
+                        <label class="form-label" for="physSearch">Search by name or hospital</label>
+                        <input class="form-input" type="text" id="physSearch" placeholder="Start typing a name...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="physSelect">Choose your doctor</label>
+                        <select class="form-select" id="physSelect">
+                            <option value="">Search above to see clinicians</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline" id="requestBtn">Send request</button>
+                    <p class="pc-note">Choosing a name only sends a request. It gives you no access until they approve it.</p>
+                </div>
+
+                <div class="pc-or">or</div>
+
+                <div class="card">
+                    <h2>Skip this for now</h2>
+                    <p class="pc-sub">
+                        You don't need a doctor connected to use Paxis. You can ask anything and get
+                        clear answers. Connect later any time if you want more specific ones.
+                    </p>
+                    <a href="patient-qa.html" class="btn btn-primary">Just start asking</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. For educational purposes only, not a substitute for professional medical advice.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('care-team', 'patient');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var msgEl = document.getElementById('pcMsg');
+
+        function show(kind, text) { msgEl.className = 'pc-msg ' + kind; msgEl.textContent = text; }
+        function headers() {
+            return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+        }
+
+        if (!token) {
+            show('err', 'Please log in or create an account first.');
+            return;
+        }
+
+        (async function load() {
+            try {
+                var res = await fetch(BASE + '/portal/me', { headers: headers() });
+                if (res.status === 403) {
+                    show('err', 'This page is for patient accounts. You appear to be signed in as a clinician.');
+                    return;
+                }
+                if (!res.ok) throw new Error('lookup failed');
+                var data = await res.json();
+                if (data.linked) document.getElementById('pcLinked').classList.remove('is-hidden');
+                else if (data.pending_request) document.getElementById('pcPending').classList.remove('is-hidden');
+                else document.getElementById('pcForms').classList.remove('is-hidden');
+            } catch (e) {
+                document.getElementById('pcForms').classList.remove('is-hidden');
+            }
+        })();
+
+        document.getElementById('claimBtn').addEventListener('click', async function () {
+            var code = (document.getElementById('inviteCode').value || '').trim();
+            if (!code) { show('err', 'Enter the code your doctor gave you.'); return; }
+            this.disabled = true;
+            try {
+                var res = await fetch(BASE + '/portal/claim-invite', {
+                    method: 'POST', headers: headers(),
+                    body: JSON.stringify({ invite_code: code })
+                });
+                var body = await res.json();
+                if (!res.ok) throw new Error(body.detail || 'Could not connect');
+                show('ok', 'Connected. Taking you to your questions...');
+                setTimeout(function () { window.location.href = 'patient-qa.html'; }, 1200);
+            } catch (e) {
+                show('err', e.message);
+                this.disabled = false;
+            }
+        });
+
+        var searchEl = document.getElementById('physSearch');
+        var selectEl = document.getElementById('physSelect');
+        var timer = null;
+        searchEl.addEventListener('input', function () {
+            clearTimeout(timer);
+            var q = searchEl.value.trim();
+            if (q.length < 2) return;
+            timer = setTimeout(async function () {
+                try {
+                    var res = await fetch(BASE + '/portal/physicians?q=' + encodeURIComponent(q), { headers: headers() });
+                    if (!res.ok) return;
+                    var data = await res.json();
+                    selectEl.innerHTML = '';
+                    if (!data.physicians.length) {
+                        selectEl.innerHTML = '<option value="">No clinicians found</option>';
+                        return;
+                    }
+                    data.physicians.forEach(function (p) {
+                        var o = document.createElement('option');
+                        o.value = p.id;
+                        o.textContent = p.name + (p.institution ? ' - ' + p.institution : '');
+                        selectEl.appendChild(o);
+                    });
+                } catch (e) { /* ignore */ }
+            }, 250);
+        });
+
+        document.getElementById('requestBtn').addEventListener('click', async function () {
+            if (!selectEl.value) { show('err', 'Choose your doctor from the list first.'); return; }
+            this.disabled = true;
+            try {
+                var res = await fetch(BASE + '/portal/request-link', {
+                    method: 'POST', headers: headers(),
+                    body: JSON.stringify({ physician_id: selectEl.value })
+                });
+                var body = await res.json();
+                if (!res.ok) throw new Error(body.detail || 'Could not send request');
+                document.getElementById('pcForms').classList.add('is-hidden');
+                document.getElementById('pcPending').classList.remove('is-hidden');
+                show('ok', 'Request sent.');
+            } catch (e) {
+                show('err', e.message);
+                this.disabled = false;
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
