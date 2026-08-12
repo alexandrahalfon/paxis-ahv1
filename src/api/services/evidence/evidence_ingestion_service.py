@@ -57,7 +57,7 @@ from typing import Any, Dict, List, Optional
 from qdrant_client.models import PointStruct, VectorParams, Distance, PointIdsList
 
 from src.core.config import settings
-from src.api.services.evidence.source_registry import get_source_registry
+from src.api.services.evidence.source_registry import get_source_registry, enforce_domain
 from src.api.services.evidence.content_extractor import ExtractedDocument, extract
 from src.api.services.evidence.section_chunker import Chunk, chunk_document
 from src.api.services.evidence.metadata_classifier import classify as classify_content, ClassificationResult
@@ -143,10 +143,27 @@ class EvidenceIngestionService:
         """Fetch a URL and run it through the full pipeline. Raises
         source_fetcher.FetchError on an unreachable/oversized URL —
         callers (the CLI runner) are expected to catch that per-URL and
-        continue the batch rather than aborting a whole run."""
+        continue the batch rather than aborting a whole run. Also raises
+        source_registry.SourceDomainMismatch if url (or, after fetching,
+        the final post-redirect URL) doesn't belong to source_key's
+        registered domain — see enforce_domain()'s docstring. Domain is
+        checked BEFORE fetching (an off-allowlist host is never even
+        requested) and AGAIN after (a redirect can leave the approved
+        domain even when the requested URL didn't)."""
         from src.api.services.evidence.source_fetcher import fetch_url
 
+        registry = get_source_registry()
+        source = await registry.get_source(source_key)
+        if not source:
+            raise ValueError(
+                f"Unknown evidence source '{source_key}'. Call "
+                "SourceRegistry.register_source() (or seed_default_sources()) first."
+            )
+        enforce_domain(source, url, stage="requested")
+
         fetched = await asyncio.to_thread(fetch_url, url)
+        enforce_domain(source, fetched.final_url, stage="final (post-redirect)")
+
         doc = extract(fetched.content, fetched.content_type, source_url=fetched.final_url)
         if not doc.is_usable():
             raise ValueError(
@@ -156,7 +173,7 @@ class EvidenceIngestionService:
             )
         return await self._ingest_extracted(
             source_key=source_key, doc_key=fetched.final_url, url=fetched.final_url,
-            doc=doc, applicability_override=applicability_override,
+            doc=doc, applicability_override=applicability_override, source=source,
         )
 
     async def ingest_document(
@@ -175,13 +192,31 @@ class EvidenceIngestionService:
         document ingested once via ingest_url() and once by hand (e.g.
         text pulled by an agent's web-fetch tool) resolves to the same
         document_id and correctly versions against each other rather
-        than becoming two unrelated documents."""
+        than becoming two unrelated documents.
+
+        When url is given, its hostname is checked against source_key's
+        registered domain the same way ingest_url() checks the requested
+        URL — this path never fetches, so there is no final/post-redirect
+        URL to independently verify, but the asserted URL itself is still
+        worth catching if it's on the wrong host (an operator/agent
+        mistake, or a source_key reused for the wrong content)."""
         if not (raw_text or "").strip():
             raise ValueError("No text to ingest")
+
+        registry = get_source_registry()
+        source = await registry.get_source(source_key)
+        if not source:
+            raise ValueError(
+                f"Unknown evidence source '{source_key}'. Call "
+                "SourceRegistry.register_source() (or seed_default_sources()) first."
+            )
+        if url:
+            enforce_domain(source, url, stage="asserted")
+
         doc = ExtractedDocument(title=title, sections=[], plain_text=raw_text)
         return await self._ingest_extracted(
             source_key=source_key, doc_key=url or doc_id, url=url, doc=doc,
-            applicability_override=applicability, constraints=constraints,
+            applicability_override=applicability, constraints=constraints, source=source,
         )
 
     # ── Shared pipeline ──────────────────────────────────────────────
@@ -194,9 +229,15 @@ class EvidenceIngestionService:
         doc: ExtractedDocument,
         applicability_override: Optional[Dict[str, Any]] = None,
         constraints: Optional[Dict[str, Any]] = None,
+        source: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         registry = get_source_registry()
-        source = await registry.get_source(source_key)
+        if source is None:
+            # Both public entry points now look this up themselves (to
+            # enforce_domain() before this method runs) and pass it
+            # through — this fallback only fires for a caller that
+            # skips both of them, which no code in this repo does today.
+            source = await registry.get_source(source_key)
         if not source:
             raise ValueError(
                 f"Unknown evidence source '{source_key}'. Call "

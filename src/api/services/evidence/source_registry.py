@@ -21,9 +21,69 @@ from __future__ import annotations
 import json
 import uuid
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlsplit
 
 from src.api.services.patient_db import get_patient_db
 from src.core.config import settings
+
+
+class SourceDomainMismatch(ValueError):
+    """Raised by enforce_domain() when a URL's hostname isn't the
+    registered source's domain or a subdomain of it. A ValueError
+    subclass (not a bare Exception) so existing `except ValueError`
+    callers around ingest_url()/ingest_document() keep working without
+    needing to know a new exception type exists."""
+
+
+def hostname_of(url: str) -> str:
+    """Lowercased hostname, stripped of port/userinfo/trailing dot.
+    Uses urlsplit rather than string slicing so this is correct for
+    every URL shape (IPv6 literals, userinfo, explicit ports), not just
+    the common case."""
+    return (urlsplit(url).hostname or "").lower().rstrip(".")
+
+
+def hostname_matches_domain(hostname: str, domain: str) -> bool:
+    """True when hostname IS domain, or is a subdomain of it —
+    'www.cancer.gov' and 'faq.cancer.gov' both match domain
+    'cancer.gov'. Exact-suffix-with-a-leading-dot only:
+    'notcancer.gov' or 'cancer.gov.evil.example' must never match
+    'cancer.gov' — a naive `.endswith(domain)` (no dot) would wrongly
+    accept both."""
+    hostname = (hostname or "").lower().rstrip(".")
+    domain = (domain or "").lower().rstrip(".")
+    if not hostname or not domain:
+        return False
+    return hostname == domain or hostname.endswith("." + domain)
+
+
+def enforce_domain(source: Dict[str, Any], url: str, stage: str = "url") -> None:
+    """Raise SourceDomainMismatch unless url's hostname is the source's
+    registered domain (or a subdomain of it). This is the allowlist
+    actually being an allowlist: evidence_sources.domain exists so a
+    source_key like "nci" carries NCI's authority_class, but nothing
+    previously stopped `ingest_url("nci", url)` from being called with a
+    URL on a completely different host and having that content inherit
+    NCI's trust rating. Callers are expected to call this BEFORE fetching
+    a requested URL (so an off-allowlist host is never even fetched, not
+    just never trusted) and AGAIN on the final, post-redirect URL after
+    fetching (a redirect can leave the approved domain even when the
+    requested URL didn't) — see evidence_ingestion_service.ingest_url().
+
+    A source registered with no domain (domain is falsy) is intentionally
+    NOT enforced here — every DEFAULT_SOURCES entry sets one, so an
+    operator registering a custom source without a domain has explicitly
+    opted out of this check, not fallen through it by accident."""
+    domain = source.get("domain")
+    if not domain:
+        return
+    host = hostname_of(url)
+    if not hostname_matches_domain(host, domain):
+        raise SourceDomainMismatch(
+            f"Refusing to ingest {stage} URL {url!r} (hostname {host!r}) under "
+            f"source_key={source.get('source_key')!r}: does not match its registered "
+            f"domain {domain!r} (or a subdomain of it)."
+        )
 
 
 # Metadata only — see module docstring. authority_class follows the A/B/C
