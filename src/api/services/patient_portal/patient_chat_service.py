@@ -596,23 +596,70 @@ class PatientChatService:
             logger.exception("[PatientChat] generation failed")
             raise RuntimeError("generation_failed") from e
 
-        # 6b. Grounding validation — did the answer actually cite the
-        # evidence it was given, per evidence/grounding_validator.py.
-        # Recorded and logged, not (yet) a hard gate: this is the first
-        # rollout of citation-checking into a live prompt that, until
-        # this change, never asked the model for numbered citations at
-        # all. Once real-traffic data shows the false-positive rate on
-        # FORBIDDEN_PHRASES/citation compliance is low, promote this to
-        # blocking (retry once, or fall back to a no-citation-required
-        # answer shape) rather than just logging.
+        # 6b. Grounding validation — hard retry/fail gate (2026-08-12 beta
+        # audit item 8, promoted from log-only): did the answer actually
+        # cite the evidence it was given, per
+        # evidence/grounding_validator.py.
+        #
+        # Only enforced as a hard gate when `sources` is non-empty —
+        # validate() itself treats an EMPTY evidence packet as invalid
+        # too (a defense against the pregen hard gate in step 4b being
+        # bypassed), but reaching this point with empty sources is the
+        # legitimate, expected case for conversational/non-factual
+        # messages and non-GENERAL safety categories, which step 4b
+        # deliberately lets through without evidence. Gating on that
+        # here would block ordinary "thank you" replies, so `and
+        # sources` scopes the retry/fallback to exactly the case item 8
+        # describes: a packet existed and the answer failed to ground
+        # itself in it.
         grounding_result = None
+        retried = False
         try:
-            from src.api.services.evidence.grounding_validator import validate as validate_grounding
+            from src.api.services.evidence.grounding_validator import (
+                validate as validate_grounding,
+                RETRY_INSTRUCTION,
+                SAFE_FALLBACK_RESPONSE,
+            )
             grounding_result = validate_grounding(answer, {"evidence": sources})
-            if not grounding_result.valid:
+
+            if not grounding_result.valid and sources:
                 logger.warning(
-                    "[PatientChat] grounding validation failed: %s", grounding_result.reasons
+                    "[PatientChat] grounding validation failed on first attempt: %s "
+                    "— retrying once with a stricter prompt", grounding_result.reasons,
                 )
+                retried = True
+                try:
+                    retry_messages = messages + [
+                        {"role": "assistant", "content": answer},
+                        {"role": "user", "content": RETRY_INSTRUCTION},
+                    ]
+                    resp2 = await asyncio.to_thread(
+                        self._client().chat.completions.create,
+                        model=settings.openai_mini_model or "gpt-4o-mini",
+                        temperature=0.2,
+                        max_tokens=700,
+                        messages=retry_messages,
+                    )
+                    retry_answer = resp2.choices[0].message.content.strip()
+                    retry_result = validate_grounding(retry_answer, {"evidence": sources})
+                except Exception:
+                    logger.warning(
+                        "[PatientChat] grounding retry generation failed, "
+                        "falling back to safe response", exc_info=True,
+                    )
+                    retry_answer, retry_result = None, None
+
+                if retry_result and retry_result.valid:
+                    answer, grounding_result = retry_answer, retry_result
+                else:
+                    if retry_result:
+                        logger.warning(
+                            "[PatientChat] grounding validation failed again after "
+                            "retry: %s — falling back to safe response", retry_result.reasons,
+                        )
+                    answer = SAFE_FALLBACK_RESPONSE
+                    sources = []
+                    grounding_result = retry_result or grounding_result
         except Exception:
             logger.warning("[PatientChat] grounding validation errored (continuing)", exc_info=True)
 
@@ -620,7 +667,9 @@ class PatientChatService:
         if trace:
             trace.set_answer(answer)
             if grounding_result:
-                trace.set_grounding(grounding_result.to_dict())
+                trace_grounding = grounding_result.to_dict()
+                trace_grounding["retried"] = retried
+                trace.set_grounding(trace_grounding)
             trace_id = await trace.save()
 
         # 7. At most one follow-up, and only when it would change the answer.

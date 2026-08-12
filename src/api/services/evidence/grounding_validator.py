@@ -28,6 +28,22 @@ likely via a second LLM/NLI pass — and is real, separate work. Flagged
 here as the documented next step rather than half-built now: verifying
 "citation [2] exists" is cheap and mechanical; verifying "this sentence
 is actually supported by [2]" needs its own design and its own eval set.
+
+Retry/fallback (2026-08-12 beta audit item 8): this module used to be
+consulted after generation and only logged on failure — the code
+literally said "recorded and logged, not yet a hard gate", so a patient
+could receive an answer this validator itself judged ungrounded. Callers
+are now expected to use RETRY_INSTRUCTION and SAFE_FALLBACK_RESPONSE
+(see patient_chat_service.answer(), step 6b) to enforce:
+
+    generate -> validate() fails -> regenerate once with RETRY_INSTRUCTION
+    -> validate() fails again -> return SAFE_FALLBACK_RESPONSE, not the
+       ungrounded answer
+
+Both are defined here rather than at each call site so every caller that
+promotes validate() to a hard gate uses the same retry framing and the
+same fallback wording — a caller reaching for "not grounded" text should
+find it here first rather than writing a slightly different version.
 """
 
 from __future__ import annotations
@@ -51,6 +67,33 @@ FORBIDDEN_PHRASES: List[str] = [
     "based on general knowledge",
     "without specific sources",
 ]
+
+# Sent back to the model as an extra user turn, alongside its own
+# (failed) prior answer, when validate() rejects a first attempt that
+# had non-empty evidence to work with. Mirrors FORBIDDEN_PHRASES/the
+# citation check above so the instruction the model receives matches
+# exactly what will be re-checked.
+RETRY_INSTRUCTION = (
+    "Your previous answer did not properly cite the evidence you were given. "
+    "Rewrite it: every specific factual claim drawn from the numbered passages "
+    "above must include its bracket citation (e.g. [1], [2]), matching the "
+    "numbers already shown -- do not renumber them. Do not use phrases like "
+    "'general oncology guidance', 'based on general knowledge', or similar "
+    "language to talk around a missing citation; either cite the passage that "
+    "supports the claim or leave the claim out. Keep the same warm, plain-"
+    "language tone and the same level of helpfulness."
+)
+
+# Returned instead of the answer when a second, retried attempt still
+# fails validation. Deliberately does not repeat any of the ungrounded
+# content from either attempt -- the point of the gate is that neither
+# attempt is trustworthy enough to show the patient.
+SAFE_FALLBACK_RESPONSE = (
+    "I found some information that may be relevant, but I wasn't able to "
+    "confirm my answer was properly grounded in it, so I don't want to risk "
+    "giving you something inaccurate. Your care team can help confirm the "
+    "details here."
+)
 
 
 @dataclass
