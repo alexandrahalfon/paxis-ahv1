@@ -342,6 +342,18 @@ class EvidenceIngestionService:
         # version row (now able to reference an existing document), then
         # point the document at it. Doing this in the other order raises
         # a foreign-key violation on the very first ingestion.
+        #
+        # A second, non-obvious FK ordering constraint lives in this same
+        # transaction (caught in review 2026-08-12, after this reordering
+        # first shipped): evidence_document_versions.superseded_by
+        # REFERENCES evidence_document_versions(id) and is not DEFERRABLE,
+        # so "mark the OLD version superseded_by = NEW version_id" must
+        # run AFTER the new version row is INSERTed, never before — the
+        # new row has to exist for that UPDATE's FK check to pass. The
+        # in-memory Postgres fake this module's tests use now enforces
+        # that FK for real (see test_evidence_ingestion_versioning.py's
+        # TestSupersededByForeignKeyOrdering) specifically because it
+        # didn't the first time and this ordering bug shipped anyway.
         try:
             async with pool.acquire() as conn:
                 async with conn.transaction():
@@ -367,16 +379,7 @@ class EvidenceIngestionService:
                             document_id, doc.title, json.dumps(applicability), chash,
                         )
 
-                    if prior_version_id:
-                        await conn.execute(
-                            """
-                            UPDATE evidence_document_versions
-                               SET is_current = false, superseded_by = $2
-                             WHERE id = $1
-                            """,
-                            prior_version_id, version_id,
-                        )
-
+                    # New version row FIRST — see the FK-ordering note above.
                     await conn.execute(
                         """
                         INSERT INTO evidence_document_versions
@@ -386,6 +389,18 @@ class EvidenceIngestionService:
                         """,
                         version_id, document_id, chash, doc.plain_text[:2000],
                     )
+
+                    # Only now can the old version's superseded_by legally
+                    # reference it.
+                    if prior_version_id:
+                        await conn.execute(
+                            """
+                            UPDATE evidence_document_versions
+                               SET is_current = false, superseded_by = $2
+                             WHERE id = $1
+                            """,
+                            prior_version_id, version_id,
+                        )
 
                     await conn.execute(
                         "UPDATE evidence_documents SET current_version_id = $2 WHERE id = $1",

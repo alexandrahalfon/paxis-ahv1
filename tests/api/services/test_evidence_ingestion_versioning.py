@@ -14,6 +14,19 @@ tables this service touches (evidence_documents, evidence_document_
 versions, evidence_chunk_registry), since this sandbox has no live
 Postgres — see migrations/patients_db/README.md's "Not done here" note
 for the same limitation elsewhere in this codebase.
+
+FakeConn._apply_execute enforces one real foreign-key constraint —
+evidence_document_versions.superseded_by REFERENCES
+evidence_document_versions(id), not DEFERRABLE — because the first
+version of this ordering fix (upsert-then-switch-then-delete-old, see
+above) still got the *within-transaction statement order* wrong: it set
+the OLD version's superseded_by to the NEW version's id before the new
+version row existed, which a real, non-deferred FK would reject outright
+on every changed-content re-ingestion. The original fake didn't enforce
+this and the bug shipped anyway (caught in review, 2026-08-12); enforcing
+it now is what makes TestSupersededByForeignKeyOrdering below a
+meaningful regression test rather than one that would have passed either
+way.
 """
 
 from __future__ import annotations
@@ -130,6 +143,16 @@ class FakeConn:
             )
         elif "UPDATE evidence_document_versions" in q and "is_current = false" in q:
             prior_version_id, new_version_id = args
+            # Real FK enforcement: evidence_document_versions.superseded_by
+            # REFERENCES evidence_document_versions(id) and is not
+            # DEFERRABLE, so Postgres rejects this UPDATE if new_version_id
+            # doesn't exist yet -- the exact ordering bug this test guards
+            # against (see TestSupersededByForeignKeyOrdering below).
+            if new_version_id not in self.store.versions:
+                raise RuntimeError(
+                    f"simulated FK violation: evidence_document_versions.superseded_by="
+                    f"{new_version_id!r} does not exist yet in evidence_document_versions"
+                )
             self.store.versions[prior_version_id].update(
                 is_current=False, superseded_by=new_version_id,
             )
@@ -297,6 +320,67 @@ class TestUpsertBeforeSwitchOrdering:
         assert second["skipped"] is True
         assert second["version_id"] == first["version_id"]
         assert len(store.chunk_registry) == registry_count_after_first
+
+
+class TestSupersededByForeignKeyOrdering:
+    """Dedicated regression test for the FK-ordering bug caught in review
+    (2026-08-12): evidence_document_versions.superseded_by REFERENCES
+    evidence_document_versions(id) and is not DEFERRABLE, so within the
+    single write transaction, the NEW version row must be INSERTed before
+    the OLD version's superseded_by is UPDATEd to point at it — the
+    reverse order (which shipped once) makes every changed-content
+    re-ingestion fail with a foreign-key violation on a real Postgres.
+    FakeConn enforces this FK for real (see module docstring), so this
+    test fails against the buggy ordering and passes against the fix,
+    unlike a test that only checks final state."""
+
+    @pytest.mark.asyncio
+    async def test_second_ingest_of_changed_content_does_not_raise_a_fk_violation(self, monkeypatch, store):
+        _wire(monkeypatch, store)
+        service = EvidenceIngestionService()
+
+        first = await service.ingest_document(
+            source_key="test_source", doc_id="doc-fk", title="FK ordering doc",
+            raw_text="Original content about managing side effects. " * 5,
+            applicability=APPLICABILITY,
+        )
+        # If the old version's superseded_by UPDATE ran before the new
+        # version row existed, this second call raises the fake's
+        # simulated FK violation (see FakeConn._apply_execute) instead of
+        # completing.
+        second = await service.ingest_document(
+            source_key="test_source", doc_id="doc-fk", title="FK ordering doc",
+            raw_text="Entirely different content about nutrition planning. " * 5,
+            applicability=APPLICABILITY,
+        )
+
+        assert second["skipped"] is False
+        assert store.versions[first["version_id"]]["superseded_by"] == second["version_id"]
+
+    @pytest.mark.asyncio
+    async def test_third_ingest_correctly_chains_superseded_by_through_two_transitions(self, monkeypatch, store):
+        """Three versions in a row -- the FK ordering has to hold on every
+        transition, not just the first one."""
+        _wire(monkeypatch, store)
+        service = EvidenceIngestionService()
+
+        v1 = await service.ingest_document(
+            source_key="test_source", doc_id="doc-fk-2", title="Chain doc",
+            raw_text="Version one content. " * 5, applicability=APPLICABILITY,
+        )
+        v2 = await service.ingest_document(
+            source_key="test_source", doc_id="doc-fk-2", title="Chain doc",
+            raw_text="Version two, totally different content. " * 5, applicability=APPLICABILITY,
+        )
+        v3 = await service.ingest_document(
+            source_key="test_source", doc_id="doc-fk-2", title="Chain doc",
+            raw_text="Version three, different again from the others. " * 5, applicability=APPLICABILITY,
+        )
+
+        assert store.versions[v1["version_id"]]["superseded_by"] == v2["version_id"]
+        assert store.versions[v2["version_id"]]["superseded_by"] == v3["version_id"]
+        assert store.versions[v3["version_id"]]["is_current"] is True
+        assert store.versions[v3["version_id"]]["superseded_by"] is None
 
 
 class TestPostgresFailureCompensation:
