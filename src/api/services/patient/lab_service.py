@@ -1,0 +1,135 @@
+"""Lab result service (Phase 1) — the longitudinal lab schema the beta
+audit flagged as entirely missing. Trend queries (ANC 4.2 -> 2.1 -> 0.7)
+are the whole point, so canonical_test_name + collected_at are indexed
+together (see lab_results_test_trend_idx in patient_db.py).
+"""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any, Dict, List, Optional
+
+from src.api.services.patient_db import get_patient_db
+from src.api.services.patient._common import row_to_dict, append_profile_timeline_event
+
+
+class LabService:
+    async def add_result(
+        self,
+        patient_profile_id: str,
+        test_name: str,
+        canonical_test_name: Optional[str] = None,
+        loinc_code: Optional[str] = None,
+        value_numeric: Optional[float] = None,
+        value_text: Optional[str] = None,
+        unit: Optional[str] = None,
+        reference_low: Optional[float] = None,
+        reference_high: Optional[float] = None,
+        abnormal_flag: Optional[str] = None,
+        specimen_type: Optional[str] = None,
+        collected_at: Optional[str] = None,
+        source_type: str = "patient_upload",
+        source_document_id: Optional[str] = None,
+        verification_status: str = "extracted",
+        extraction_confidence: Optional[float] = None,
+        created_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        db = get_patient_db()
+        await db.ensure_schema()
+        pool = await db.get_pool()
+        result_id = str(uuid.uuid4())
+        canonical = canonical_test_name or test_name.strip().lower()
+
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO lab_results
+                        (id, patient_profile_id, loinc_code, test_name, canonical_test_name,
+                         value_numeric, value_text, unit, reference_low, reference_high,
+                         abnormal_flag, specimen_type, collected_at, source_type,
+                         source_document_id, verification_status, extraction_confidence)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+                    RETURNING *
+                    """,
+                    result_id, patient_profile_id, loinc_code, test_name, canonical,
+                    value_numeric, value_text, unit, reference_low, reference_high,
+                    abnormal_flag, specimen_type, collected_at, source_type,
+                    source_document_id, verification_status, extraction_confidence,
+                )
+                await append_profile_timeline_event(
+                    conn, patient_profile_id, "lab_result",
+                    {
+                        "test_name": test_name, "value_numeric": value_numeric,
+                        "value_text": value_text, "unit": unit,
+                        "abnormal_flag": abnormal_flag,
+                    },
+                    created_by=created_by, source=source_type,
+                )
+        return row_to_dict(row)
+
+    async def list_results(
+        self, patient_profile_id: str, limit: int = 200
+    ) -> List[Dict[str, Any]]:
+        db = get_patient_db()
+        await db.ensure_schema()
+        pool = await db.get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT * FROM lab_results
+                 WHERE patient_profile_id = $1
+                 ORDER BY collected_at DESC NULLS LAST, created_at DESC
+                 LIMIT $2
+                """,
+                patient_profile_id, limit,
+            )
+        return [row_to_dict(r) for r in rows]
+
+    async def get_trend(
+        self, patient_profile_id: str, canonical_test_name: str, limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """Chronological (oldest first) values for one test — what a
+        trend chart or 'is this getting worse' check reads directly."""
+        db = get_patient_db()
+        await db.ensure_schema()
+        pool = await db.get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT * FROM lab_results
+                 WHERE patient_profile_id = $1 AND canonical_test_name = $2
+                 ORDER BY collected_at DESC NULLS LAST
+                 LIMIT $3
+                """,
+                patient_profile_id, canonical_test_name.strip().lower(), limit,
+            )
+        return list(reversed([row_to_dict(r) for r in rows]))
+
+    async def most_recent_by_test(self, patient_profile_id: str) -> Dict[str, Dict[str, Any]]:
+        """Latest value per canonical_test_name — what patient_state_service
+        wants for the 'recent_labs' snapshot section."""
+        db = get_patient_db()
+        await db.ensure_schema()
+        pool = await db.get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ON (canonical_test_name) *
+                  FROM lab_results
+                 WHERE patient_profile_id = $1
+                 ORDER BY canonical_test_name, collected_at DESC NULLS LAST
+                """,
+                patient_profile_id,
+            )
+        return {r["canonical_test_name"]: row_to_dict(r) for r in rows}
+
+
+_service: Optional[LabService] = None
+
+
+def get_lab_service() -> LabService:
+    global _service
+    if _service is None:
+        _service = LabService()
+    return _service

@@ -1,0 +1,88 @@
+"""
+Evidence Packet Builder (Phase 4)
+
+Assembles the structured packet handed to generation, matching the shape
+in the architecture review section 28 — question + patient_context +
+ranked evidence + safety — instead of dropping the raw top-N chunks
+straight into the prompt. Gives the chat/tools layer one reproducible,
+loggable object per answer rather than an implicit string concatenation.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+
+
+def summarize_context(patient_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    patient_context = patient_context or {}
+    features = patient_context.get("retrieval_features") or {}
+    state = patient_context.get("state") or {}
+    summary: Dict[str, Any] = {}
+
+    if features.get("regimens"):
+        summary["active_regimen"] = ", ".join(features["regimens"])
+    if features.get("active_agents"):
+        summary["active_agents"] = features["active_agents"]
+    if features.get("symptoms"):
+        summary["symptoms"] = features["symptoms"]
+    if features.get("nutrition_risk"):
+        summary["nutrition_risk"] = features["nutrition_risk"]
+    if features.get("comorbidities"):
+        summary["comorbidities"] = features["comorbidities"]
+
+    dx = state.get("active_diagnosis") or {}
+    if dx.get("cancer_site"):
+        summary["cancer_type"] = dx["cancer_site"]
+    if dx.get("stage"):
+        summary["stage"] = dx["stage"]
+
+    return summary
+
+
+def build_packet(
+    question: str,
+    patient_context: Optional[Dict[str, Any]],
+    ranked_evidence: List[Dict[str, Any]],
+    safety_category: str = "general",
+) -> Dict[str, Any]:
+    return {
+        "question": question,
+        "patient_context": summarize_context(patient_context),
+        "evidence": [
+            {
+                "source": e.get("source_key") or e.get("title"),
+                "title": e.get("title"),
+                "role": e.get("collection"),
+                "authority": e.get("authority_class") or "literature",
+                "applicability_score": e.get("applicability_score"),
+                "text": e.get("text"),
+                "citation": e.get("citation"),
+                "year": e.get("year"),
+            }
+            for e in ranked_evidence
+        ],
+        "safety": {"category": safety_category, "red_flags": []},
+    }
+
+
+def to_prompt_block(packet: Dict[str, Any], limit: int = 5) -> str:
+    """Same shape PatientChatService._evidence_block already produces, so
+    swapping the source in doesn't change the prompt-building contract at
+    the call site."""
+    block = ""
+    for i, e in enumerate(packet.get("evidence", [])[:limit], 1):
+        block += f"\n[{i}] {e.get('title')}\n{(e.get('text') or '')[:500]}\n"
+    return block
+
+
+def to_sources(packet: Dict[str, Any], limit: int = 5) -> List[Dict[str, Any]]:
+    out = []
+    for e in packet.get("evidence", [])[:limit]:
+        out.append({
+            "title": e.get("title"),
+            "citation": e.get("citation"),
+            "year": e.get("year"),
+            "source_type": e.get("role"),
+            "authority": e.get("authority"),
+        })
+    return out

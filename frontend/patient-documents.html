@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Documents - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .dc-wrap { max-width: 820px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .dc-head { margin-bottom: var(--spacing-lg); }
+        .dc-head h1 { font-size: 1.7rem; margin-bottom: var(--spacing-xs); }
+        .dc-head p { color: var(--gray-600); margin: 0; }
+        .dc-drop { border: 2px dashed var(--gray-300); border-radius: var(--radius-md); padding: var(--spacing-xl);
+            text-align: center; color: var(--gray-600); margin-bottom: var(--spacing-md); }
+        .dc-item { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md);
+            padding: var(--spacing-md) 0; border-bottom: 1px solid var(--gray-200); cursor: pointer; }
+        .dc-item:last-child { border-bottom: none; }
+        .dc-item:hover { background: var(--gray-50); }
+        .dc-item-main strong { color: var(--gray-900); }
+        .dc-item-meta { font-size: 0.8rem; color: var(--gray-500); }
+        .dc-status { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+            padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--gray-100); color: var(--gray-600); }
+        .dc-status.extracted { background: #fef3c7; color: #92400e; }
+        .dc-status.confirmed { background: #f0fdf4; color: #166534; }
+        .dc-status.failed { background: #fef2f2; color: var(--danger-dark); }
+        .dc-status.pending { background: var(--gray-100); color: var(--gray-600); }
+        .dc-empty { text-align: center; padding: var(--spacing-lg); color: var(--gray-500); }
+        .dc-panel { margin-top: var(--spacing-lg); }
+        .dc-field-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: var(--spacing-sm);
+            align-items: center; margin-bottom: var(--spacing-xs); }
+        .dc-field-row input { padding: 0.4rem 0.6rem; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-size: 0.85rem; }
+        .dc-remove { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 0.8rem; }
+        .dc-msg { padding: var(--spacing-md); border-radius: var(--radius-md); font-size: 0.9rem; margin-top: var(--spacing-md); display: none; }
+        .dc-msg.ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; display: block; }
+        .dc-msg.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger-dark); display: block; }
+        .dc-note { font-size: 0.85rem; color: var(--gray-600); background: var(--gray-50);
+            border-left: 3px solid var(--primary); border-radius: var(--radius-sm);
+            padding: var(--spacing-sm) var(--spacing-md); margin-bottom: var(--spacing-md); line-height: 1.55; }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="dc-wrap">
+            <div class="dc-head">
+                <h1>My documents</h1>
+                <p>Upload a lab report, pathology report, or visit summary — a photo or a PDF. Paxis reads it and shows you what it found before anything is added to your record.</p>
+            </div>
+
+            <div class="card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+                <div class="dc-drop">
+                    <input type="file" id="dcFile" accept="application/pdf,image/*" style="margin-bottom: var(--spacing-sm);">
+                    <div>
+                        <button class="btn btn-primary btn-sm" id="dcUpload">Upload &amp; read</button>
+                    </div>
+                </div>
+                <div class="dc-msg" id="dcUploadMsg"></div>
+            </div>
+
+            <div class="card" style="padding: var(--spacing-lg);">
+                <h2 style="font-size:1.05rem;margin:0 0 var(--spacing-md);">Uploaded documents</h2>
+                <div id="dcList"><div class="dc-empty">Loading...</div></div>
+            </div>
+
+            <div class="card dc-panel is-hidden" id="dcPanel" style="padding: var(--spacing-lg);">
+                <h2 style="font-size:1.05rem;" id="dcPanelTitle">Review what was found</h2>
+                <div class="dc-note">
+                    Double-check these values — text reading isn't perfect, and getting a number wrong here
+                    could matter. Fix anything that looks off, then confirm.
+                </div>
+                <div id="dcPanelBody"></div>
+                <button class="btn btn-primary" id="dcConfirm">Looks right — add to my record</button>
+                <div class="dc-msg" id="dcConfirmMsg"></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('documents', 'patient');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var listEl = document.getElementById('dcList');
+        var panel = document.getElementById('dcPanel');
+        var panelBody = document.getElementById('dcPanelBody');
+        var currentDocId = null;
+        var currentFields = null;
+
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function authHeaders() { return { 'Authorization': 'Bearer ' + token }; }
+        function showMsg(el, kind, text) { el.className = 'dc-msg ' + kind; el.textContent = text; }
+
+        if (!token) { listEl.innerHTML = '<div class="dc-empty">Please log in to upload documents.</div>'; return; }
+
+        document.getElementById('dcUpload').addEventListener('click', async function () {
+            var fileInput = document.getElementById('dcFile');
+            var msgEl = document.getElementById('dcUploadMsg');
+            if (!fileInput.files.length) { showMsg(msgEl, 'err', 'Choose a file first.'); return; }
+            var fd = new FormData();
+            fd.append('file', fileInput.files[0]);
+            this.disabled = true;
+            this.textContent = 'Reading...';
+            try {
+                var res = await fetch(BASE + '/patient/documents', {
+                    method: 'POST', headers: authHeaders(), body: fd
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Could not read that file');
+                showMsg(msgEl, 'ok', 'Read successfully. Review it below before it\'s added to your record.');
+                fileInput.value = '';
+                await loadList();
+                if (data.document && data.document.id) openDocument(data.document.id);
+            } catch (e) {
+                showMsg(msgEl, 'err', e.message);
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Upload & read';
+            }
+        });
+
+        async function loadList() {
+            try {
+                var res = await fetch(BASE + '/patient/documents', { headers: authHeaders() });
+                if (!res.ok) throw new Error();
+                var docs = (await res.json()).documents || [];
+                if (!docs.length) {
+                    listEl.innerHTML = '<div class="dc-empty">Nothing uploaded yet.</div>';
+                    return;
+                }
+                listEl.innerHTML = '';
+                docs.forEach(function (d) {
+                    var row = document.createElement('div');
+                    row.className = 'dc-item';
+                    row.innerHTML =
+                        '<div class="dc-item-main"><strong>' + esc(d.filename || 'Document') + '</strong>' +
+                            '<div class="dc-item-meta">' + esc(d.document_type || 'unclassified') + ' &middot; ' +
+                            esc((d.uploaded_at || '').slice(0, 10)) + '</div></div>' +
+                        '<span class="dc-status ' + esc(d.extraction_status) + '">' + esc(d.extraction_status) + '</span>';
+                    row.addEventListener('click', function () { openDocument(d.id); });
+                    listEl.appendChild(row);
+                });
+            } catch (e) {
+                listEl.innerHTML = '<div class="dc-empty">Could not load your documents.</div>';
+            }
+        }
+
+        async function openDocument(id) {
+            try {
+                var res = await fetch(BASE + '/patient/documents/' + id, { headers: authHeaders() });
+                if (!res.ok) throw new Error();
+                var data = await res.json();
+                var doc = data.document || {};
+                var extraction = doc.extraction;
+                currentDocId = id;
+                currentFields = (extraction && extraction.extracted_fields) || {};
+                document.getElementById('dcPanelTitle').textContent =
+                    'Review: ' + (doc.filename || 'document') +
+                    (extraction && extraction.confirmed ? ' (already added to your record)' : '');
+                renderPanel(currentFields);
+                panel.classList.remove('is-hidden');
+                panel.scrollIntoView({ behavior: 'smooth' });
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function renderPanel(fields) {
+            var html = '';
+            (fields.labs || []).forEach(function (lab, i) {
+                html += '<div class="dc-field-row" data-kind="labs" data-i="' + i + '">' +
+                    '<input data-k="test_name" value="' + esc(lab.test_name || '') + '" placeholder="Test">' +
+                    '<input data-k="value_numeric" value="' + esc(lab.value_numeric != null ? lab.value_numeric : (lab.value_text || '')) + '" placeholder="Value">' +
+                    '<input data-k="unit" value="' + esc(lab.unit || '') + '" placeholder="Unit">' +
+                    '<button class="dc-remove" type="button">Remove</button></div>';
+            });
+            (fields.medications || []).forEach(function (m, i) {
+                html += '<div class="dc-field-row" data-kind="medications" data-i="' + i + '">' +
+                    '<input data-k="generic_name" value="' + esc(m.generic_name || '') + '" placeholder="Medication">' +
+                    '<input data-k="dose" value="' + esc(m.dose || '') + '" placeholder="Dose">' +
+                    '<input data-k="frequency" value="' + esc(m.frequency || '') + '" placeholder="Frequency">' +
+                    '<button class="dc-remove" type="button">Remove</button></div>';
+            });
+            if (fields.diagnosis) {
+                var dx = fields.diagnosis;
+                html += '<div class="dc-field-row" data-kind="diagnosis" data-i="0">' +
+                    '<input data-k="cancer_site" value="' + esc(dx.cancer_site || '') + '" placeholder="Site">' +
+                    '<input data-k="histology" value="' + esc(dx.histology || '') + '" placeholder="Histology">' +
+                    '<input data-k="stage" value="' + esc(dx.stage || '') + '" placeholder="Stage">' +
+                    '<span></span></div>';
+            }
+            if (fields.encounter) {
+                var e = fields.encounter;
+                html += '<div class="dc-field-row" data-kind="encounter" data-i="0">' +
+                    '<input data-k="encounter_type" value="' + esc(e.encounter_type || '') + '" placeholder="Visit type">' +
+                    '<input data-k="encounter_date" value="' + esc(e.encounter_date || '') + '" placeholder="Date">' +
+                    '<input data-k="patient_summary" value="' + esc(e.patient_summary || '') + '" placeholder="Summary">' +
+                    '<span></span></div>';
+            }
+            panelBody.innerHTML = html || '<div class="dc-empty">Nothing was found to extract from this document. You can still add values manually from My Health.</div>';
+
+            panelBody.querySelectorAll('.dc-remove').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var row = btn.closest('.dc-field-row');
+                    var kind = row.getAttribute('data-kind');
+                    var i = parseInt(row.getAttribute('data-i'), 10);
+                    if (Array.isArray(currentFields[kind])) currentFields[kind].splice(i, 1);
+                    renderPanel(currentFields);
+                });
+            });
+        }
+
+        function collectFields() {
+            var out = { labs: [], medications: [] };
+            panelBody.querySelectorAll('.dc-field-row').forEach(function (row) {
+                var kind = row.getAttribute('data-kind');
+                var obj = {};
+                row.querySelectorAll('input').forEach(function (inp) {
+                    obj[inp.getAttribute('data-k')] = inp.value.trim() || null;
+                });
+                if (kind === 'labs') {
+                    var num = parseFloat(obj.value_numeric);
+                    if (!isNaN(num)) { obj.value_numeric = num; obj.value_text = null; }
+                    else { obj.value_text = obj.value_numeric; obj.value_numeric = null; }
+                    out.labs.push(obj);
+                } else if (kind === 'medications') {
+                    out.medications.push(obj);
+                } else if (kind === 'diagnosis') {
+                    out.diagnosis = obj;
+                } else if (kind === 'encounter') {
+                    out.encounter = obj;
+                }
+            });
+            return out;
+        }
+
+        document.getElementById('dcConfirm').addEventListener('click', async function () {
+            var msgEl = document.getElementById('dcConfirmMsg');
+            if (!currentDocId) return;
+            this.disabled = true;
+            try {
+                var res = await fetch(BASE + '/patient/documents/' + currentDocId + '/confirm', {
+                    method: 'POST',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+                    body: JSON.stringify({ confirmed_fields: collectFields() })
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Could not save');
+                showMsg(msgEl, 'ok', 'Added to your record.');
+                loadList();
+            } catch (e) {
+                showMsg(msgEl, 'err', e.message);
+            } finally {
+                this.disabled = false;
+            }
+        });
+
+        loadList();
+    })();
+    </script>
+</body>
+</html>
