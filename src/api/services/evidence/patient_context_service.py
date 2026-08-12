@@ -118,7 +118,19 @@ class PatientContextService:
             )
             state_service = get_patient_state_service()
             snapshot = await state_service.get_latest_snapshot(profile["id"])
-            if snapshot is None:
+            # Deterministic freshness (2026-08-12 convergence Sprint B
+            # item 7): rebuild whenever the snapshot's source_revision
+            # doesn't match the profile's CURRENT state_revision, not
+            # just when no snapshot exists at all. A snapshot predating
+            # this feature (source_revision is NULL) or one whose own
+            # rebuild attempt failed after a later write bumped the
+            # revision both correctly fail this comparison and get
+            # rebuilt here — see invalidate_patient_state()'s docstring
+            # for why that closes the "stale forever after one failed
+            # rebuild" gap this replaces.
+            current_revision = profile.get("state_revision")
+            snapshot_revision = snapshot.get("source_revision") if snapshot else None
+            if snapshot is None or snapshot_revision != current_revision:
                 built = await state_service.build_state(profile["id"])
                 state, features = built["state"], built["retrieval_features"]
             else:

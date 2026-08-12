@@ -109,6 +109,30 @@ class PatientStateService:
             )
             return None
 
+    async def _increment_state_revision(self, patient_profile_id: str) -> Optional[int]:
+        """Atomically bumps patient_profiles.state_revision and returns
+        the new value (2026-08-12 convergence Sprint B item 7). Called
+        from invalidate_patient_state() before build_state() so every
+        canonical write's rebuild attempt — success or failure — is
+        preceded by a revision bump; the snapshot this rebuild produces
+        (or, if it fails, the STALE snapshot already on file) can then be
+        compared against this new revision by get_context() to know
+        whether it's current. Returns None (rather than raising) if the
+        profile row doesn't exist — a caller racing a profile deletion
+        shouldn't crash a best-effort invalidation."""
+        db = get_patient_db()
+        await db.ensure_schema()
+        pool = await db.get_pool()
+        async with pool.acquire() as conn:
+            return await conn.fetchval(
+                """
+                UPDATE patient_profiles SET state_revision = state_revision + 1
+                 WHERE id = $1
+             RETURNING state_revision
+                """,
+                patient_profile_id,
+            )
+
     async def build_state(
         self, patient_profile_id: str, persist: bool = True
     ) -> Dict[str, Any]:
@@ -288,7 +312,18 @@ class PatientStateService:
         retrieval_features = self._derive_retrieval_features(state)
 
         if persist:
-            await self._persist_snapshot(patient_profile_id, state, retrieval_features)
+            # profile was fetched at the very top of this method, so its
+            # state_revision already reflects any bump
+            # invalidate_patient_state() made before calling here (or
+            # whatever the profile's current value is, for a caller that
+            # invoked build_state() directly, e.g. get_context() building
+            # a first-ever snapshot). Stamping THIS value onto the
+            # snapshot is what lets get_context() later tell a current
+            # snapshot from a stale one — see patient_context_service.py.
+            await self._persist_snapshot(
+                patient_profile_id, state, retrieval_features,
+                source_revision=profile.get("state_revision"),
+            )
 
         return {"state": state, "retrieval_features": retrieval_features}
 
@@ -412,7 +447,8 @@ class PatientStateService:
         return features
 
     async def _persist_snapshot(
-        self, patient_profile_id: str, state: Dict[str, Any], retrieval_features: Dict[str, Any]
+        self, patient_profile_id: str, state: Dict[str, Any], retrieval_features: Dict[str, Any],
+        source_revision: Optional[int] = None,
     ) -> None:
         db = get_patient_db()
         await db.ensure_schema()
@@ -421,11 +457,12 @@ class PatientStateService:
             await conn.execute(
                 """
                 INSERT INTO patient_state_snapshots
-                    (id, patient_profile_id, state, retrieval_features)
-                VALUES ($1, $2, $3::jsonb, $4::jsonb)
+                    (id, patient_profile_id, state, retrieval_features, source_revision)
+                VALUES ($1, $2, $3::jsonb, $4::jsonb, $5)
                 """,
                 str(uuid.uuid4()), patient_profile_id,
                 json.dumps(state, default=str), json.dumps(retrieval_features, default=str),
+                source_revision,
             )
 
     async def get_latest_snapshot(self, patient_profile_id: str) -> Optional[Dict[str, Any]]:
@@ -470,35 +507,57 @@ def get_patient_state_service() -> PatientStateService:
 
 
 async def invalidate_patient_state(patient_profile_id: str) -> None:
-    """Best-effort snapshot rebuild after a canonical write.
+    """Best-effort snapshot rebuild after a canonical write, now backed
+    by a deterministic freshness check rather than a one-shot attempt
+    (2026-08-12 convergence Sprint B item 7).
 
-    get_context() (patient_context_service.py) reads the LATEST
-    patient_state_snapshots row and only rebuilds when none exists at
-    all — it does not re-check staleness. Before this, a manual write
-    (add_diagnosis/add_episode/add_medication/add_observation/
-    add_assessment/add_vital/...) left the existing snapshot in place,
-    so a patient could add a new treatment and immediately ask a
-    question that retrieval answered from the state as it was BEFORE
-    that write — see the 2026-08-12 beta audit, "patient state can
-    become stale after manual edits". Confirmed document extraction
-    already rebuilds via patient_document_validator.py calling
-    build_state() after confirmation; every manual-entry write path
-    should call this the same way, immediately after its transaction
-    commits (never from inside the transaction itself — build_state()
-    acquires its own connection from the pool, so calling it before the
-    write commits would read pre-write data under READ COMMITTED and
-    produce a rebuild that's still stale).
+    Before Sprint B item 7: get_context() (patient_context_service.py)
+    read the LATEST patient_state_snapshots row and only rebuilt when
+    none existed at all — it never re-checked staleness. That meant a
+    write whose rebuild attempt here failed (network blip, transient DB
+    error) left get_context() trusting a stale snapshot FOREVER, since
+    nothing about "a snapshot exists" ever changed just because it was
+    stale — see the 2026-08-12 beta audit, "patient state can become
+    stale after manual edits", which this function originally fixed for
+    the "no rebuild was ever attempted" case but not the "the rebuild
+    was attempted and failed" case.
 
-    Never raises: a failed rebuild must not cost the caller their
-    successful write. The next successful write (or the next document
-    confirmation) will catch up regardless — this narrows the staleness
-    window, it doesn't need to be perfect to be a real improvement.
+    Now: patient_profiles.state_revision is bumped FIRST (its own
+    statement, before build_state() even runs), and build_state()
+    stamps the CURRENT revision onto whatever snapshot it persists as
+    patient_state_snapshots.source_revision. get_context() compares the
+    two and rebuilds whenever they don't match — not just when no
+    snapshot exists at all — so a rebuild that fails here no longer
+    strands get_context() on stale state indefinitely: the NEXT read
+    sees the revision mismatch and retries the rebuild itself, every
+    time, until one succeeds. Every manual-entry write path calls this
+    the same way, immediately after its own transaction commits (never
+    from inside the transaction itself — this acquires its own
+    connection from the pool, so calling it before the write commits
+    would read pre-write data under READ COMMITTED and produce a
+    rebuild that's still stale).
+
+    Never raises: a failed revision bump or rebuild must not cost the
+    caller their successful write. Both are best-effort in the same way
+    — if the revision bump itself fails, build_state() below still runs
+    (with build_state() reading whatever revision the profile row
+    currently holds), and if THAT fails too, the exception handler below
+    still applies; get_context() will simply keep re-attempting on every
+    subsequent read until something succeeds.
     """
+    try:
+        await get_patient_state_service()._increment_state_revision(patient_profile_id)
+    except Exception:
+        logger.warning(
+            "[PatientState] state_revision bump failed for profile %s "
+            "(continuing to rebuild anyway)", patient_profile_id, exc_info=True,
+        )
     try:
         await get_patient_state_service().build_state(patient_profile_id)
     except Exception:
         logger.warning(
             "[PatientState] best-effort snapshot rebuild failed for profile %s "
-            "(the write itself succeeded; retrieval may read stale state until "
-            "the next successful rebuild)", patient_profile_id, exc_info=True,
+            "(the write itself succeeded; retrieval will retry the rebuild on "
+            "its next read, since state_revision no longer matches the "
+            "existing snapshot)", patient_profile_id, exc_info=True,
         )

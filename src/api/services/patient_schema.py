@@ -1345,4 +1345,28 @@ SCHEMA_STATEMENTS: List[str] = [
     CREATE INDEX IF NOT EXISTS query_debug_traces_profile_idx
         ON query_debug_traces (patient_profile_id, created_at DESC);
     """,
+
+    # ── Deterministic state freshness (added 2026-08-12, convergence
+    # Sprint B item 7) ─────────────────────────────────────────────────
+    # Before this: get_context() (patient_context_service.py) rebuilt a
+    # patient's state snapshot only when NONE existed yet — a rebuild
+    # attempt that failed (network blip, transient DB error) after a
+    # later canonical write left every subsequent read trusting a stale
+    # snapshot forever, since "a snapshot exists" never became false
+    # just because it was outdated. state_revision (bumped by
+    # invalidate_patient_state() on every canonical write, BEFORE it
+    # attempts a rebuild) and source_revision (stamped onto whichever
+    # snapshot build_state() actually persists) let get_context() compare
+    # the two and rebuild whenever they don't match, not just when no
+    # snapshot exists — see patient_state_service.py's
+    # invalidate_patient_state() and patient_context_service.py's
+    # get_context() docstrings for the full mechanism.
+    """
+    ALTER TABLE patient_profiles
+        ADD COLUMN IF NOT EXISTS state_revision BIGINT NOT NULL DEFAULT 0;
+    """,
+    """
+    ALTER TABLE patient_state_snapshots
+        ADD COLUMN IF NOT EXISTS source_revision BIGINT;
+    """,
 ]

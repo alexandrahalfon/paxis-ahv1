@@ -40,6 +40,7 @@ REVISION_FILES = [
     ("0001_baseline.py", 92),
     ("0002_phase1_finalization.py", 18),
     ("0003_evidence_versioning_and_debug_trace.py", 7),
+    ("0004_state_revision_freshness.py", 2),
 ]
 
 
