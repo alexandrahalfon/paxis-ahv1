@@ -1281,4 +1281,43 @@ SCHEMA_STATEMENTS: List[str] = [
     CREATE INDEX IF NOT EXISTS care_team_instructions_profile_idx
         ON care_team_instructions (patient_profile_id, active, created_at DESC);
     """,
+
+    # ── Evidence ingestion versioning (added 2026-08-12) ─────────────
+    # The original evidence_document_versions/evidence_chunk_registry
+    # (created above) had no is_current tracking and no FK linking a
+    # chunk to the specific version it came from — meaning a re-ingested
+    # document with changed content had no clean way to identify which
+    # Qdrant points were stale. See evidence_ingestion_service.py's
+    # deterministic-ID + idempotent-reingestion rewrite, which this
+    # supports: version_id is content-hash-derived, so the same content
+    # fetched twice always produces the same version_id and is
+    # recognized as "already ingested, skip" rather than re-embedded.
+    """
+    ALTER TABLE evidence_document_versions
+        ADD COLUMN IF NOT EXISTS is_current BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE evidence_document_versions
+        ADD COLUMN IF NOT EXISTS superseded_by UUID
+            REFERENCES evidence_document_versions(id) ON DELETE SET NULL;
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS evidence_document_versions_current_idx
+        ON evidence_document_versions (evidence_document_id, is_current);
+    """,
+    """
+    ALTER TABLE evidence_documents
+        ADD COLUMN IF NOT EXISTS current_version_id UUID
+            REFERENCES evidence_document_versions(id) ON DELETE SET NULL;
+    ALTER TABLE evidence_documents
+        ADD COLUMN IF NOT EXISTS latest_content_hash TEXT;
+    """,
+    """
+    ALTER TABLE evidence_chunk_registry
+        ADD COLUMN IF NOT EXISTS evidence_document_version_id UUID
+            REFERENCES evidence_document_versions(id) ON DELETE CASCADE;
+    ALTER TABLE evidence_chunk_registry ADD COLUMN IF NOT EXISTS section_title TEXT;
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS evidence_chunk_registry_version_idx
+        ON evidence_chunk_registry (evidence_document_version_id);
+    """,
 ]

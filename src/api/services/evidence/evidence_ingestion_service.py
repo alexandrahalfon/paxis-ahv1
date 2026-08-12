@@ -1,17 +1,35 @@
 """
-Evidence Ingestion Service (Phase 3)
+Evidence Ingestion Service (Phase 3, front-half added 2026-08-12)
 
-Chunks, embeds, and upserts ONE document's already-fetched text into the
-Qdrant collection its source maps to (via source_registry.collection_for),
-and records the document + its chunk point ids in evidence_documents /
-evidence_chunk_registry so re-ingestion can be tracked and reversed.
+Two entry points:
 
-Deliberately does not fetch anything from the web itself. Fetching
-external pages is an ingestion-job concern (a scheduled task, an admin
-action, a one-off script an operator runs with review) with licensing and
-rate-limit implications outside this module's scope. Handing it raw text
-keeps this service testable and keeps "what got ingested and from where"
-auditable through evidence_documents.url rather than implicit in a crawl.
+    ingest_url(source_key, url)
+        The real pipeline: fetch -> extract -> classify -> chunk ->
+        embed -> upsert -> register. Use this for anything reachable by
+        HTTP (source_fetcher.py + content_extractor.py handle HTML/PDF).
+
+    ingest_document(source_key, doc_id, title, raw_text, url=None, ...)
+        Manual path for content acquired another way (an operator pasted
+        text, a page fetched by an agent tool in an environment where
+        this service's own httpx-based fetch is blocked — see
+        source_fetcher.py's docstring). Same classify/chunk/embed/upsert/
+        register pipeline underneath; only how the text was obtained
+        differs.
+
+Both are idempotent and deterministic:
+
+    document_id = stable_id("document", source_key, url_or_doc_key)
+    content_hash = sha256(cleaned_text)
+    version_id  = stable_id("version", document_id, content_hash)
+    point_id    = stable_id("point", version_id, section_title, chunk_index)
+
+Fetching the same URL twice with unchanged content produces the same
+version_id, which is recognized as already-current and skipped —
+running an ingestion job twice does not duplicate chunks. Changed
+content produces a new version_id: the old version is marked
+is_current=false (superseded_by the new one) and its Qdrant points are
+deleted before the new ones are upserted, so search never returns two
+versions of the same page at once.
 
 Reuses the same OpenAI embedding model and the same Qdrant client
 construction as comprehensive_retrieval.py (via get_comprehensive_retriever)
@@ -22,33 +40,32 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from qdrant_client.models import PointStruct, VectorParams, Distance
+from qdrant_client.models import PointStruct, VectorParams, Distance, FilterSelector, Filter, FieldCondition, MatchValue
 
 from src.core.config import settings
 from src.api.services.evidence.source_registry import get_source_registry
+from src.api.services.evidence.content_extractor import ExtractedDocument, extract
+from src.api.services.evidence.section_chunker import Chunk, chunk_document
+from src.api.services.evidence.metadata_classifier import classify as classify_content, ClassificationResult
 
 logger = logging.getLogger(__name__)
 
-_CHUNK_CHARS = 1800
-_CHUNK_OVERLAP = 200
+
+def stable_id(*parts: str) -> str:
+    """Deterministic UUID from arbitrary string parts — same inputs
+    always produce the same id, which is what makes re-ingestion
+    idempotent instead of accumulating duplicate rows/points."""
+    digest = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, digest))
 
 
-def _chunk_text(text: str) -> List[str]:
-    text = (text or "").strip()
-    if not text:
-        return []
-    chunks, start = [], 0
-    while start < len(text):
-        end = min(start + _CHUNK_CHARS, len(text))
-        chunks.append(text[start:end])
-        if end == len(text):
-            break
-        start = end - _CHUNK_OVERLAP
-    return chunks
+def content_hash_of(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 
 class EvidenceIngestionService:
@@ -71,6 +88,33 @@ class EvidenceIngestionService:
         )
         logger.info("[EvidenceIngestion] created collection %s", collection_name)
 
+    # ── Public entry points ─────────────────────────────────────────
+
+    async def ingest_url(
+        self,
+        source_key: str,
+        url: str,
+        applicability_override: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Fetch a URL and run it through the full pipeline. Raises
+        source_fetcher.FetchError on an unreachable/oversized URL —
+        callers (the CLI runner) are expected to catch that per-URL and
+        continue the batch rather than aborting a whole run."""
+        from src.api.services.evidence.source_fetcher import fetch_url
+
+        fetched = await asyncio.to_thread(fetch_url, url)
+        doc = extract(fetched.content, fetched.content_type, source_url=fetched.final_url)
+        if not doc.is_usable():
+            raise ValueError(
+                f"{url} did not yield usable content after cleaning "
+                f"({len(doc.plain_text.strip())} chars) — page may be JS-rendered, "
+                "paywalled, or not an article page. Skipping."
+            )
+        return await self._ingest_extracted(
+            source_key=source_key, doc_key=fetched.final_url, url=fetched.final_url,
+            doc=doc, applicability_override=applicability_override,
+        )
+
     async def ingest_document(
         self,
         source_key: str,
@@ -81,6 +125,32 @@ class EvidenceIngestionService:
         applicability: Optional[Dict[str, Any]] = None,
         constraints: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """Manual path — see module docstring. doc_id is the caller's own
+        stable key (e.g. a filename) when there's no URL to derive one
+        from; when url is given, url is used instead so the same
+        document ingested once via ingest_url() and once by hand (e.g.
+        text pulled by an agent's web-fetch tool) resolves to the same
+        document_id and correctly versions against each other rather
+        than becoming two unrelated documents."""
+        if not (raw_text or "").strip():
+            raise ValueError("No text to ingest")
+        doc = ExtractedDocument(title=title, sections=[], plain_text=raw_text)
+        return await self._ingest_extracted(
+            source_key=source_key, doc_key=url or doc_id, url=url, doc=doc,
+            applicability_override=applicability, constraints=constraints,
+        )
+
+    # ── Shared pipeline ──────────────────────────────────────────────
+
+    async def _ingest_extracted(
+        self,
+        source_key: str,
+        doc_key: str,
+        url: Optional[str],
+        doc: ExtractedDocument,
+        applicability_override: Optional[Dict[str, Any]] = None,
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         registry = get_source_registry()
         source = await registry.get_source(source_key)
         if not source:
@@ -89,71 +159,183 @@ class EvidenceIngestionService:
                 "SourceRegistry.register_source() (or seed_default_sources()) first."
             )
         collection = registry.collection_for(source)
+
+        document_id = stable_id("document", source_key, doc_key)
+        chash = content_hash_of(doc.plain_text)
+        version_id = stable_id("version", document_id, chash)
+
+        from src.api.services.patient_db import get_patient_db
+        db = get_patient_db()
+        await db.ensure_schema()
+        pool = await db.get_pool()
+
+        # ── Idempotency check ────────────────────────────────────────
+        # Same document_id + same content_hash => same version_id =>
+        # already ingested. Skip re-embedding entirely; this is what
+        # makes running the same source list twice safe.
+        async with pool.acquire() as conn:
+            existing_version = await conn.fetchrow(
+                "SELECT * FROM evidence_document_versions WHERE id = $1", version_id,
+            )
+        if existing_version and existing_version["is_current"]:
+            logger.info(
+                "[EvidenceIngestion] %s unchanged (version %s already current), skipping",
+                doc_key, version_id,
+            )
+            return {
+                "document_id": document_id, "version_id": version_id,
+                "collection": collection, "chunks_ingested": 0, "skipped": True,
+                "reason": "content unchanged since last ingestion",
+            }
+
         await self._ensure_collection(collection)
 
-        chunks = _chunk_text(raw_text)
+        # ── Classification ───────────────────────────────────────────
+        applicability = applicability_override
+        if applicability is None:
+            result: ClassificationResult = await asyncio.to_thread(
+                classify_content, doc.plain_text, doc.title
+            )
+            applicability = result.to_dict()
+
+        # ── Chunk + embed + upsert ───────────────────────────────────
+        chunks: List[Chunk] = chunk_document(doc)
         if not chunks:
-            raise ValueError("No text to ingest")
+            raise ValueError(f"{doc_key} produced no chunks after chunking")
 
         retriever = self._retriever()
-        point_ids: List[str] = []
         points: List[PointStruct] = []
-        for i, chunk in enumerate(chunks):
-            vector = await retriever._embed_async(chunk)
-            point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{doc_id}:{i}"))
-            point_ids.append(point_id)
+        chunk_rows: List[Dict[str, Any]] = []
+        for chunk in chunks:
+            vector = await retriever._embed_async(chunk.text)
+            point_id = stable_id("point", version_id, chunk.section_title or "", str(chunk.chunk_index))
             points.append(PointStruct(
                 id=point_id,
                 vector=vector,
                 payload={
-                    "doc_id": doc_id,
-                    "text": chunk,
-                    "chunk_index": i,
-                    "title": title,
+                    "doc_id": document_id,
+                    "text": chunk.text,
+                    "section_title": chunk.section_title,
+                    "chunk_index": chunk.chunk_index,
+                    "parent_text": chunk.parent_text,
+                    "title": doc.title,
                     "doc_meta": {
-                        "title": title, "source_key": source_key,
+                        "title": doc.title, "source_key": source_key,
                         "source_name": source["name"], "url": url,
                         "authority_class": source["authority_class"],
                     },
-                    "applicability": applicability or {},
+                    "applicability": applicability,
+                    "version_id": version_id,
                 },
             ))
+            chunk_rows.append({"point_id": point_id, "chunk_index": chunk.chunk_index,
+                                "section_title": chunk.section_title})
 
-        await asyncio.to_thread(
-            retriever.qdrant.upsert, collection_name=collection, points=points
-        )
-
-        evidence_doc = await registry.register_document(
-            source_key=source_key, doc_id=doc_id, title=title, url=url,
-            qdrant_collection=collection, applicability=applicability, constraints=constraints,
-        )
-
-        from src.api.services.patient_db import get_patient_db
-        db = get_patient_db()
-        pool = await db.get_pool()
-        content_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+        # ── Supersede the previous version, if any, before upserting ──
+        # Ordering matters here: evidence_documents.current_version_id
+        # references evidence_document_versions.id, which in turn
+        # references evidence_documents.id — a genuine circular FK
+        # dependency. Resolved the standard way: insert/update the
+        # document row with current_version_id left NULL, insert the
+        # version row (now able to reference an existing document), then
+        # point the document at it. Doing this in the other order raises
+        # a foreign-key violation on the very first ingestion.
         async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO evidence_document_versions
-                    (id, evidence_document_id, content_hash, raw_text_excerpt)
-                VALUES ($1, $2, $3, $4)
-                """,
-                str(uuid.uuid4()), evidence_doc["id"], content_hash, raw_text[:2000],
-            )
-            for i, pid in enumerate(point_ids):
+            async with conn.transaction():
+                evidence_doc = await conn.fetchrow(
+                    "SELECT * FROM evidence_documents WHERE id = $1", document_id,
+                )
+                prior_version_id = evidence_doc["current_version_id"] if evidence_doc else None
+
+                if evidence_doc is None:
+                    await conn.execute(
+                        """
+                        INSERT INTO evidence_documents
+                            (id, source_id, doc_id, title, url, qdrant_collection,
+                             applicability, constraints, last_ingested_at, latest_content_hash)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb, now(), $9)
+                        """,
+                        document_id, source["id"], doc_key, doc.title, url, collection,
+                        json.dumps(applicability), json.dumps(constraints or {}), chash,
+                    )
+                else:
+                    await conn.execute(
+                        """
+                        UPDATE evidence_documents
+                           SET title = $2, applicability = $3::jsonb, last_ingested_at = now(),
+                               latest_content_hash = $4
+                         WHERE id = $1
+                        """,
+                        document_id, doc.title, json.dumps(applicability), chash,
+                    )
+
+                if prior_version_id:
+                    await conn.execute(
+                        """
+                        UPDATE evidence_document_versions
+                           SET is_current = false, superseded_by = $2
+                         WHERE id = $1
+                        """,
+                        prior_version_id, version_id,
+                    )
+
                 await conn.execute(
                     """
-                    INSERT INTO evidence_chunk_registry
-                        (id, evidence_document_id, qdrant_point_id, chunk_index)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO evidence_document_versions
+                        (id, evidence_document_id, content_hash, raw_text_excerpt, is_current)
+                    VALUES ($1, $2, $3, $4, true)
+                    ON CONFLICT (id) DO UPDATE SET is_current = true
                     """,
-                    str(uuid.uuid4()), evidence_doc["id"], pid, i,
+                    version_id, document_id, chash, doc.plain_text[:2000],
                 )
 
+                await conn.execute(
+                    "UPDATE evidence_documents SET current_version_id = $2 WHERE id = $1",
+                    document_id, version_id,
+                )
+
+                for row in chunk_rows:
+                    await conn.execute(
+                        """
+                        INSERT INTO evidence_chunk_registry
+                            (id, evidence_document_id, evidence_document_version_id,
+                             qdrant_point_id, chunk_index, section_title)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        """,
+                        str(uuid.uuid4()), document_id, version_id,
+                        row["point_id"], row["chunk_index"], row["section_title"],
+                    )
+
+        # Delete the superseded version's Qdrant points AFTER the new
+        # points are about to be upserted (below) — ordered so a failure
+        # here never leaves a document with zero retrievable points.
+        if prior_version_id and prior_version_id != version_id:
+            try:
+                await asyncio.to_thread(
+                    retriever.qdrant.delete,
+                    collection_name=collection,
+                    points_selector=FilterSelector(
+                        filter=Filter(must=[
+                            FieldCondition(key="version_id", match=MatchValue(value=prior_version_id))
+                        ])
+                    ),
+                )
+            except Exception:
+                logger.warning(
+                    "[EvidenceIngestion] failed to delete superseded points for version %s "
+                    "(new version's points are still correct; stale points may linger)",
+                    prior_version_id, exc_info=True,
+                )
+
+        await asyncio.to_thread(retriever.qdrant.upsert, collection_name=collection, points=points)
+
+        logger.info(
+            "[EvidenceIngestion] ingested %s -> %s (%d chunks, version %s)",
+            doc_key, collection, len(points), version_id,
+        )
         return {
-            "doc_id": doc_id, "collection": collection,
-            "chunks_ingested": len(points), "evidence_document": evidence_doc,
+            "document_id": document_id, "version_id": version_id, "collection": collection,
+            "chunks_ingested": len(points), "skipped": False, "applicability": applicability,
         }
 
 
