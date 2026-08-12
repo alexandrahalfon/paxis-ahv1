@@ -34,6 +34,20 @@ not just make it inconvenient. Read the module docstring on
 read()/store() for exactly how the two URI shapes are told apart: no
 schema migration is needed for documents already stored locally before
 this change, since a bare local path never starts with "gs://".
+
+Production enforcement (2026-08-12 convergence Sprint B item 10): the
+local-disk fallback above is exactly the failure mode this module's own
+docstring warns about — fine for dev, silently unsafe on Cloud Run.
+settings.require_gcs_for_patient_documents (default False) is the
+explicit opt-in an operator sets in the production environment config;
+when it's True, store() refuses to fall back to local disk and raises
+PatientDocumentStorageMisconfigured instead of silently writing a
+document to a filesystem the next request might not be able to read
+back. This is a request-time check, not a startup-time one — the app
+still boots fine with a missing bucket, it's the first document upload
+attempt that fails loudly. A startup-time check would catch the
+misconfiguration earlier and is a reasonable further improvement this
+doesn't attempt.
 """
 
 from __future__ import annotations
@@ -50,6 +64,16 @@ logger = logging.getLogger(__name__)
 _LOCAL_STORAGE_DIR = Path("patient_documents")
 
 _GCS_PREFIX = "gs://"
+
+
+class PatientDocumentStorageMisconfigured(RuntimeError):
+    """Raised by store() when settings.require_gcs_for_patient_documents
+    is True but settings.gcp_patient_documents_bucket isn't set. A
+    production deployment must never silently fall back to local disk —
+    Cloud Run instances are ephemeral and don't share a filesystem (see
+    module docstring) — so this fails loudly and immediately rather than
+    losing a patient's uploaded document the moment a different instance
+    serves the next request."""
 
 
 def is_gcs_configured() -> bool:
@@ -95,12 +119,24 @@ def _store_local(patient_profile_id: str, document_id: str, safe_name: str, cont
 async def store(patient_profile_id: str, document_id: str, filename: str, content: bytes) -> str:
     """Persists content and returns the storage URI to save on the
     patient_documents row. Threaded: both the GCS client and Path.write_bytes
-    are blocking calls."""
+    are blocking calls.
+
+    Raises PatientDocumentStorageMisconfigured instead of falling back to
+    local disk when settings.require_gcs_for_patient_documents is True
+    and no bucket is configured — see module docstring."""
     safe_name = Path(filename or "upload").name
     if is_gcs_configured():
         key = f"patient_documents/{patient_profile_id}/{document_id}_{safe_name}"
         await asyncio.to_thread(_upload_to_gcs, key, content)
         return f"{_GCS_PREFIX}{settings.gcp_patient_documents_bucket}/{key}"
+    if settings.require_gcs_for_patient_documents:
+        raise PatientDocumentStorageMisconfigured(
+            "settings.require_gcs_for_patient_documents is True but "
+            "settings.gcp_patient_documents_bucket is not set -- refusing "
+            "to store a patient document on local disk in this "
+            "environment. Set GCP_PATIENT_DOCUMENTS_BUCKET or disable "
+            "REQUIRE_GCS_FOR_PATIENT_DOCUMENTS."
+        )
     return await asyncio.to_thread(_store_local, patient_profile_id, document_id, safe_name, content)
 
 

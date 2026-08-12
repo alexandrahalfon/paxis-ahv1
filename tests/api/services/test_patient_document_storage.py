@@ -36,6 +36,15 @@ def _no_gcs_bucket_by_default(monkeypatch):
     yield
 
 
+@pytest.fixture(autouse=True)
+def _gcs_not_required_by_default(monkeypatch):
+    """Sprint B item 10's enforcement flag -- most tests want the
+    pre-existing local-fallback behavior; the enforcement tests below
+    opt in explicitly."""
+    monkeypatch.setattr(pds.settings, "require_gcs_for_patient_documents", False)
+    yield
+
+
 def _gcs_bucket_configured(monkeypatch, bucket_name="patient-phi-bucket"):
     monkeypatch.setattr(pds.settings, "gcp_patient_documents_bucket", bucket_name)
 
@@ -167,6 +176,50 @@ class TestDeleteIsBestEffort:
         monkeypatch.setattr(pds, "_delete_from_gcs", failing_delete)
         # Must not raise.
         await pds.delete("gs://patient-phi-bucket/patient_documents/p1/d1_labs.pdf")
+
+
+class TestProductionGcsEnforcement:
+    """2026-08-12 convergence Sprint B item 10:
+    settings.require_gcs_for_patient_documents refuses the silent
+    local-disk fallback that's exactly the failure mode this module's
+    own docstring warns about on Cloud Run."""
+
+    @pytest.mark.asyncio
+    async def test_raises_when_required_and_bucket_unset(self, monkeypatch):
+        monkeypatch.setattr(pds.settings, "require_gcs_for_patient_documents", True)
+
+        with pytest.raises(pds.PatientDocumentStorageMisconfigured):
+            await pds.store("profile-1", "doc-1", "labs.pdf", b"pdf bytes")
+
+    @pytest.mark.asyncio
+    async def test_does_not_write_to_local_disk_when_it_raises(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(pds.settings, "require_gcs_for_patient_documents", True)
+
+        with pytest.raises(pds.PatientDocumentStorageMisconfigured):
+            await pds.store("profile-1", "doc-1", "labs.pdf", b"pdf bytes")
+
+        assert not (tmp_path / "patient_documents").exists() or not any(
+            (tmp_path / "patient_documents").rglob("*")
+        )
+
+    @pytest.mark.asyncio
+    async def test_does_not_raise_when_bucket_is_configured(self, monkeypatch):
+        monkeypatch.setattr(pds.settings, "require_gcs_for_patient_documents", True)
+        _gcs_bucket_configured(monkeypatch)
+        monkeypatch.setattr(pds, "_upload_to_gcs", lambda key, content: None)
+
+        # Must not raise -- the bucket IS configured, so there's nothing
+        # to enforce against.
+        uri = await pds.store("profile-1", "doc-1", "labs.pdf", b"pdf bytes")
+        assert uri.startswith("gs://")
+
+    @pytest.mark.asyncio
+    async def test_local_fallback_still_works_when_not_required(self):
+        """Default behavior (flag off) is completely unchanged --
+        confirms this feature is additive, not a regression for
+        dev/CI."""
+        uri = await pds.store("profile-1", "doc-1", "labs.pdf", b"pdf bytes")
+        assert not uri.startswith("gs://")
 
 
 if __name__ == "__main__":

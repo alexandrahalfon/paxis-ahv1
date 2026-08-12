@@ -126,6 +126,15 @@ class Settings(BaseSettings):
     # control and retention requirements. Empty (the default) falls back
     # to local disk — see that module's docstring.
     gcp_patient_documents_bucket: str = ""
+    # Production GCS enforcement (2026-08-12 convergence Sprint B item
+    # 10). False by default so local dev/CI (no GCS credentials at all)
+    # keeps working unchanged -- see patient_document_storage.py's
+    # store(), which refuses to silently fall back to local disk when
+    # this is True but the bucket above isn't set. Set to true only in
+    # the production/Cloud-Run environment config, where a local-disk
+    # fallback would mean a document uploaded to one ephemeral instance
+    # silently 404s on the next one.
+    require_gcs_for_patient_documents: bool = False
     
     # Processing Configuration
     output_dir: str = "processed_documents"
