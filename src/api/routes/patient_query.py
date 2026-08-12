@@ -1,9 +1,35 @@
 """
-Patient-facing Q&A endpoint.
+Patient-facing Q&A endpoint (legacy, unauthenticated).
 
-Allows patients to ask plain-language questions about their prescribed treatment plan.
-Uses the knowledge base for relevant evidence but generates answers in accessible,
-non-clinical language. Does NOT recommend new treatments or changes to care.
+Predates the patient portal (patient_portal/patient_chat_service.py +
+/api/patient-portal/chat) and has no login, no patient_profile_id, and no
+linked clinical record — a caller is just "someone asking a question,"
+with nothing this endpoint can key a longitudinal record on. That is a
+structural difference from the portal chat, not a bug: it means this
+endpoint can never do patient-state-aware personalization (retrieval
+boosted by a specific patient's regimen/symptoms/labs), because there is
+no patient identity here to look that state up for.
+
+What CAN be shared, and — per the 2026-08-12 beta audit's "do not
+maintain two independent patient RAG behaviors" finding — now IS shared,
+is the evidence pipeline itself: this endpoint retrieves through the same
+multi_corpus_retriever -> applicability_scorer -> evidence_packet_builder
+-> grounding_validator path evidence/ services the authenticated portal
+chat uses (evidence/patient_context_service.classify_intent() +
+evidence/retrieval_planner.build_plan() with an empty patient_values dict
+— which applicability_scorer.py's "unspecified is neutral" semantics
+already handle correctly for a caller with no known patient facts), so a
+question answered here and the same question answered through the portal
+draw on identically-scored evidence, not two different retrieval stacks
+that can silently disagree. Only the patient-specific personalization
+layer is necessarily absent.
+
+Kept in place rather than removed (an active, if legacy, integration
+point — see the beta audit's "either remove or make it call the new
+service" framing, resolved here as the latter) and left unauthenticated
+on purpose: turning it into an authenticated endpoint would be a product
+decision (merging it into the portal chat, or requiring login) beyond
+what this fix is scoped to make unilaterally.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -94,42 +120,91 @@ async def patient_query(request: PatientQueryRequest):
         # Never let the guardrail itself break the endpoint.
         _tri = None
 
+    # Computed unconditionally (pure regex, no I/O) so it's available for
+    # the hard grounding gate below even if retrieval itself fails.
+    from src.api.services.evidence import patient_context_service as evidence_patient_context_service
+    intent = evidence_patient_context_service.classify_intent(request.question)
+
     try:
         from src.core.config import settings
-        from src.api.services.enhanced_rag_service import get_enhanced_rag_service
 
         openai_client = _get_shared_openai_client()
 
-        # --- Retrieve relevant KB evidence ---
-        rag_service = get_enhanced_rag_service()
-        result = await rag_service.query(
-            question=request.question,
-            query_mode="hybrid",
-            top_k=8,
-            category=None,
-            use_site_inference=False,
-            conversation_history=request.conversation_history,
-            conversation_context=[],
-        )
+        # --- Retrieve relevant evidence: same pipeline the authenticated
+        # portal chat uses (see module docstring), not the old clinician
+        # literature backbone this endpoint used to call directly. ---
+        evidence_block, sources_out = "", []
+        try:
+            from src.api.services.evidence.retrieval_planner import build_plan
+            from src.api.services.evidence import multi_corpus_retriever
+            from src.api.services.evidence.applicability_scorer import rank as rank_evidence
+            from src.api.services.evidence.evidence_packet_builder import (
+                build_packet, to_prompt_block, to_sources,
+            )
 
-        evidence = result.get("evidence", [])
+            # No patient identity here (see module docstring) -- an empty
+            # retrieval_features dict yields empty patient_values on the
+            # plan, which applicability_scorer.py's "unspecified is
+            # neutral" semantics score correctly: nothing is boosted or
+            # penalized on axes this endpoint has no data for.
+            plan = build_plan(intent, {})
+            candidates = await multi_corpus_retriever.search(request.question, plan)
+            ranked = rank_evidence(candidates, plan)
+            packet = build_packet(request.question, None, ranked, safety_category="general")
+            evidence_block = to_prompt_block(packet)
+            sources_out = to_sources(packet)
+        except Exception as e:
+            logger.warning("[patient-query] multi-corpus retrieval failed, falling back: %s", e)
 
-        # Build a condensed evidence block for the prompt (abstracts, not full text)
-        evidence_block = ""
-        sources_out = []
-        for i, e in enumerate(evidence[:6], 1):
-            title = e.get("title", "Untitled")
-            text = (e.get("text") or "")[:400]
-            citation = e.get("citation", "")
-            evidence_block += f"\n[{i}] {title}\n{text}\nSource: {citation}\n"
-            sources_out.append({
-                "title": title,
-                "citation": citation,
-                "doi": e.get("doi"),
-                "pmid": e.get("pmid"),
-                "year": e.get("year"),
-                "source_type": e.get("source_type", "kb"),
-            })
+        # Fall back to the clinician literature backbone only when the
+        # shared evidence pipeline found nothing -- same fallback shape
+        # patient_chat_service.answer() uses, so an empty result degrades
+        # identically on both patient-facing paths rather than differently.
+        if not sources_out:
+            from src.api.services.enhanced_rag_service import get_enhanced_rag_service
+
+            rag_service = get_enhanced_rag_service()
+            result = await rag_service.query(
+                question=request.question,
+                query_mode="hybrid",
+                top_k=8,
+                category=None,
+                use_site_inference=False,
+                conversation_history=request.conversation_history,
+                conversation_context=[],
+            )
+            evidence = result.get("evidence", [])
+            for i, e in enumerate(evidence[:6], 1):
+                title = e.get("title", "Untitled")
+                text = (e.get("text") or "")[:400]
+                citation = e.get("citation", "")
+                evidence_block += f"\n[{i}] {title}\n{text}\nSource: {citation}\n"
+                sources_out.append({
+                    "title": title,
+                    "citation": citation,
+                    "doi": e.get("doi"),
+                    "pmid": e.get("pmid"),
+                    "year": e.get("year"),
+                    "source_type": e.get("source_type", "kb"),
+                })
+
+        # Hard grounding gate (2026-08-12 beta audit) -- same rule as
+        # patient_chat_service.answer(): a factual medication/symptom/
+        # nutrition/treatment/diagnosis question with zero usable evidence
+        # after every fallback above must not be answered from the
+        # model's own memory. `_tri` can be None if triage itself errored;
+        # treat that the same as GENERAL (fail toward gating a factual
+        # question rather than silently generating from memory).
+        tri_category = _tri.category if _tri is not None else evidence_patient_context_service.GENERAL_SAFETY_CATEGORY
+        if (
+            not sources_out
+            and intent in evidence_patient_context_service.FACTUAL_INTENTS
+            and tri_category == evidence_patient_context_service.GENERAL_SAFETY_CATEGORY
+        ):
+            return PatientQueryResponse(
+                answer=evidence_patient_context_service.NO_EVIDENCE_RESPONSE,
+                sources=[],
+            )
 
         # Build conversation messages
         messages = [{"role": "system", "content": _PATIENT_SYSTEM_PROMPT}]
@@ -146,6 +221,9 @@ async def patient_query(request: PatientQueryRequest):
                 f"\n\nRelevant information from medical literature "
                 f"(use this to inform your answer, but explain it in simple terms):\n"
                 f"{evidence_block}"
+                "\n\nWhen you make a claim drawn from the numbered passages above, cite "
+                "it inline using its number in brackets, e.g. [1] or [2] -- matching the "
+                "numbers shown, not a new numbering of your own."
             )
         messages.append({"role": "user", "content": user_content})
 
@@ -162,6 +240,19 @@ async def patient_query(request: PatientQueryRequest):
         )
 
         answer = response.choices[0].message.content.strip()
+
+        # Grounding check -- same non-blocking rollout stage as
+        # patient_chat_service.answer(): logged for now, not yet a hard
+        # gate. See that module's docstring for the promotion plan.
+        try:
+            from src.api.services.evidence.grounding_validator import validate as validate_grounding
+            grounding_result = validate_grounding(answer, {"evidence": sources_out})
+            if not grounding_result.valid:
+                logger.warning(
+                    "[patient-query] grounding validation failed: %s", grounding_result.reasons
+                )
+        except Exception:
+            logger.warning("[patient-query] grounding validation errored (continuing)", exc_info=True)
 
         return PatientQueryResponse(
             answer=answer,

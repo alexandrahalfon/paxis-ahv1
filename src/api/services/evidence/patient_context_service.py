@@ -60,6 +60,44 @@ def classify_intent(message: str) -> str:
     return INTENT_GENERAL
 
 
+# ── Hard grounding gate (2026-08-12 beta audit, "make the evidence packet
+# a true hard boundary") ─────────────────────────────────────────────────
+# The five non-general intents above are exactly the "factual oncology/
+# medication/treatment question" category the audit means: a patient
+# asking specifically about a medication, symptom, nutrition concern,
+# treatment, or diagnosis is asking for a claim that should be backed by
+# retrieved evidence, not answered from the model's own training data.
+# INTENT_GENERAL stays ungated -- it is both genuinely conversational
+# messages ("thank you", "I'm nervous about my appointment") and vaguer
+# questions that didn't match a specific factual pattern, and the audit
+# is explicit that conversational/non-medical questions should keep
+# working without evidence.
+#
+# Callers (patient_chat_service.answer(), the legacy patient_query
+# route) are expected to gate on
+# `intent in FACTUAL_INTENTS and safety_category == GENERAL_SAFETY_CATEGORY`
+# themselves, using their own already-imported patient_safety_service
+# reference, rather than this evidence-layer module importing the portal
+# safety layer — clinical_decision/distress/emergency categories already
+# avoid giving ungrounded specifics via their own system-prompt handling
+# (see patient_safety_service.system_prompt_additions), so this gate is
+# additive only for the plain "general" safety category.
+FACTUAL_INTENTS = {
+    INTENT_MEDICATION, INTENT_SYMPTOM, INTENT_NUTRITION, INTENT_TREATMENT, INTENT_DIAGNOSIS,
+}
+
+# Matches patient_safety_service.GENERAL's value -- duplicated as a
+# literal rather than imported to avoid the evidence layer depending on
+# the portal safety layer. patient_safety_service tests below assert
+# this stays in sync.
+GENERAL_SAFETY_CATEGORY = "general"
+
+NO_EVIDENCE_RESPONSE = (
+    "I don't have enough trusted evidence in Paxis to answer that reliably. "
+    "Your care team can help with this."
+)
+
+
 class PatientContextService:
     async def get_context(self, patient_user_id: str) -> Dict[str, Any]:
         """Best-effort patient context: {} for an account with no profile

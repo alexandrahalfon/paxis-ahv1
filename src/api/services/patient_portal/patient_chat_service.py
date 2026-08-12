@@ -359,6 +359,12 @@ class PatientChatService:
         vocab = expand_patient_language(message)
         query = vocab.expanded_query
 
+        # Computed unconditionally (pure regex, no I/O) so it's available
+        # for the hard grounding gate below even if multi-corpus retrieval
+        # itself fails before reaching its own classify_intent() call.
+        from src.api.services.evidence import patient_context_service as evidence_patient_context_service
+        intent = evidence_patient_context_service.classify_intent(message)
+
         # 4. Patient-state-aware multi-corpus retrieval (Phase 4). Replaces
         #    the old "concatenate known facts onto the query string" seed
         #    below with structured selection: an intent label picks which
@@ -376,7 +382,7 @@ class PatientChatService:
         evidence_block, sources, used_web = "", [], False
         try:
             from src.api.services.evidence.patient_context_service import (
-                get_patient_context_service, classify_intent,
+                get_patient_context_service,
             )
             from src.api.services.evidence.retrieval_planner import build_plan
             from src.api.services.evidence import multi_corpus_retriever
@@ -386,7 +392,6 @@ class PatientChatService:
             )
 
             context = await get_patient_context_service().get_context(patient_user_id)
-            intent = classify_intent(message)
             plan = build_plan(intent, context.get("retrieval_features", {}))
             candidates = await multi_corpus_retriever.search(query, plan)
             ranked = rank_evidence(candidates, plan)
@@ -430,6 +435,44 @@ class PatientChatService:
             if web:
                 evidence_block, sources = self._web_block(web)
                 used_web = True
+
+        # 4b. Hard grounding gate (2026-08-12 beta audit, "make the
+        # evidence packet a true hard boundary"): a factual medication/
+        # symptom/nutrition/treatment/diagnosis question with zero usable
+        # evidence after every fallback above must not be answered from
+        # the model's own memory — the evidence packet is empty, so any
+        # specifics in the answer would be ungrounded. Skips generation
+        # entirely rather than generating and then discarding, so this
+        # never costs an OpenAI call. Distress/clinical-decision/
+        # emergency categories are already handled without needing
+        # retrieved evidence (see patient_safety_service.
+        # system_prompt_additions), so this only fires for the plain
+        # "general" safety category — see FACTUAL_INTENTS' docstring in
+        # patient_context_service.py for the full rationale.
+        if (
+            not sources
+            and intent in evidence_patient_context_service.FACTUAL_INTENTS
+            and tri.category == safety.GENERAL
+        ):
+            result = ChatResult(
+                answer=evidence_patient_context_service.NO_EVIDENCE_RESPONSE,
+                safety_category=tri.category,
+                sources=[],
+                offer_escalation=tri.should_offer_escalation and bool(facts.get("linked")),
+                conversation_id=conversation_id,
+                known_facts={k: v for k, v in facts.items() if k != "physician_id"},
+                retrieval_used=False,
+                used_web_search=used_web,
+            )
+            if trace:
+                trace.set_answer(result.answer)
+                trace.set_grounding({"gated": True, "reason": "no_usable_evidence_for_factual_intent"})
+                result.trace_id = await trace.save()
+            if persist:
+                result.conversation_id = await self._persist(
+                    patient_user_id, conversation_id, message, result
+                )
+            return result
 
         # 5. Build the prompt.
         system = BASE_SYSTEM_PROMPT + safety.system_prompt_additions(tri)
