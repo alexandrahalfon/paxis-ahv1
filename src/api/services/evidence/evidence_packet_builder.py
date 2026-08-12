@@ -50,6 +50,20 @@ def summarize_context(patient_context: Optional[Dict[str, Any]]) -> Dict[str, An
     if dx.get("stage"):
         summary["stage"] = dx["stage"]
 
+    # Care-team instructions (2026-08-12 beta audit item 5): carried into
+    # the packet's patient_context so the auditable object this module
+    # exists to produce actually reflects what generation was told to
+    # prioritize, not just the passive facts summarized above. See
+    # patient_chat_service._care_team_instructions_block for how these
+    # reach the system prompt with explicit precedence framing — this
+    # function only surfaces them into the packet, it doesn't rank them.
+    instructions = [
+        {"text": i.get("text"), "type": i.get("type")}
+        for i in (state.get("care_team_instructions") or []) if i.get("text")
+    ]
+    if instructions:
+        summary["care_team_instructions"] = instructions
+
     return summary
 
 

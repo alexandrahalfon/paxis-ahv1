@@ -292,6 +292,48 @@ class PatientChatService:
         return block, sources
 
     @staticmethod
+    def _care_team_instructions_block(context: Optional[Dict[str, Any]]) -> str:
+        """Renders active care_team_instructions (Phase 1 finalization —
+        clinician-entered guidance like "no NSAIDs while on this
+        regimen") into an explicit system-prompt directive.
+
+        Deliberately independent of the facts.get("linked")/context
+        personalization branching in answer(): those are the OLD
+        physician-linked-record summary vs. the NEW patient_profile
+        summary, and a patient can have either, both, or neither.
+        Care-team instructions live only in the new patient_profile model
+        (care_team_instructions table), so this is called unconditionally
+        against `context` rather than nested inside either branch —
+        otherwise a patient with a legacy physician link (facts["linked"]
+        True, which short-circuits the `elif context:` branch) but who
+        ALSO has instructions recorded against their patient_profile
+        would silently never see them.
+
+        2026-08-12 beta audit item 5: "care-team-specific instruction >
+        generic education" was one of the architecture's central rules
+        but had no downstream consumer — `evidence_packet_builder.
+        summarize_context()` didn't surface the instruction text and
+        neither prompt branch below read it. This is that consumer.
+        """
+        state = (context or {}).get("state") or {}
+        instructions = [i for i in (state.get("care_team_instructions") or []) if i.get("text")]
+        if not instructions:
+            return ""
+        lines = "\n".join(
+            f"- [{i.get('type') or 'other'}] {i['text']}" for i in instructions
+        )
+        return (
+            "\n\nCARE TEAM INSTRUCTIONS FOR THIS PATIENT (recorded directly in their "
+            "chart by their own care team):\n" + lines +
+            "\n\nThese are specific to this patient and take precedence over generic "
+            "education: if a generic answer would conflict with one of these "
+            "instructions, follow the instruction instead of giving the generic "
+            "advice. If the patient's question is already answered by one of these "
+            "instructions, lead with it rather than a generic explanation. Do not "
+            "invent a reason for an instruction beyond what is stated here."
+        )
+
+    @staticmethod
     def _evidence_block(results, limit: int = 5):
         """Same shape as _web_block, for corpus results."""
         if not results:
@@ -500,13 +542,21 @@ class PatientChatService:
             except Exception:
                 ctx_summary = {}
             if ctx_summary:
-                summary = ", ".join(f"{k}: {v}" for k, v in ctx_summary.items() if v)
-                system += (
-                    f"\n\nWhat this patient has recorded about their own situation: {summary}. "
-                    "Use this so your answer is about their situation rather than generic. "
-                    "Do not ask them to repeat information already listed here. Never present "
-                    "it as a new finding or interpret it as a diagnosis."
+                summary = ", ".join(
+                    f"{k}: {v}" for k, v in ctx_summary.items()
+                    if v and k != "care_team_instructions"
                 )
+                if summary:
+                    system += (
+                        f"\n\nWhat this patient has recorded about their own situation: {summary}. "
+                        "Use this so your answer is about their situation rather than generic. "
+                        "Do not ask them to repeat information already listed here. Never present "
+                        "it as a new finding or interpret it as a diagnosis."
+                    )
+
+        # Independent of the linked/unlinked branching above — see the
+        # method's docstring for why (item 5).
+        system += self._care_team_instructions_block(context)
 
         messages = [{"role": "system", "content": system}]
         for turn in history[-6:]:

@@ -13,7 +13,7 @@ sections of the same document.
 from __future__ import annotations
 
 from src.api.services.evidence.evidence_packet_builder import (
-    build_packet, to_prompt_block, to_sources,
+    build_packet, summarize_context, to_prompt_block, to_sources,
 )
 
 
@@ -123,6 +123,55 @@ class TestContentDedup:
         b = _candidate(qdrant_point_id="point-b", text="Eat small frequent meals.")
         packet = build_packet("Question", None, [a, b])
         assert len(packet["evidence"]) == 2
+
+
+class TestSummarizeContextCareTeamInstructions:
+    """2026-08-12 beta audit item 5: care_team_instructions were stored
+    and read into patient state, but summarize_context() -- the function
+    that decides what the evidence packet's patient_context contains --
+    dropped them entirely, so nothing downstream could even see that they
+    existed."""
+
+    def test_active_instructions_are_surfaced(self):
+        context = {
+            "state": {
+                "care_team_instructions": [
+                    {"text": "Avoid grapefruit while on this regimen.", "type": "dietary"},
+                    {"text": "Call us if your temperature is above 100.4F.", "type": "monitoring"},
+                ],
+            },
+            "retrieval_features": {},
+        }
+        summary = summarize_context(context)
+        assert summary["care_team_instructions"] == [
+            {"text": "Avoid grapefruit while on this regimen.", "type": "dietary"},
+            {"text": "Call us if your temperature is above 100.4F.", "type": "monitoring"},
+        ]
+
+    def test_absent_when_no_instructions(self):
+        context = {"state": {"care_team_instructions": []}, "retrieval_features": {}}
+        assert "care_team_instructions" not in summarize_context(context)
+
+    def test_absent_when_state_missing_entirely(self):
+        assert "care_team_instructions" not in summarize_context({})
+        assert "care_team_instructions" not in summarize_context(None)
+
+    def test_entries_without_text_are_dropped(self):
+        context = {
+            "state": {"care_team_instructions": [{"text": "", "type": "other"}, {"type": "other"}]},
+        }
+        assert "care_team_instructions" not in summarize_context(context)
+
+    def test_surfaced_in_build_packet_patient_context(self):
+        context = {
+            "state": {
+                "care_team_instructions": [{"text": "No NSAIDs on this regimen.", "type": "medication"}],
+            },
+        }
+        packet = build_packet("Can I take ibuprofen?", context, [_candidate()])
+        assert packet["patient_context"]["care_team_instructions"] == [
+            {"text": "No NSAIDs on this regimen.", "type": "medication"}
+        ]
 
 
 class TestBackwardCompatibleHelpers:
