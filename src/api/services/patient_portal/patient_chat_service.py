@@ -437,6 +437,7 @@ class PatientChatService:
             plan = build_plan(intent, context.get("retrieval_features", {}))
             candidates = await multi_corpus_retriever.search(query, plan)
             ranked = rank_evidence(candidates, plan)
+            from src.api.services.patient.lab_interpretation import interpretation_policy_summary
             packet = build_packet(
                 message, context, ranked, safety_category=tri.category,
                 audience="patient",
@@ -447,6 +448,9 @@ class PatientChatService:
                 # thing that exists today to "which patient's state this
                 # packet was built from".
                 patient_snapshot_id=context.get("patient_profile_id"),
+                interpretation_policies=interpretation_policy_summary(
+                    context.get("state", {}).get("labs")
+                ),
             )
             evidence_block = to_prompt_block(packet)
             sources = to_sources(packet)

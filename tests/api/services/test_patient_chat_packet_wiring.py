@@ -99,6 +99,74 @@ class TestBuildPacketReceivesSharedContractFields:
         assert captured["retrieval_plan"].intent  # a real RetrievalPlan, not a placeholder
 
 
+class TestInterpretationPoliciesReachThePacket:
+    """2026-08-12 convergence Sprint A item 3: state["labs"]'s
+    allowed_interpretation per test must reach build_packet()'s
+    interpretation_policies field, not just live in patient state."""
+
+    @pytest.mark.asyncio
+    async def test_lab_interpretation_levels_are_passed_through(self, service, monkeypatch):
+        async def context_with_labs(self, patient_user_id):
+            return {
+                "patient_profile_id": "profile-42",
+                "state": {
+                    "labs": [
+                        {
+                            "canonical_test": "anc",
+                            "latest": {"value": 1.4, "unit": "10^9/L"},
+                            "previous": {"value": 2.4, "unit": "10^9/L"},
+                            "allowed_interpretation": "exact_value_and_trend_only",
+                        },
+                        {
+                            "canonical_test": "creatinine",
+                            "latest": {"value": 1.1, "unit": "mg/dL"},
+                            "previous": None,
+                            "allowed_interpretation": "exact_value_only",
+                        },
+                    ],
+                },
+                "retrieval_features": {},
+            }
+        monkeypatch.setattr(
+            "src.api.services.evidence.patient_context_service.PatientContextService.get_context",
+            context_with_labs,
+        )
+
+        import src.api.services.evidence.evidence_packet_builder as epb
+
+        captured = {}
+        real_build_packet = epb.build_packet
+
+        def spy_build_packet(*args, **kwargs):
+            captured.update(kwargs)
+            return real_build_packet(*args, **kwargs)
+        monkeypatch.setattr(epb, "build_packet", spy_build_packet)
+
+        await service.answer(
+            message="What are the side effects of pembrolizumab?",
+            patient_user_id="user-1",
+            persist=False,
+        )
+
+        assert captured["interpretation_policies"] == {
+            "anc": "exact_value_and_trend_only",
+            "creatinine": "exact_value_only",
+        }
+
+    @pytest.mark.asyncio
+    async def test_empty_when_no_labs_recorded(self, service):
+        import src.api.services.evidence.evidence_packet_builder as epb
+
+        result = await service.answer(
+            message="What are the side effects of pembrolizumab?",
+            patient_user_id="user-1",
+            persist=False,
+        )
+        # No exception, and a real (possibly empty) packet was built --
+        # the absence of labs must degrade gracefully, not error.
+        assert result.answer
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-v"]))

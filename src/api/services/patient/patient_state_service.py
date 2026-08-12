@@ -56,6 +56,20 @@ from src.api.services.patient.symptom_observation_service import get_symptom_obs
 from src.api.services.patient.nutrition_assessment_service import get_nutrition_assessment_service
 from src.api.services.patient.care_team_instruction_service import get_care_team_instruction_service
 from src.api.services.patient.clinical_normalization import normalize_cancer_site
+from src.api.services.patient.lab_interpretation import allowed_interpretation_for
+
+
+def _lab_value_shape(row: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """{value, unit, collected_at} from a raw lab_results row — shared by
+    both the latest and previous slots in state["labs"] (2026-08-12
+    convergence Sprint A item 3)."""
+    if not row:
+        return None
+    return {
+        "value": row.get("value_numeric") if row.get("value_numeric") is not None else row.get("value_text"),
+        "unit": row.get("unit"),
+        "collected_at": row.get("collected_at"),
+    }
 
 
 def _age_from_dob(dob: Any) -> Optional[int]:
@@ -150,7 +164,11 @@ class PatientStateService:
         )
         comorbidities = await get_conditions_service().list_comorbidities(patient_profile_id)
         allergies_raw = await get_conditions_service().list_allergies(patient_profile_id)
-        recent_labs = await get_lab_service().most_recent_by_test(patient_profile_id)
+        # latest_and_previous_by_test (not just most_recent_by_test)
+        # because state["labs"]'s allowed_interpretation policy (2026-08-12
+        # convergence Sprint A item 3) needs a previous reading to know
+        # whether a trend can be stated at all — see lab_interpretation.py.
+        labs_latest_previous = await get_lab_service().latest_and_previous_by_test(patient_profile_id)
 
         # ── Nutrition: weight trend (7/30/90d) + latest assessment ──────
         weight_trend = await get_vitals_service().weight_trend_summary(patient_profile_id)
@@ -229,11 +247,32 @@ class PatientStateService:
                 "care_phase": (nutrition_assessment or {}).get("care_phase"),
                 "assessed_nutrition_risk": (nutrition_assessment or {}).get("nutrition_risk"),
             },
+            # Flat shape, kept verbatim for existing readers (see
+            # _derive_retrieval_features below, which no longer reads
+            # this for anything but is left unchanged as a shape).
             "recent_labs": {
-                k: {"value": v.get("value_numeric") if v.get("value_numeric") is not None else v.get("value_text"),
-                    "unit": v.get("unit"), "collected_at": v.get("collected_at")}
-                for k, v in recent_labs.items()
+                test: _lab_value_shape(entry.get("latest"))
+                for test, entry in labs_latest_previous.items() if entry.get("latest")
             },
+            # Interpretation-policy shape (2026-08-12 convergence Sprint A
+            # item 3) — see lab_interpretation.py. This is what generation
+            # and any future claim validator should read for labs, not
+            # recent_labs above: it carries an explicit
+            # allowed_interpretation so a value/trend can be stated
+            # without generation inventing a named clinical conclusion
+            # ("neutropenic", "renal impairment") this system never
+            # validated.
+            "labs": [
+                {
+                    "canonical_test": test,
+                    "latest": _lab_value_shape(entry.get("latest")),
+                    "previous": _lab_value_shape(entry.get("previous")),
+                    "allowed_interpretation": allowed_interpretation_for(
+                        _lab_value_shape(entry.get("latest")), _lab_value_shape(entry.get("previous")),
+                    ),
+                }
+                for test, entry in labs_latest_previous.items() if entry.get("latest")
+            ],
             "comorbidities": [c.get("condition_name") for c in comorbidities],
             "allergies": [a.get("allergen") for a in allergies_raw],
             "intolerances": [
@@ -341,16 +380,17 @@ class PatientStateService:
         if nutrition.get("care_phase"):
             features["nutrition_care_phase"] = nutrition["care_phase"]
 
-        labs = state.get("recent_labs") or {}
-        anc = labs.get("anc") or labs.get("absolute neutrophil count")
-        if isinstance(anc, dict) and isinstance(anc.get("value"), (int, float)) and anc["value"] < 1.5:
-            features["neutropenia_risk"] = True
-        platelets = labs.get("platelets") or labs.get("plt")
-        if isinstance(platelets, dict) and isinstance(platelets.get("value"), (int, float)) and platelets["value"] < 100:
-            features["thrombocytopenia_risk"] = True
-        creatinine = labs.get("creatinine") or labs.get("cr")
-        if isinstance(creatinine, dict) and isinstance(creatinine.get("value"), (int, float)) and creatinine["value"] > 1.3:
-            features["renal_function_context"] = "elevated_creatinine"
+        # 2026-08-12 convergence Sprint A item 3: neutropenia_risk /
+        # thrombocytopenia_risk / renal_function_context used to be
+        # derived here from hard-coded thresholds (ANC < 1.5, platelets
+        # < 100, creatinine > 1.3) and handed to generation/retrieval as
+        # named clinical conclusions the system never actually
+        # validated. Removed outright rather than left for something
+        # downstream to lean on — see lab_interpretation.py's module
+        # docstring. state["labs"] (built above) is the sanctioned
+        # replacement: exact values, a trend when a previous reading
+        # exists, and an explicit allowed_interpretation policy, with no
+        # named risk label invented at this layer.
 
         if run_inference and narrative:
             try:

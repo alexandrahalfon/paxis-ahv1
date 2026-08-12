@@ -148,6 +148,40 @@ class LabService:
             )
         return {r["canonical_test_name"]: row_to_dict(r) for r in rows}
 
+    async def latest_and_previous_by_test(self, patient_profile_id: str) -> Dict[str, Dict[str, Any]]:
+        """Latest AND previous value per canonical_test_name (2026-08-12
+        convergence Sprint A item 3) — what the interpretation-policy lab
+        shape needs: exact_value_and_trend_only requires two points, not
+        one, to say a value moved. Returns
+        {canonical_test_name: {"latest": row, "previous": row|None}}."""
+        db = get_patient_db()
+        await db.ensure_schema()
+        pool = await db.get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT * FROM (
+                    SELECT *,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY canonical_test_name
+                               ORDER BY collected_at DESC NULLS LAST, created_at DESC
+                           ) AS rn
+                      FROM lab_results
+                     WHERE patient_profile_id = $1
+                ) ranked
+                 WHERE rn <= 2
+                 ORDER BY canonical_test_name, rn
+                """,
+                patient_profile_id,
+            )
+        out: Dict[str, Dict[str, Any]] = {}
+        for r in rows:
+            d = row_to_dict(r)
+            test = d.get("canonical_test_name")
+            slot = "latest" if d.get("rn") == 1 else "previous"
+            out.setdefault(test, {})[slot] = d
+        return out
+
 
 _service: Optional[LabService] = None
 
