@@ -151,6 +151,19 @@ class Settings(BaseSettings):
     enable_relaxed_numval: bool = False
     enable_perf_optimizations: bool = False
 
+    # Patient live-PubMed fallback (2026-08-12 convergence Sprint B item
+    # 9). Off by default -- see patient_chat_service.py's
+    # answer()/_retrieve_web() docstrings for why: PubMed abstracts are
+    # written for clinicians, and the patient-facing corpora (patient
+    # education, guideline, medication, curated literature) this codebase
+    # already builds toward are meant to be the trusted source, not a
+    # generic-search-engine fallback. Kept as an opt-in flag rather than
+    # deleted so it stays available for a future "research/study
+    # question" intent that legitimately wants it, per the convergence
+    # plan's own framing ("reserved for research/study questions, or
+    # disabled for patient mode at first").
+    patient_pubmed_fallback_enabled: bool = False
+
     @property
     def use_reconciled_structure(self) -> bool:
         """Read USE_RECONCILED_STRUCTURE from os.environ dynamically (no restart required)."""

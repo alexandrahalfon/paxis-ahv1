@@ -442,11 +442,11 @@ class PatientChatService:
                 message, context, ranked, safety_category=tri.category,
                 audience="patient",
                 retrieval_plan=plan,
-                # Stand-in for a real state-revision-scoped snapshot id
-                # until B7 (deterministic state freshness via revision
-                # counters) lands -- patient_profile_id is the closest
-                # thing that exists today to "which patient's state this
-                # packet was built from".
+                # patient_profile_id, not the state_revision itself
+                # (Sprint B item 7) -- the packet's job is to identify
+                # WHICH patient's state this was, not to carry the
+                # freshness bookkeeping; that lives on the snapshot row
+                # in Postgres (patient_state_snapshots.source_revision).
                 patient_snapshot_id=context.get("patient_profile_id"),
                 interpretation_policies=interpretation_policy_summary(
                     context.get("state", {}).get("labs")
@@ -485,8 +485,14 @@ class PatientChatService:
         # corpus has had a chance — patient education, medication,
         # guideline, then literature — per the fallback ordering in the
         # architecture review section 27 ("don't use PubMed as the main
-        # patient-chat fallback").
-        if not sources:
+        # patient-chat fallback"). Off by default (2026-08-12 convergence
+        # Sprint B item 9): PubMed abstracts are written for clinicians,
+        # and the trusted patient-facing corpora above are meant to BE
+        # the answer, not a stepping stone to a generic search-engine
+        # fallback. settings.patient_pubmed_fallback_enabled exists so
+        # this stays available (e.g. for a future "research/study
+        # question" patient intent) rather than deleted outright.
+        if not sources and settings.patient_pubmed_fallback_enabled:
             web = await self._retrieve_web(query)
             if web:
                 evidence_block, sources = self._web_block(web)
