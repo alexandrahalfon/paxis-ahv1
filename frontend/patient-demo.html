@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paxis for Patients: How It Works</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Paxis for Patients: How It Works">
+<meta property="og:description" content="See how Paxis helps you understand your cancer care in plain language, and connects your questions to your own care team.">
+<meta property="og:image" content="https://patientaxis.net/assets/paxis-logo.png">
+<meta property="og:url" content="https://patientaxis.net/patient-demo.html">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Real product stylesheet: every token, card, button and chat class below
+     comes from here unmodified, so the demo looks like the real thing. -->
+<link rel="stylesheet" href="css/styles.css">
+<style>
+    /* sideNav.js injects these at runtime; the demo doesn't run it. */
+    .side-nav-logo { display: flex; align-items: center; text-decoration: none; }
+    .side-nav-logo-img { width: 34px; height: 34px; object-fit: contain; }
+    .side-nav-icon-svg { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { overflow: hidden; background: var(--gray-50); }
+
+    .app-shell { display: flex; height: 100vh; width: 100vw; background: #fff; }
+    .side-nav-panel { width: 230px; flex-shrink: 0; }
+    .demo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+    .demo-header { height: 68px; flex-shrink: 0; border-bottom: 1px solid var(--gray-200);
+        display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; }
+    .demo-header .brand { font-weight: 800; font-size: 1.25rem; color: var(--gray-900); }
+    .demo-header .step-label { font-size: 0.9rem; font-weight: 700; color: var(--gray-500);
+        text-transform: uppercase; letter-spacing: 0.04em; }
+    .demo-body { flex: 1; overflow-y: auto; padding: 2.5rem 2.75rem 6.5rem; }
+
+    /* Everything centered and larger than before */
+    .scene { display: none; max-width: 780px; margin: 0 auto; animation: demoFade .45s ease; text-align: center; }
+    .scene.show { display: block; }
+    @keyframes demoFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .scene-title { font-size: 1.9rem; font-weight: 800; color: var(--gray-900); margin-bottom: 0.35rem; line-height: 1.25; }
+    .scene-sub { font-size: 1.05rem; color: var(--gray-500); margin-bottom: 1.4rem; font-weight: 600; }
+    .scene-note { display: block; background: var(--gray-50); border: 1px solid var(--gray-200);
+        border-radius: 12px; padding: 1.1rem 1.4rem; margin: 0 auto 1.9rem; max-width: 700px;
+        font-size: 1.02rem; color: var(--gray-700); line-height: 1.65;
+        opacity: 0; animation: demoFade .4s ease forwards; }
+    .scene-note b { color: var(--gray-900); display: block; margin-bottom: 0.3rem; font-size: 0.85rem;
+        text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); }
+
+    .progress-rail { position: absolute; bottom: 0; left: 0; right: 0; display: flex;
+        justify-content: center; align-items: center; flex-wrap: wrap; gap: 3px; z-index: 20;
+        padding: 14px 1.5rem 18px; background: linear-gradient(to top, #fff 65%, rgba(255,255,255,0)); }
+    .progress-rail .step { cursor: pointer; border: none; background: none; font-family: inherit;
+        font-size: 0.82rem; font-weight: 700; color: var(--gray-400); padding: 6px 11px;
+        border-radius: 999px; transition: all .2s ease; white-space: nowrap; }
+    .progress-rail .step:hover { color: var(--gray-700); background: var(--gray-100); }
+    .progress-rail .step.active { color: #fff; background: var(--primary); }
+    .progress-rail .sep { color: var(--gray-200); font-size: 0.82rem; }
+
+    /* --- Simulated product UI, so a viewer can see how you actually use it --- */
+    .ui-panel { background: #fff; border: 1px solid var(--gray-200); border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(17,24,39,0.05); padding: 1.5rem 1.6rem; margin: 0 auto 1.2rem;
+        max-width: 700px; text-align: left; opacity: 0; animation: demoFade .4s ease forwards; }
+    .ui-panel-title { font-size: 0.82rem; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.05em; color: var(--gray-400); margin-bottom: 0.9rem; }
+    .ui-label { display: block; font-size: 0.92rem; font-weight: 700; color: var(--gray-700); margin-bottom: 0.45rem; }
+    .ui-input { width: 100%; border: 2px solid var(--gray-300); border-radius: 10px;
+        padding: 0.85rem 1rem; font-size: 1.05rem; font-family: inherit; color: var(--gray-900);
+        background: #fff; min-height: 52px; }
+    .ui-input.focused { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(225,29,72,0.08); }
+    .ui-input.mono { font-family: ui-monospace, Menlo, monospace; font-size: 0.92rem; line-height: 1.6;
+        white-space: pre-wrap; min-height: 120px; }
+    .ui-caret { display: inline-block; width: 2px; height: 1.15em; background: var(--primary);
+        vertical-align: text-bottom; animation: blink 1s step-end infinite; margin-left: 1px; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .ui-row { display: flex; gap: 0.8rem; align-items: flex-end; }
+    .ui-row .ui-field { flex: 1; }
+    .ui-btn { background: var(--primary); color: #fff; border: none; border-radius: 10px;
+        padding: 0.85rem 1.4rem; font-family: inherit; font-size: 1rem; font-weight: 700;
+        white-space: nowrap; min-height: 52px; }
+    .ui-btn.ghost { background: #fff; color: var(--gray-700); border: 2px solid var(--gray-300); }
+    .ui-btn.pressed { transform: scale(0.97); filter: brightness(0.92); }
+    .ui-hint { font-size: 0.9rem; color: var(--gray-500); margin-top: 0.7rem; line-height: 1.6; }
+
+    /* Chat */
+    .chat-msg { display: flex; gap: 12px; opacity: 0; animation: demoFade .35s ease forwards;
+        margin-bottom: 1.1rem; text-align: left; }
+    .chat-msg.user { flex-direction: row-reverse; }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: flex;
+        align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #fff; }
+    .chat-avatar.ai { background: var(--primary); }
+    .chat-avatar.me { background: var(--gray-700); }
+    .chat-avatar.doc { background: #0f766e; }
+    .chat-bubble { max-width: 520px; padding: 14px 18px; border-radius: 16px; font-size: 1.02rem; line-height: 1.65; }
+    .chat-msg.user .chat-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 5px; }
+    .chat-msg.ai .chat-bubble { background: #fff; border: 1px solid var(--gray-200); color: var(--gray-800); border-bottom-left-radius: 5px; }
+    .chat-msg.doc .chat-bubble { background: #f0fdfa; border: 1px solid #99f6e4; color: #134e4a; border-bottom-left-radius: 5px; }
+    .chat-src { font-size: 0.85rem; color: var(--gray-500); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-200); }
+
+    /* Result cards */
+    .demo-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px;
+        padding: 1.2rem 1.4rem; margin: 0 auto 0.9rem; max-width: 700px; text-align: left;
+        opacity: 0; animation: demoFade .4s ease forwards; }
+    .demo-card.accent { border-left: 4px solid var(--primary); }
+    .demo-card h4 { margin: 0 0 0.4rem; font-size: 1.08rem; color: var(--gray-900); }
+    .demo-card p { margin: 0; font-size: 1rem; color: var(--gray-700); line-height: 1.65; }
+
+    .code-chip { display: inline-block; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.2em;
+        background: var(--gray-50); border: 2px dashed var(--gray-300); border-radius: 10px; padding: 0.7rem 1.2rem; }
+    .sym-row { display: flex; justify-content: space-between; align-items: center;
+        padding: 0.8rem 0; border-bottom: 1px solid var(--gray-200); font-size: 1rem; text-align: left; }
+    .sym-row:last-child { border-bottom: none; }
+    .sev { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; padding: 0.18rem 0.5rem;
+        border-radius: 5px; background: var(--gray-100); color: var(--gray-600); margin-left: 0.5rem; }
+    .sev.hi { background: #fef2f2; color: var(--danger-dark); }
+
+    .recap-line { display: flex; gap: 0.9rem; align-items: flex-start; margin-bottom: 1rem;
+        font-size: 1.05rem; color: var(--gray-700); line-height: 1.6; text-align: left;
+        max-width: 640px; margin-left: auto; margin-right: auto;
+        opacity: 0; animation: demoFade .4s ease forwards; }
+    .recap-num { width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff;
+        font-size: 0.82rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cta { text-align: center; margin-top: 2rem; opacity: 0; animation: demoFade .5s ease forwards; }
+    .cta .btn { font-size: 1.05rem; padding: 0.85rem 1.8rem; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- Sidebar: the real patient nav -->
+    <nav class="side-nav-panel" id="sideNavPanel">
+        <div class="side-nav-header">
+            <a href="patient-home.html" class="side-nav-logo">
+                <img src="assets/paxis-mark.png" alt="Paxis" class="side-nav-logo-img">
+            </a>
+        </div>
+        <div class="side-nav-content">
+            <div class="side-nav-section">
+                <div class="side-nav-section-title">Your care</div>
+                <a class="side-nav-link" id="navHome"><svg class="side-nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="side-nav-text">Home</span></a>
+                <a class="side-nav-link" id="navAsk"><svg class="side-nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="side-nav-text">Ask a Question</span></a>
+                <a class="side-nav-link" id="navTeam"><svg class="side-nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span class="side-nav-text">My Care Team</span></a>
+            </div>
+            <div class="side-nav-section">
+                <div class="side-nav-section-title">Tools</div>
+                <a class="side-nav-link" id="navMed"><svg class="side-nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/></svg><span class="side-nav-text">About My Medication</span></a>
+                <a class="side-nav-link" id="navReport"><svg class="side-nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="side-nav-text">Explain My Report</span></a>
+                <a class="side-nav-link" id="navSym"><svg class="side-nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span class="side-nav-text">Symptom Diary</span></a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="demo-main">
+        <div class="demo-header">
+            <span class="brand">Paxis</span>
+            <span class="step-label" id="hdrLabel">Opening</span>
+        </div>
+
+        <div class="demo-body">
+
+            <div class="scene" id="scene-open">
+                <div style="text-align:center;padding-top:4rem;">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height:64px;width:auto;margin-bottom:1.5rem;">
+                    <div class="scene-title" style="font-size:1.8rem;">Understanding your care, in plain language</div>
+                    <div class="scene-sub" style="font-size:1rem;max-width:540px;margin:0.5rem auto 0;">
+                        Follow one person, Maria, from her first question through to a reply from her
+                        own oncologist. Seven steps, about three minutes.
+                    </div>
+                </div>
+            </div>
+
+            <div class="scene" id="scene-ask">
+                <div class="scene-title">Step 1. She asks in her own words</div>
+                <div class="scene-sub">Ask a Question</div>
+                <div class="scene-note"><b>What you are watching:</b><span>Maria was told her cancer had spread. Like most people, she did not take much in at the appointment, and she does not know the medical terms. Watch her type it in her own words, and watch Paxis ask one question back to narrow things down.</span></div>
+                <div id="askFlow"></div>
+            </div>
+
+            <div class="scene" id="scene-med">
+                <div class="scene-title">Step 2. She looks up the drug she was given</div>
+                <div class="scene-sub">About My Medication</div>
+                <div class="scene-note"><b>What you are watching:</b><span>Watch her type the name off her pill bottle and press one button. Paxis searches the research and comes back with four things in plain English: what it is, how it works, what side effects people report, and what to ask her doctor about it.</span></div>
+                <div id="medFlow"></div>
+            </div>
+
+            <div class="scene" id="scene-report">
+                <div class="scene-title">Step 3. She pastes in her pathology report</div>
+                <div class="scene-sub">Explain My Report</div>
+                <div class="scene-note"><b>What you are watching:</b><span>Reports get handed over full of terms nobody explains. Watch her paste the text straight in, then watch Paxis translate each term. Pay attention to what it refuses to do at the end, because that boundary is deliberate.</span></div>
+                <div id="reportFlow"></div>
+            </div>
+
+            <div class="scene" id="scene-symptoms">
+                <div class="scene-title">Step 4. She logs how she is feeling between visits</div>
+                <div class="scene-sub">Symptom Diary</div>
+                <div class="scene-note"><b>What you are watching:</b><span>Watch her add one entry: what she noticed, and how bad it was. That is the whole interaction. Paxis gives no opinion on any of it. The point is what she can tell her doctor at the next appointment.</span></div>
+                <div id="symFlow"></div>
+            </div>
+
+            <div class="scene" id="scene-connect">
+                <div class="scene-title">Step 5. Her oncologist connects her</div>
+                <div class="scene-sub">My Care Team</div>
+                <div class="scene-note"><b>What you are watching:</b><span>Everything so far worked with no doctor involved. This step is optional. Watch her enter the code her oncologist gave her. It unlocks two things: answers that know her real diagnosis, and a way to send questions to her actual care team.</span></div>
+                <div id="connectFlow"></div>
+            </div>
+
+            <div class="scene" id="scene-escalate">
+                <div class="scene-title">Step 6. She asks something an app should not answer</div>
+                <div class="scene-sub">Ask a Question</div>
+                <div class="scene-note"><b>What you are watching:</b><span>This is the most important screen in the demo. She asks whether to stop her treatment. Watch Paxis explain what is generally known, then stop and hand the question to her doctor instead of answering it.</span></div>
+                <div id="escFlow"></div>
+            </div>
+
+            <div class="scene" id="scene-reply">
+                <div class="scene-title">Step 7. Her real oncologist answers</div>
+                <div class="scene-sub">Ask a Question</div>
+                <div class="scene-note"><b>What you are watching:</b><span>The question landed in Dr. Reyes's Paxis inbox with a draft reply already written for her. She edited it and sent it. The answer comes back into the same conversation, clearly from the doctor and not from Paxis.</span></div>
+                <div id="replyFlow"></div>
+            </div>
+
+            <div class="scene" id="scene-close">
+                <div style="text-align:center;margin-bottom:1.6rem;">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height:52px;width:auto;margin-bottom:1rem;">
+                    <div class="scene-title">What just happened</div>
+                </div>
+                <div id="closeFlow"></div>
+            </div>
+
+        </div>
+        <div class="progress-rail" id="progressRail"></div>
+    </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let timers = [];
+function delay(fn, ms) { const t = setTimeout(fn, ms); timers.push(t); return t; }
+function clearAll() { timers.forEach(clearTimeout); timers = []; }
+
+const SCENES = ['open','ask','med','report','symptoms','connect','escalate','reply','close'];
+const STEP_LABELS = {
+    open: 'Start', ask: '1. First Question', med: '2. Her Medication', report: '3. Her Report',
+    symptoms: '4. Symptom Diary', connect: '5. Doctor Connects Her', escalate: '6. Asks Her Doctor',
+    reply: '7. Doctor Replies', close: 'Recap',
+};
+const SCENE_LABELS = {
+    open: 'Opening', ask: 'Ask a Question', med: 'About My Medication',
+    report: 'Explain My Report', symptoms: 'Symptom Diary', connect: 'My Care Team',
+    escalate: 'Ask a Question', reply: 'Ask a Question', close: 'Recap',
+};
+const SCENE_NAV = {
+    ask: 'navAsk', med: 'navMed', report: 'navReport', symptoms: 'navSym',
+    connect: 'navTeam', escalate: 'navAsk', reply: 'navAsk',
+};
+
+const railEl = $('#progressRail');
+SCENES.forEach((name, i) => {
+    if (i > 0) {
+        const sep = document.createElement('span');
+        sep.className = 'sep'; sep.textContent = '•';
+        railEl.appendChild(sep);
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'step'; btn.textContent = STEP_LABELS[name];
+    btn.addEventListener('click', () => jumpToScene(name));
+    railEl.appendChild(btn);
+});
+
+function showScene(name) {
+    document.querySelectorAll('.scene').forEach(s => s.classList.remove('show'));
+    document.getElementById('scene-' + name).classList.add('show');
+    document.querySelectorAll('.side-nav-link').forEach(a => a.classList.remove('active'));
+    const nav = SCENE_NAV[name];
+    if (nav) document.getElementById(nav).classList.add('active');
+    $('#hdrLabel').textContent = SCENE_LABELS[name];
+    document.querySelectorAll('.progress-rail .step').forEach((btn, idx) =>
+        btn.classList.toggle('active', SCENES[idx] === name));
+    $('.demo-body').scrollTop = 0;
+}
+
+function bubble(container, who, html, srcHtml) {
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-msg ' + who;
+    const avatarText = who === 'me' ? 'M' : (who === 'doc' ? 'DR' : 'P');
+    wrap.innerHTML =
+        '<div class="chat-avatar ' + (who === 'me' ? 'me' : (who === 'doc' ? 'doc' : 'ai')) + '">' + avatarText + '</div>' +
+        '<div class="chat-bubble">' + html + (srcHtml ? '<div class="chat-src">' + srcHtml + '</div>' : '') + '</div>';
+    // user bubbles use .user for layout, avatar class differs
+    if (who === 'me') wrap.className = 'chat-msg user';
+    container.appendChild(wrap);
+    return wrap;
+}
+function card(container, html, accent) {
+    const d = document.createElement('div');
+    d.className = 'demo-card' + (accent ? ' accent' : '');
+    d.innerHTML = html;
+    container.appendChild(d);
+    return d;
+}
+
+// ---------- UI simulation helpers ----------
+// The point of these is that a viewer can see the actual controls being
+// used: the box you type into, the button you press, the result that
+// comes back. Showing results alone made it unclear how you'd use it.
+
+function panel(container, titleText, innerHTML) {
+    const d = document.createElement('div');
+    d.className = 'ui-panel';
+    d.innerHTML = (titleText ? '<div class="ui-panel-title">' + titleText + '</div>' : '') + innerHTML;
+    container.appendChild(d);
+    return d;
+}
+
+/** Types text into a fake input, character by character, then calls done(). */
+function typeInto(el, text, done, speed) {
+    el.classList.add('focused');
+    let i = 0;
+    const caret = '<span class="ui-caret"></span>';
+    const tick = () => {
+        el.innerHTML = text.slice(0, i) + caret;
+        i++;
+        if (i <= text.length) {
+            delay(tick, speed || 55);
+        } else {
+            el.innerHTML = text;
+            el.classList.remove('focused');
+            if (done) delay(done, 500);
+        }
+    };
+    tick();
+}
+
+/** Briefly shows a button as pressed, then calls done(). */
+function pressBtn(btn, done) {
+    btn.classList.add('pressed');
+    delay(() => { btn.classList.remove('pressed'); if (done) done(); }, 450);
+}
+
+// ---------- Scenes ----------
+// Pacing is deliberately slow: someone watching has never seen this before
+// and needs time to read each step. Typing plays out at readable speed,
+// then the result appears, then the scene holds before moving on.
+
+function sceneOpen() {
+    showScene('open');
+    delay(sceneAsk, 6500);
+}
+
+function sceneAsk() {
+    showScene('ask');
+    const f = $('#askFlow'); f.innerHTML = '';
+
+    const box = panel(f, 'Ask a Question',
+        '<label class="ui-label">Tell me what is going on, or ask a question</label>' +
+        '<div class="ui-input" id="askInput"></div>' +
+        '<div style="margin-top:0.9rem;text-align:right;"><button class="ui-btn" id="askSend">Send</button></div>');
+
+    delay(() => typeInto(document.getElementById('askInput'),
+        "they said it spread and i don't really understand what they told me", () => {
+            pressBtn(document.getElementById('askSend'), () => {
+                box.remove();
+                bubble(f, 'me', "they said it spread and i don't really understand what they told me");
+                delay(() => bubble(f, 'ai',
+                    "<b>It is completely normal not to take everything in at an appointment like that.</b><br><br>" +
+                    "When doctors say cancer has \"spread,\" they usually mean it has been found somewhere beyond where it started. " +
+                    "That changes which treatments are considered, but it covers a very wide range of situations.<br><br>" +
+                    "I can help with what the words mean, what a treatment involves, or what to ask at your next visit. Where would you like to start?",
+                    "Based on 3 studies from our reviewed library"), 1800);
+                delay(() => bubble(f, 'ai',
+                    "So I can point you at the right information, do you know what type of cancer you are being treated for? " +
+                    "It is usually near the top of any report you have been given. No problem at all if you are not sure."), 7500);
+                delay(() => bubble(f, 'me', "breast cancer. they gave me a pill called anastrozole"), 12000);
+            });
+        }), 1200);
+
+    delay(sceneMed, 24000);
+}
+
+function sceneMed() {
+    showScene('med');
+    const f = $('#medFlow'); f.innerHTML = '';
+
+    const box = panel(f, 'About My Medication',
+        '<label class="ui-label">Medication name</label>' +
+        '<div class="ui-row"><div class="ui-field"><div class="ui-input" id="medInput"></div></div>' +
+        '<button class="ui-btn" id="medBtn">Look it up</button></div>' +
+        '<div class="ui-hint">She types the name straight off her pill bottle.</div>');
+
+    delay(() => typeInto(document.getElementById('medInput'), 'anastrozole', () => {
+        pressBtn(document.getElementById('medBtn'), () => {
+            delay(() => card(f, "<h4>What it is</h4><p>Anastrozole is a type of hormone therapy. It is used for breast cancers that grow in response to oestrogen.</p>", true), 900);
+            delay(() => card(f, "<h4>How it works</h4><p>It lowers the amount of oestrogen your body makes, which removes some of what those cancer cells use to grow.</p>", true), 4000);
+            delay(() => card(f, "<h4>Common side effects</h4><p>Joint aches, hot flushes, and tiredness are the ones people mention most. Tell your team about anything affecting your daily life, because there are often ways to help.</p>", true), 7100);
+            delay(() => card(f, "<h4>Good questions for your care team</h4><p>How long will I be taking this? What should I do if the joint pain gets worse? Are there interactions with anything else I take?</p>", true), 10200);
+        });
+    }), 1200);
+
+    delay(sceneReport, 24000);
+}
+
+function sceneReport() {
+    showScene('report');
+    const f = $('#reportFlow'); f.innerHTML = '';
+
+    const box = panel(f, 'Explain My Report',
+        '<label class="ui-label">Paste your report</label>' +
+        '<div class="ui-input mono" id="repInput"></div>' +
+        '<div style="margin-top:0.9rem;text-align:right;"><button class="ui-btn" id="repBtn">Explain the terms</button></div>' +
+        '<div class="ui-hint">Nothing is uploaded. She pastes the text straight in.</div>');
+
+    delay(() => typeInto(document.getElementById('repInput'),
+        'Invasive ductal carcinoma, grade 2. ER positive (95%), PR positive (80%), HER2 negative. Ki-67 12%.',
+        () => {
+            pressBtn(document.getElementById('repBtn'), () => {
+                delay(() => card(f, "<h4>Invasive ductal carcinoma</h4><p>The most common type of breast cancer. \"Ductal\" means it started in a milk duct. \"Invasive\" means it has grown outside that duct into nearby tissue.</p>", true), 900);
+                delay(() => card(f, "<h4>Grade 2</h4><p>Grade describes how different the cells look from normal cells under a microscope, on a scale of 1 to 3. It is not the same thing as stage.</p>", true), 4000);
+                delay(() => card(f, "<h4>ER positive, PR positive</h4><p>The cells have receptors for oestrogen and progesterone. This is what makes hormone therapies like anastrozole relevant.</p>", true), 7100);
+                delay(() => card(f, "<h4>HER2 negative, Ki-67</h4><p>HER2 is another protein that gets tested for, because it affects which treatments apply. Ki-67 is a measure of how many cells are actively dividing.</p>", true), 10200);
+                delay(() => card(f, "<p style='color:var(--gray-500);font-style:italic;'>Notice what it does not do. It will not tell her whether any of this is good or bad news, or what it means for her outlook. That is her doctor's job, and Paxis stays out of it on purpose.</p>"), 13500);
+            });
+        }, 28), 1200);
+
+    delay(sceneSymptoms, 28000);
+}
+
+function sceneSymptoms() {
+    showScene('symptoms');
+    const f = $('#symFlow'); f.innerHTML = '';
+
+    const box = panel(f, 'Symptom Diary',
+        '<div class="ui-row">' +
+          '<div class="ui-field"><label class="ui-label">What did you notice?</label><div class="ui-input" id="symInput"></div></div>' +
+          '<div style="width:150px;"><label class="ui-label">How bad?</label><div class="ui-input" id="symSev" style="color:var(--gray-400);">Not sure</div></div>' +
+        '</div>' +
+        '<div style="margin-top:0.9rem;text-align:right;"><button class="ui-btn" id="symBtn">Add to diary</button></div>');
+
+    delay(() => typeInto(document.getElementById('symInput'), 'joint aches', () => {
+        const sev = document.getElementById('symSev');
+        sev.classList.add('focused');
+        delay(() => {
+            sev.textContent = '4 - bad';
+            sev.style.color = 'var(--gray-900)';
+            sev.classList.remove('focused');
+            delay(() => pressBtn(document.getElementById('symBtn'), () => {
+                box.remove();
+                const list = panel(f, 'Her diary over the last three weeks', '<div id="symRows"></div>');
+                const rows = [
+                    ['Joint aches', '4/5', 'hi', '12 Aug', 'worse in the mornings'],
+                    ['Hot flushes', '3/5', '', '11 Aug', ''],
+                    ['Tiredness', '3/5', '', '9 Aug', 'after the school run'],
+                    ['Joint aches', '2/5', '', '6 Aug', ''],
+                ];
+                rows.forEach((r, i) => delay(() => {
+                    const el = document.getElementById('symRows');
+                    if (!el) return;
+                    const row = document.createElement('div');
+                    row.className = 'sym-row';
+                    row.innerHTML = '<div><strong>' + r[0] + '</strong><span class="sev ' + r[2] + '">' + r[1] + '</span>' +
+                        (r[4] ? '<div style="font-size:0.9rem;color:var(--gray-500);">' + r[4] + '</div>' : '') + '</div>' +
+                        '<div style="font-size:0.9rem;color:var(--gray-500);">' + r[3] + '</div>';
+                    el.appendChild(row);
+                }, 700 + i * 1100));
+                delay(() => card(f, "<p><b>Why this matters.</b> At her next appointment she can say \"joint aches, six times in three weeks, worst 4 out of 5, always mornings\" instead of \"it has been rough.\" People forget in the room. This means she does not have to.</p>", true), 5800);
+            }), 900);
+        }, 1400);
+    }), 1200);
+
+    delay(sceneConnect, 25000);
+}
+
+function sceneConnect() {
+    showScene('connect');
+    const f = $('#connectFlow'); f.innerHTML = '';
+
+    delay(() => card(f, "<h4>Her oncologist creates a code for her</h4><p>Dr. Reyes generates it inside her own Paxis account and hands it over at the visit. Only a doctor can create one, so nobody can connect themselves to a patient they do not treat.</p><div style='margin-top:1rem;text-align:center;'><span class='code-chip'>K4TM9XPQ</span></div>"), 1200);
+
+    const box = panel(f, 'My Care Team',
+        '<label class="ui-label">Invite code</label>' +
+        '<div class="ui-input" id="codeInput" style="text-align:center;letter-spacing:0.18em;font-weight:700;"></div>' +
+        '<div style="margin-top:0.9rem;text-align:right;"><button class="ui-btn" id="codeBtn">Connect</button></div>');
+
+    delay(() => typeInto(document.getElementById('codeInput'), 'K4TM9XPQ', () => {
+        pressBtn(document.getElementById('codeBtn'), () => {
+            box.remove();
+            card(f, "<h4 style='color:#166534;'>Connected</h4><p>From here, answers can take her actual diagnosis into account, and she can send questions through to her care team.</p>", true);
+            delay(() => card(f, "<p style='color:var(--gray-500);font-style:italic;'>This step is completely optional. Everything in the last three screens worked without it.</p>"), 3200);
+        });
+    }, 140), 5500);
+
+    delay(sceneEscalate, 22000);
+}
+
+function sceneEscalate() {
+    showScene('escalate');
+    const f = $('#escFlow'); f.innerHTML = '';
+
+    const box = panel(f, 'Ask a Question',
+        '<label class="ui-label">Tell me what is going on, or ask a question</label>' +
+        '<div class="ui-input" id="escInput"></div>' +
+        '<div style="margin-top:0.9rem;text-align:right;"><button class="ui-btn" id="escSend">Send</button></div>');
+
+    delay(() => typeInto(document.getElementById('escInput'),
+        'the joint pain is really getting to me. should i stop taking the anastrozole?', () => {
+            pressBtn(document.getElementById('escSend'), () => {
+                box.remove();
+                bubble(f, 'me', 'the joint pain is really getting to me. should i stop taking the anastrozole?');
+                delay(() => bubble(f, 'ai',
+                    "Joint aches are one of the most commonly reported effects of this kind of hormone therapy, and for a lot of people they do ease over the first few months. " +
+                    "There are also things care teams can suggest that help.<br><br>" +
+                    "<b>Whether you should change or stop anything is a decision for Dr. Reyes.</b> " +
+                    "She knows your full picture, and stopping early can matter. Would you like me to send her this question?"), 1800);
+                delay(() => {
+                    const btnWrap = document.createElement('div');
+                    btnWrap.style.cssText = 'text-align:left;margin:0 0 1.2rem 48px;opacity:0;animation:demoFade .4s ease forwards;';
+                    btnWrap.innerHTML = '<button class="ui-btn" id="sendDocBtn">Send to my doctor</button>';
+                    f.appendChild(btnWrap);
+                    delay(() => pressBtn(document.getElementById('sendDocBtn'), () => {
+                        card(f, "<h4>Sent to Dr. Reyes</h4><p>Along with a short summary of the diagnosis and treatment on record, and the symptom diary entries from the last three weeks.</p>", true);
+                    }), 2200);
+                }, 7500);
+            });
+        }), 1200);
+
+    delay(sceneReply, 26000);
+}
+
+function sceneReply() {
+    showScene('reply');
+    const f = $('#replyFlow'); f.innerHTML = '';
+    delay(() => card(f, "<p>On the doctor's side, the question arrives in her Paxis inbox with a draft answer already written and the patient's context attached. She reads it, edits it, and sends. It took her under a minute.</p>"), 1200);
+    delay(() => bubble(f, 'doc',
+        "<b>Dr. Reyes</b><br>Do not stop it. The aches usually settle by about month three, and I would rather adjust than switch this early. " +
+        "Try taking it in the evening, and let us review at your appointment on the 2nd. If it gets worse before then, call the unit."), 6000);
+    delay(() => card(f, "<p><b>The loop closed.</b> A real answer from her own oncologist, inside the same conversation she was already using, and it cost the doctor under a minute of their day.</p>", true), 12500);
+    delay(sceneClose, 19000);
+}
+
+function sceneClose() {
+    showScene('close');
+    const f = $('#closeFlow'); f.innerHTML = '';
+    const lines = [
+        "She asked in her own words, with no medical terms and no idea where to start.",
+        "She understood the drug she had been prescribed, and the report she had been handed.",
+        "She tracked how she was actually feeling, so her next visit starts from something specific.",
+        "The one question only a doctor could answer reached her doctor, with her context attached.",
+        "None of it required her to know the right words first.",
+    ];
+    lines.forEach((t, i) => {
+        delay(() => {
+            const d = document.createElement('div');
+            d.className = 'recap-line';
+            d.innerHTML = '<div class="recap-num">' + (i + 1) + '</div><div>' + t + '</div>';
+            f.appendChild(d);
+        }, 1200 + i * 1900);
+    });
+    delay(() => {
+        const c = document.createElement('div');
+        c.className = 'cta';
+        c.innerHTML = '<a href="patient-home.html" class="btn btn-primary">Try it yourself</a>' +
+                      '<div style="margin-top:0.9rem;font-size:0.95rem;color:var(--gray-500);">' +
+                      'Free to use. You do not need a doctor connected to start.</div>';
+        f.appendChild(c);
+    }, 11500);
+}
+
+const SCENE_FUNCS = {
+    open: sceneOpen, ask: sceneAsk, med: sceneMed, report: sceneReport,
+    symptoms: sceneSymptoms, connect: sceneConnect, escalate: sceneEscalate,
+    reply: sceneReply, close: sceneClose,
+};
+function jumpToScene(name) { clearAll(); SCENE_FUNCS[name](); }
+
+sceneOpen();
+</script>
+</body>
+</html>

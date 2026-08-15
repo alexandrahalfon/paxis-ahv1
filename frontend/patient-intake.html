@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Intake - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .intake-wrap { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+        .intake-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start; }
+        @media (max-width: 800px) { .intake-grid { grid-template-columns: 1fr; } }
+        .patient-list-item {
+            display: block; width: 100%; text-align: left; padding: 0.6rem 0.75rem;
+            border: 1px solid var(--gray-200, #e5e7eb); border-radius: 8px; background: #fff;
+            margin-bottom: 0.5rem; cursor: pointer; font-size: 0.9rem;
+        }
+        .patient-list-item.active { border-color: var(--primary); background: #fff1f2; }
+        .section-title { font-size: 1.05rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
+        .pill {
+            display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+            font-size: 0.75rem; font-weight: 600; margin-right: 0.4rem;
+        }
+        .pill-core { background: #dbeafe; color: #1e40af; }
+        .pill-auto { background: #ecfdf5; color: #065f46; }
+        .pill-manual { background: #fef3c7; color: #92400e; }
+        .row-entry { border-bottom: 1px solid var(--gray-200, #eee); padding: 0.5rem 0; font-size: 0.9rem; }
+        .muted { color: var(--gray-600, #6b7280); font-size: 0.85rem; }
+        #statusMsg { font-size: 0.85rem; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="patient-matching.html">Patient Matching</a></li>
+                    <li><a href="patient-intake.html">Patient Intake</a></li>
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="intake-wrap">
+            <h1 style="margin-bottom: 0.25rem;">Patient Intake</h1>
+            <p class="muted" style="margin-bottom: 1.25rem;">
+                Manual patient record entry — Phase 1 prototype. Data entered here is scoped to your
+                account only. Matching evidence (Phase 2) is a separate step, triggered on demand below.
+            </p>
+
+            <div id="loggedOutNotice" class="card" style="display:none; margin-bottom: 1rem; padding: 1rem;">
+                <p>You need to be logged in to use patient intake. <a href="login.html">Log in or create an account</a>.</p>
+            </div>
+
+            <div id="intakeApp" class="intake-grid" style="display:none;">
+                <!-- Left: patient list + new patient form -->
+                <div>
+                    <div class="section-title">Patients</div>
+                    <div id="patientList"></div>
+                    <button type="button" class="btn btn-outline btn-sm" id="newPatientBtn" style="width:100%; margin-top:0.5rem;">
+                        + New patient
+                    </button>
+
+                    <div id="newPatientForm" class="card" style="display:none; margin-top: 1rem; padding: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">First name</label>
+                            <input class="form-input" id="npFirstName" type="text">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Last name</label>
+                            <input class="form-input" id="npLastName" type="text">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Date of birth</label>
+                            <input class="form-input" id="npDob" type="date">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Sex</label>
+                            <select class="form-input" id="npSex">
+                                <option value="">—</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">MRN (optional)</label>
+                            <input class="form-input" id="npMrn" type="text">
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" id="createPatientBtn">Create patient</button>
+                    </div>
+                </div>
+
+                <!-- Right: selected patient detail -->
+                <div id="patientDetail" style="display:none;">
+                    <div class="card" style="padding: 1rem;">
+                        <h2 id="detailName" style="margin-bottom: 0.25rem;"></h2>
+                        <p class="muted" id="detailMeta"></p>
+
+                        <div class="section-title">Diagnosis</div>
+                        <div id="diagnosisSummary" class="muted">No diagnosis recorded yet.</div>
+                        <div class="form-group" style="margin-top:0.5rem;">
+                            <input class="form-input" id="dxSite" placeholder="Cancer site (e.g. oral tongue)">
+                        </div>
+                        <div class="form-group">
+                            <input class="form-input" id="dxHistology" placeholder="Histology (e.g. squamous cell carcinoma)">
+                        </div>
+                        <div class="form-group">
+                            <input class="form-input" id="dxStage" placeholder="Stage (e.g. IVA)">
+                        </div>
+                        <div class="form-group">
+                            <textarea class="form-input" id="dxRawText" rows="2" placeholder="Free-text clinical note (optional, fed into matching)"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm" id="saveDiagnosisBtn">Save diagnosis</button>
+
+                        <div class="section-title">Biomarkers</div>
+                        <div id="biomarkerList"></div>
+                        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                            <input class="form-input" id="bmName" placeholder="Name (e.g. PD-L1 CPS)" style="flex:1;">
+                            <input class="form-input" id="bmValue" placeholder="Value (e.g. 100)" style="flex:1;">
+                            <button type="button" class="btn btn-outline btn-sm" id="addBiomarkerBtn">Add</button>
+                        </div>
+
+                        <div class="section-title">Treatment history</div>
+                        <div id="treatmentList"></div>
+                        <div style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap: wrap;">
+                            <input class="form-input" id="txType" placeholder="Type (e.g. immunotherapy)" style="flex:1; min-width:140px;">
+                            <input class="form-input" id="txRegimen" placeholder="Regimen (e.g. pembrolizumab)" style="flex:1; min-width:140px;">
+                            <input class="form-input" id="txStatus" placeholder="Status (e.g. progressing)" style="flex:1; min-width:120px;">
+                            <button type="button" class="btn btn-outline btn-sm" id="addTreatmentBtn">Add</button>
+                        </div>
+
+                        <div class="section-title">Matched evidence</div>
+                        <p class="muted">Builds a query from the profile above and runs it through the existing RAG pipeline.</p>
+                        <button type="button" class="btn btn-primary btn-sm" id="seedBtn">Find matching studies</button>
+                        <div id="seedStatus" class="muted" style="margin-top:0.5rem;"></div>
+                        <div id="matchedStudies" style="margin-top:0.75rem;"></div>
+
+                        <div class="section-title">Timeline</div>
+                        <div id="timelineList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="statusMsg"></div>
+        </div>
+    </section>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script>DemoBanner.init();</script>
+    <script>
+        const API_BASE = CONFIG.API_BASE;
+        let currentPatientId = null;
+        let patients = [];
+
+        function getToken() {
+            return localStorage.getItem('exueed_token');
+        }
+
+        function authHeaders() {
+            const token = getToken();
+            return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                         : { 'Content-Type': 'application/json' };
+        }
+
+        function showStatus(msg, isError) {
+            const el = document.getElementById('statusMsg');
+            el.textContent = msg || '';
+            el.style.color = isError ? '#b91c1c' : '#059669';
+        }
+
+        async function apiFetch(path, options = {}) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                ...options,
+                headers: { ...authHeaders(), ...(options.headers || {}) },
+            });
+            if (!res.ok) {
+                let detail = res.statusText;
+                try { const body = await res.json(); detail = body.detail || detail; } catch (e) {}
+                throw new Error(detail);
+            }
+            return res.json();
+        }
+
+        async function init() {
+            if (!getToken()) {
+                document.getElementById('loggedOutNotice').style.display = 'block';
+                return;
+            }
+            document.getElementById('intakeApp').style.display = 'grid';
+            await loadPatients();
+
+            // Deep-link support: /patient-intake.html?patient=<id> jumps
+            // straight to that patient's detail view (used by the "View /
+            // edit" links from the My Collections > Patients tab and the active
+            // patient picker).
+            const requestedId = new URLSearchParams(window.location.search).get('patient');
+            if (requestedId && patients.some(p => p.id === requestedId)) {
+                selectPatient(requestedId);
+            }
+        }
+
+        async function loadPatients() {
+            try {
+                const data = await apiFetch('/patients');
+                patients = data.patients || [];
+                renderPatientList();
+            } catch (e) {
+                showStatus(`Error loading patients: ${e.message}`, true);
+            }
+        }
+
+        function renderPatientList() {
+            const el = document.getElementById('patientList');
+            el.innerHTML = '';
+            if (patients.length === 0) {
+                el.innerHTML = '<p class="muted">No patients yet.</p>';
+                return;
+            }
+            patients.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'patient-list-item' + (p.id === currentPatientId ? ' active' : '');
+                btn.textContent = `${p.first_name} ${p.last_name}` + (p.mrn ? ` (MRN ${p.mrn})` : '');
+                btn.onclick = () => selectPatient(p.id);
+                el.appendChild(btn);
+            });
+        }
+
+        document.getElementById('newPatientBtn').onclick = () => {
+            document.getElementById('newPatientForm').style.display = 'block';
+        };
+
+        document.getElementById('createPatientBtn').onclick = async () => {
+            const first_name = document.getElementById('npFirstName').value.trim();
+            const last_name = document.getElementById('npLastName').value.trim();
+            if (!first_name || !last_name) {
+                showStatus('First and last name are required.', true);
+                return;
+            }
+            try {
+                const body = {
+                    first_name, last_name,
+                    date_of_birth: document.getElementById('npDob').value || null,
+                    sex: document.getElementById('npSex').value || null,
+                    mrn: document.getElementById('npMrn').value || null,
+                };
+                const data = await apiFetch('/patients', { method: 'POST', body: JSON.stringify(body) });
+                showStatus('Patient created.');
+                document.getElementById('newPatientForm').style.display = 'none';
+                await loadPatients();
+                selectPatient(data.patient.id);
+            } catch (e) {
+                showStatus(`Error creating patient: ${e.message}`, true);
+            }
+        };
+
+        async function selectPatient(id) {
+            currentPatientId = id;
+            renderPatientList();
+            try {
+                const patient = await apiFetch(`/patients/${id}`);
+                renderPatientDetail(patient);
+            } catch (e) {
+                showStatus(`Error loading patient: ${e.message}`, true);
+            }
+        }
+
+        /**
+         * Patient-portal invite. Lets this patient create their own Paxis
+         * login connected to this record, so their questions are answered
+         * against their actual diagnosis and can be routed back here.
+         */
+        function renderPortalInvite(patient) {
+            let box = document.getElementById('portalInviteBox');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'portalInviteBox';
+                box.style.cssText =
+                    'margin:0.75rem 0 1rem;padding:0.85rem 1rem;border:1px solid #e5e7eb;' +
+                    'border-left:3px solid var(--primary,#e11d48);border-radius:8px;' +
+                    'background:#fff;font-size:0.88rem;';
+                const meta = document.getElementById('detailMeta');
+                meta.parentNode.insertBefore(box, meta.nextSibling);
+            }
+
+            if (patient.link_status === 'linked') {
+                box.innerHTML =
+                    '<strong>Patient portal:</strong> connected. ' +
+                    '<span class="muted">They can ask questions and send them to you.</span>';
+                return;
+            }
+
+            box.innerHTML = '<strong>Patient portal:</strong> not connected. ';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-outline btn-sm';
+            btn.textContent = 'Create invite code';
+            btn.style.marginLeft = '0.4rem';
+            btn.onclick = async () => {
+                btn.disabled = true;
+                btn.textContent = 'Creating...';
+                try {
+                    const data = await apiFetch(
+                        `/portal/clinician/patients/${patient.id}/invite`,
+                        { method: 'POST' }
+                    );
+                    box.innerHTML =
+                        '<strong>Invite code:</strong> ' +
+                        `<code style="font-size:1.05rem;letter-spacing:.12em;font-weight:800;">${data.invite_code}</code>` +
+                        '<div class="muted" style="margin-top:.4rem;">' +
+                        'Give this to your patient. They enter it at patientaxis.net when creating an account. ' +
+                        'Single use.</div>';
+                } catch (e) {
+                    box.innerHTML = `<strong>Patient portal:</strong> <span style="color:#991b1b;">${e.message}</span>`;
+                }
+            };
+            box.appendChild(btn);
+        }
+
+        function renderPatientDetail(patient) {
+            document.getElementById('patientDetail').style.display = 'block';
+            document.getElementById('detailName').textContent = `${patient.first_name} ${patient.last_name}`;
+            const metaBits = [];
+            if (patient.date_of_birth) metaBits.push(`DOB ${patient.date_of_birth}`);
+            if (patient.sex) metaBits.push(patient.sex);
+            if (patient.mrn) metaBits.push(`MRN ${patient.mrn}`);
+            document.getElementById('detailMeta').textContent = metaBits.join(' · ');
+            renderPortalInvite(patient);
+
+            const dx = patient.diagnosis;
+            document.getElementById('diagnosisSummary').textContent = dx
+                ? [dx.cancer_site, dx.histology, dx.stage].filter(Boolean).join(' · ') || 'Recorded, no summary fields set.'
+                : 'No diagnosis recorded yet.';
+
+            const bmList = document.getElementById('biomarkerList');
+            bmList.innerHTML = (patient.biomarkers || []).map(b =>
+                `<div class="row-entry">${b.biomarker_name}${b.value ? ': ' + b.value : ''}</div>`
+            ).join('') || '<p class="muted">None recorded.</p>';
+
+            const txList = document.getElementById('treatmentList');
+            txList.innerHTML = (patient.treatment_history || []).map(t =>
+                `<div class="row-entry">${[t.treatment_type, t.regimen, t.status].filter(Boolean).join(' · ')}</div>`
+            ).join('') || '<p class="muted">None recorded.</p>';
+
+            const tlList = document.getElementById('timelineList');
+            tlList.innerHTML = (patient.recent_timeline || []).map(ev =>
+                `<div class="row-entry"><strong>${ev.event_type}</strong> — ${new Date(ev.recorded_at).toLocaleString()}</div>`
+            ).join('') || '<p class="muted">No timeline events yet.</p>';
+
+            document.getElementById('matchedStudies').innerHTML = '';
+            document.getElementById('seedStatus').textContent = '';
+            loadPatientStudies();
+        }
+
+        async function loadPatientStudies() {
+            if (!currentPatientId) return;
+            try {
+                const data = await apiFetch(`/patients/${currentPatientId}/studies`);
+                renderMatchedStudies(data.studies || []);
+            } catch (e) {
+                // Non-fatal — studies table extension may not exist yet on first run.
+            }
+        }
+
+        function renderMatchedStudies(studies) {
+            const el = document.getElementById('matchedStudies');
+            if (!studies.length) {
+                el.innerHTML = '<p class="muted">No matched studies yet — click "Find matching studies".</p>';
+                return;
+            }
+            el.innerHTML = studies.map(s => {
+                const pillClass = s.source === 'core' ? 'pill-core' : s.source === 'web' ? 'pill-manual' : 'pill-manual';
+                return `<div class="row-entry">
+                    <span class="pill ${pillClass}">${s.source || 'manual'}</span>
+                    ${s.auto_seeded ? '<span class="pill pill-auto">auto</span>' : ''}
+                    ${s.title || s.study_id}
+                </div>`;
+            }).join('');
+        }
+
+        document.getElementById('saveDiagnosisBtn').onclick = async () => {
+            if (!currentPatientId) return;
+            try {
+                const body = {
+                    cancer_site: document.getElementById('dxSite').value || null,
+                    histology: document.getElementById('dxHistology').value || null,
+                    stage: document.getElementById('dxStage').value || null,
+                    raw_text: document.getElementById('dxRawText').value || null,
+                };
+                await apiFetch(`/patients/${currentPatientId}/diagnosis`, { method: 'POST', body: JSON.stringify(body) });
+                showStatus('Diagnosis saved.');
+                selectPatient(currentPatientId);
+            } catch (e) {
+                showStatus(`Error saving diagnosis: ${e.message}`, true);
+            }
+        };
+
+        document.getElementById('addBiomarkerBtn').onclick = async () => {
+            if (!currentPatientId) return;
+            const biomarker_name = document.getElementById('bmName').value.trim();
+            if (!biomarker_name) return;
+            try {
+                const body = { biomarker_name, value: document.getElementById('bmValue').value || null };
+                await apiFetch(`/patients/${currentPatientId}/biomarkers`, { method: 'POST', body: JSON.stringify(body) });
+                document.getElementById('bmName').value = '';
+                document.getElementById('bmValue').value = '';
+                showStatus('Biomarker added.');
+                selectPatient(currentPatientId);
+            } catch (e) {
+                showStatus(`Error adding biomarker: ${e.message}`, true);
+            }
+        };
+
+        document.getElementById('addTreatmentBtn').onclick = async () => {
+            if (!currentPatientId) return;
+            const treatment_type = document.getElementById('txType').value.trim();
+            if (!treatment_type) return;
+            try {
+                const body = {
+                    treatment_type,
+                    regimen: document.getElementById('txRegimen').value || null,
+                    status: document.getElementById('txStatus').value || null,
+                };
+                await apiFetch(`/patients/${currentPatientId}/treatment`, { method: 'POST', body: JSON.stringify(body) });
+                document.getElementById('txType').value = '';
+                document.getElementById('txRegimen').value = '';
+                document.getElementById('txStatus').value = '';
+                showStatus('Treatment entry added.');
+                selectPatient(currentPatientId);
+            } catch (e) {
+                showStatus(`Error adding treatment: ${e.message}`, true);
+            }
+        };
+
+        document.getElementById('seedBtn').onclick = async () => {
+            if (!currentPatientId) return;
+            const statusEl = document.getElementById('seedStatus');
+            statusEl.textContent = 'Searching…';
+            try {
+                const data = await apiFetch(`/patients/${currentPatientId}/seed`, { method: 'POST' });
+                if (data.success === false) {
+                    statusEl.textContent = data.message || 'Nothing to match on yet.';
+                    return;
+                }
+                statusEl.textContent = `Matched ${data.matched_count} studies. Query used: "${data.query_text}"`;
+                renderMatchedStudies(data.matched || []);
+            } catch (e) {
+                statusEl.textContent = `Error: ${e.message}`;
+            }
+        };
+
+        init();
+    </script>
+</body>
+</html>

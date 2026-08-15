@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explain My Report - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .pt-wrap { max-width: 800px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .pt-head { margin-bottom: var(--spacing-lg); }
+        .pt-head h1 { font-size: 1.7rem; margin-bottom: var(--spacing-xs); }
+        .pt-head p { color: var(--gray-600); margin: 0; }
+        .pt-note { font-size: 0.85rem; color: var(--gray-700); background: #fff7f9;
+            border: 1px solid #fbcfe0; border-left: 4px solid var(--primary);
+            border-radius: var(--radius-md); padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-lg); line-height: 1.6; }
+        .pt-note strong { color: var(--gray-900); }
+        #reportInput { min-height: 200px; font-family: var(--font-mono); font-size: 0.9rem; }
+        .pt-result { margin-top: var(--spacing-lg); }
+        .pt-result .card { padding: var(--spacing-lg); }
+        .pt-result h2, .pt-result h3 { font-size: 1.02rem; margin: var(--spacing-md) 0 var(--spacing-xs); }
+        .pt-result h2:first-child, .pt-result h3:first-child { margin-top: 0; }
+        .pt-result p, .pt-result li { color: var(--gray-700); line-height: 1.65; }
+        .pt-result ul { margin: 0 0 var(--spacing-md) 1.1rem; }
+        .pt-msg { padding: var(--spacing-md); border-radius: var(--radius-md); font-size: 0.9rem;
+            margin-top: var(--spacing-md); display: none; }
+        .pt-msg.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger-dark); display: block; }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height:48px;width:auto;">
+                </a>
+                <ul class="nav-links">
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="pt-wrap">
+            <div class="pt-head">
+                <h1>Explain my report</h1>
+                <p>Paste a pathology, imaging, or lab report and get the terminology explained in everyday words.</p>
+            </div>
+
+            <div class="pt-note">
+                <strong>What this does and doesn't do.</strong>
+                It explains what the words and abbreviations mean. It will <strong>not</strong>
+                tell you whether a result is good or bad, what it means for your diagnosis or
+                outlook, or what happens next. The same words can mean very different things
+                depending on your full picture, and only your care team can put them in context.
+            </div>
+
+            <div class="card" style="padding: var(--spacing-lg);">
+                <div class="form-group">
+                    <label class="form-label" for="reportInput">Paste your report</label>
+                    <textarea class="form-textarea" id="reportInput"
+                              placeholder="Paste the text of your report here..."></textarea>
+                </div>
+                <button class="btn btn-primary" id="reportBtn">Explain the terms</button>
+                <div class="pt-msg" id="reportMsg"></div>
+            </div>
+
+            <div class="pt-result is-hidden" id="reportResult">
+                <div class="card" id="reportAnswer"></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('report', 'patient');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var input = document.getElementById('reportInput');
+        var btn = document.getElementById('reportBtn');
+        var msg = document.getElementById('reportMsg');
+
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function showErr(t) { msg.className = 'pt-msg err'; msg.textContent = t; }
+
+        if (!token) { showErr('Please log in to use this.'); btn.disabled = true; return; }
+
+        btn.addEventListener('click', async function () {
+            var text = input.value.trim();
+            if (text.length < 20) { showErr('Paste a bit more of the report so I can help.'); return; }
+            msg.className = 'pt-msg';
+            btn.disabled = true; btn.textContent = 'Reading...';
+            try {
+                var res = await fetch(BASE + '/portal/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ report_text: text })
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Could not read that');
+
+                document.getElementById('reportAnswer').innerHTML =
+                    (typeof markdownToHtml === 'function')
+                        ? markdownToHtml(esc(data.answer || ''))
+                        : esc(data.answer || '');
+                document.getElementById('reportResult').classList.remove('is-hidden');
+            } catch (e) {
+                showErr(e.message);
+            } finally {
+                btn.disabled = false; btn.textContent = 'Explain the terms';
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

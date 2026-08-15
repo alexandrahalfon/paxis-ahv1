@@ -1,0 +1,46 @@
+# Secrets — never bake these into the image; Cloud Run gets them via
+# --set-env-vars / Secret Manager at deploy time instead
+.env
+.env.*
+!.env.example
+*paxis-secrets*
+*-key.json
+*credentials*.json
+gcp-*.json
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Local dev artifacts — not needed inside the container
+uploads/
+processed_documents/
+downloads/
+cache/
+temp_ingestion_input/
+ingestion_output/
+*.dump
+*.log
+
+# Only exclude generated/runtime data subfolders, not the whole data/ dir —
+# data/ajcc_staging_tables.json, data/ontology/, data/keywords/ are real
+# runtime assets the app loads (mirrors .gitignore's more precise scoping;
+# a blanket "data/" here previously caused a silent missing-file warning
+# in production)
+data/raw/
+data/processed/
+data/logs/
+data/cache/
+
+# Editor/OS cruft
+.DS_Store
+.vscode/
+.idea/

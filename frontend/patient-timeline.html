@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .tl-wrap { max-width: 760px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .tl-head { margin-bottom: var(--spacing-lg); }
+        .tl-head h1 { font-size: 1.7rem; margin-bottom: var(--spacing-xs); }
+        .tl-head p { color: var(--gray-600); margin: 0; }
+        .tl-item { display: flex; gap: var(--spacing-md); padding-bottom: var(--spacing-lg); position: relative; }
+        .tl-item::before { content: ''; position: absolute; left: 5px; top: 20px; bottom: -8px; width: 2px; background: var(--gray-200); }
+        .tl-item:last-child::before { display: none; }
+        .tl-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary); margin-top: 4px; flex-shrink: 0; }
+        .tl-date { font-size: 0.78rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.03em; }
+        .tl-title { font-weight: 700; color: var(--gray-900); margin: 2px 0; }
+        .tl-detail { font-size: 0.88rem; color: var(--gray-600); }
+        .tl-empty { text-align: center; padding: var(--spacing-xl); color: var(--gray-500); }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="tl-wrap">
+            <div class="tl-head">
+                <h1>Your timeline</h1>
+                <p>Everything recorded about your care, in order — diagnoses, treatment changes, labs, symptoms, documents, and appointments.</p>
+            </div>
+            <div id="tlList"><div class="tl-empty">Loading...</div></div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('timeline', 'patient');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var listEl = document.getElementById('tlList');
+
+        var EVENT_LABELS = {
+            diagnosis_added: 'Diagnosis recorded',
+            biomarker_result: 'Biomarker result',
+            treatment_started: 'Treatment started',
+            treatment_stopped: 'Treatment stopped',
+            treatment_change: 'Treatment updated',
+            cycle_received: 'Treatment cycle',
+            medication_started: 'Medication started',
+            medication_stopped: 'Medication stopped',
+            lab_result: 'Lab result',
+            comorbidity_added: 'Condition recorded',
+            allergy_added: 'Allergy recorded',
+            encounter: 'Appointment',
+            document_uploaded: 'Document uploaded',
+            symptom_logged: 'Symptom logged'
+        };
+
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function summarize(evt) {
+            var p = evt.payload || {};
+            switch (evt.event_type) {
+                case 'diagnosis_added':
+                    return [p.cancer_site, p.stage].filter(Boolean).join(' - ');
+                case 'treatment_started':
+                case 'treatment_change':
+                    return [p.regimen, (p.agents || []).join(', ')].filter(Boolean).join(' - ');
+                case 'medication_started':
+                case 'medication_stopped':
+                    return p.generic_name || '';
+                case 'lab_result':
+                    return [p.test_name, p.value_numeric || p.value_text, p.unit].filter(function(x){return x!=null && x!=='';}).join(' ');
+                case 'biomarker_result':
+                    return [p.biomarker_name, p.value].filter(Boolean).join(' ');
+                case 'encounter':
+                    return [p.encounter_type, p.provider_name].filter(Boolean).join(' with ');
+                default:
+                    return Object.values(p).filter(Boolean).slice(0, 3).join(', ');
+            }
+        }
+
+        if (!token) { listEl.innerHTML = '<div class="tl-empty">Please log in to see your timeline.</div>'; return; }
+
+        (async function load() {
+            try {
+                var res = await fetch(BASE + '/patient/timeline?limit=200', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) throw new Error();
+                var events = (await res.json()).timeline || [];
+                if (!events.length) {
+                    listEl.innerHTML = '<div class="tl-empty">Nothing recorded yet. As you add treatments, labs, or documents, they\'ll show up here.</div>';
+                    return;
+                }
+                listEl.innerHTML = '';
+                events.forEach(function (evt) {
+                    var row = document.createElement('div');
+                    row.className = 'tl-item';
+                    var date = evt.event_date || (evt.recorded_at || '').slice(0, 10);
+                    row.innerHTML =
+                        '<div class="tl-dot"></div>' +
+                        '<div>' +
+                            '<div class="tl-date">' + esc(date) + '</div>' +
+                            '<div class="tl-title">' + esc(EVENT_LABELS[evt.event_type] || evt.event_type) + '</div>' +
+                            '<div class="tl-detail">' + esc(summarize(evt)) + '</div>' +
+                        '</div>';
+                    listEl.appendChild(row);
+                });
+            } catch (e) {
+                listEl.innerHTML = '<div class="tl-empty">Could not load your timeline right now.</div>';
+            }
+        })();
+    })();
+    </script>
+</body>
+</html>

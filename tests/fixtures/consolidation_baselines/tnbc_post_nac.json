@@ -1,0 +1,24 @@
+{
+  "query": "43-year-old female with cT4dN2M0 triple-negative breast cancer (TNBC), ER-/PR-/HER2-, status post neoadjuvant AC-T with residual disease. What are the best treatment options?",
+  "query_structure": {
+    "site": "breast",
+    "filter_category": "breast",
+    "biomarkers": ["ER-", "PR-", "HER2-"],
+    "histology": null,
+    "stage": "IIIB",
+    "query_type": "treatment_recommendation",
+    "question_focus": null
+  },
+  "retrieval_doc_ids": [],
+  "eligibility_verdicts": {},
+  "final_study_count": 0,
+  "pipeline_metrics": {
+    "qdrant_count": 0,
+    "pg_count": 0,
+    "pto_count": 0,
+    "total_candidates": 0
+  },
+  "inference_terms_count": 0,
+  "biomarker_status_sample": {},
+  "timestamp": "PLACEHOLDER_REQUIRES_LIVE_CAPTURE"
+}

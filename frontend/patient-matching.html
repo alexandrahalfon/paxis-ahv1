@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Matching - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/studyDetails.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <section class="section">
+        <div class="container">
+            <div style="max-width: 900px; margin: 0 auto;">
+                <div class="page-logo">
+                    <img src="assets/paxis-mark.png" alt="Paxis mark">
+                </div>
+                <div class="feature-nav">
+                    <a href="patient-matching.html" class="btn btn-outline btn-sm">Patient Matching</a>
+                    <a href="treatment-comparison.html" class="btn btn-outline btn-sm">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html" class="btn btn-outline btn-sm">Review Studies</a>
+                    <a href="analytics.html" class="btn btn-outline btn-sm">Advanced Analytics</a>
+                </div>
+                <h1 class="text-center" style="margin-bottom: 0.5rem;">Patient Matching</h1>
+                <p class="text-center" style="color: var(--gray-600); margin-bottom: 0.75rem;">
+                    Find clinical studies that match your patient. Use free text or the structured form.
+                </p>
+                <div class="text-center" style="margin-bottom: 1.5rem;">
+                    <button type="button" class="btn-how-to-use" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                        How to use
+                    </button>
+                    <div class="how-to-use-panel" style="display: none;">
+                        <p><strong>Patient Matching</strong> searches our library of curated oncology studies to find ones that best fit your patient.</p>
+                        <ol>
+                            <li>Choose <em>Free text</em> to describe your patient naturally, or <em>Structured form</em> to enter details field-by-field.</li>
+                            <li>The system extracts clinical entities (cancer type, stage, biomarkers, etc.) and scores every study for relevance.</li>
+                            <li>Results show a match score, key study details, and a link to the full study profile.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Mode selector -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-body" style="padding-bottom: 0.75rem;">
+                        <label class="form-label" style="margin-bottom: 0.5rem;">Input mode</label>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" id="modeFreeText" class="btn btn-secondary btn-sm mode-btn active" data-mode="unstructured">
+                                Free text
+                            </button>
+                            <button type="button" id="modeStructured" class="btn btn-outline btn-sm mode-btn" data-mode="structured">
+                                Structured form
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unstructured input -->
+                <div id="panelUnstructured" class="card">
+                    <div class="card-body">
+                        <form id="patientFormUnstructured">
+                            <div class="form-group">
+                                <label class="form-label" for="patientDescription">Patient description</label>
+                                <textarea
+                                    id="patientDescription"
+                                    class="form-input"
+                                    rows="4"
+                                    placeholder="e.g., 65-year-old male with stage III NSCLC, EGFR mutation, never smoker, ECOG 1. Or: Elderly woman with HER2+ breast cancer, postmenopausal."
+                                ></textarea>
+                                <p style="font-size: 0.875rem; color: var(--gray-500); margin-top: 0.5rem;">
+                                    Include whatever you have: age, sex, cancer type, stage, histology, biomarkers (e.g. EGFR+, HER2-), performance status (ECOG), smoking status, comorbidities.
+                                </p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem;">
+                                <button type="button" class="btn btn-outline btn-sm" id="openMatchCriteriaFreeText" title="Adjust which criteria matter most for matching">
+                                    Match Criteria
+                                </button>
+                                <span class="match-criteria-status" id="matchCriteriaStatusFreeText"></span>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-lg" style="width: 100%; margin-top: 0.75rem;">
+                                Find Matching Studies
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Structured form -->
+                <div id="panelStructured" class="card" style="display: none;">
+                    <div class="card-body">
+                        <form id="patientFormStructured">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Cancer Type *</label>
+                                    <select id="cancer_type" class="form-select" required>
+                                        <option value="">Select cancer type</option>
+                                        <option value="Breast">Breast</option>
+                                        <option value="Lung">Lung</option>
+                                        <option value="NSCLC">NSCLC</option>
+                                        <option value="Prostate">Prostate</option>
+                                        <option value="Colorectal">Colorectal</option>
+                                        <option value="Pancreatic">Pancreatic</option>
+                                        <option value="Ovarian">Ovarian</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Age</label>
+                                    <input type="number" id="age" class="form-input" placeholder="Age" min="0" max="120">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Gender</label>
+                                    <select id="gender" class="form-select">
+                                        <option value="">Select gender</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Cancer Stage</label>
+                                    <select id="cancer_stage" class="form-select">
+                                        <option value="">Select stage</option>
+                                        <option value="I">Stage I</option>
+                                        <option value="II">Stage II</option>
+                                        <option value="III">Stage III</option>
+                                        <option value="IV">Stage IV</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Histology</label>
+                                    <input type="text" id="histology" class="form-input" placeholder="e.g., adenocarcinoma, squamous">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Molecular Markers</label>
+                                    <input type="text" id="molecular_markers" class="form-input" placeholder="e.g., PD-L1+, EGFR+ (comma-separated)">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Performance Status</label>
+                                    <select id="performance_status" class="form-select">
+                                        <option value="">Select</option>
+                                        <option value="0">ECOG 0</option>
+                                        <option value="1">ECOG 1</option>
+                                        <option value="2">ECOG 2</option>
+                                        <option value="3">ECOG 3</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Comorbidities</label>
+                                    <input type="text" id="comorbidities" class="form-input" placeholder="e.g., diabetes, hypertension (comma-separated)">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Smoking Status</label>
+                                    <select id="smoking_status" class="form-select">
+                                        <option value="">Select</option>
+                                        <option value="never">Never</option>
+                                        <option value="former">Former</option>
+                                        <option value="current">Current</option>
+                                    </select>
+                                </div>
+
+                                <!-- TNM Staging -->
+                                <div style="grid-column: 1 / -1; border-top: 1px solid var(--gray-200); padding-top: 0.75rem; margin-top: 0.25rem;">
+                                    <label class="form-label" style="font-weight: 600; color: var(--gray-700);">TNM Staging (optional)</label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">T Stage</label>
+                                    <input type="text" id="tnm_t" class="form-input" placeholder="e.g., pT4, cT2, T3">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">N Stage</label>
+                                    <input type="text" id="tnm_n" class="form-input" placeholder="e.g., pN0, cN1, N2b">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">M Stage</label>
+                                    <input type="text" id="tnm_m" class="form-input" placeholder="e.g., M0, M1">
+                                </div>
+
+                                <!-- Clinical Context -->
+                                <div style="grid-column: 1 / -1; border-top: 1px solid var(--gray-200); padding-top: 0.75rem; margin-top: 0.25rem;">
+                                    <label class="form-label" style="font-weight: 600; color: var(--gray-700);">Clinical Context (optional)</label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Prior Treatments</label>
+                                    <input type="text" id="prior_treatments" class="form-input" placeholder="e.g., maxillectomy, cisplatin, radiation (comma-separated)">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Recurrence Status</label>
+                                    <select id="recurrence_status" class="form-select">
+                                        <option value="">Select</option>
+                                        <option value="primary">Primary</option>
+                                        <option value="recurrent">Recurrent</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Treatment Setting</label>
+                                    <select id="treatment_setting" class="form-select">
+                                        <option value="">Select</option>
+                                        <option value="adjuvant">Adjuvant</option>
+                                        <option value="neoadjuvant">Neoadjuvant</option>
+                                        <option value="definitive">Definitive</option>
+                                        <option value="salvage">Salvage</option>
+                                        <option value="palliative">Palliative</option>
+                                        <option value="surveillance">Surveillance</option>
+                                    </select>
+                                </div>
+
+                                <!-- Pathology Details -->
+                                <div style="grid-column: 1 / -1; border-top: 1px solid var(--gray-200); padding-top: 0.75rem; margin-top: 0.25rem;">
+                                    <label class="form-label" style="font-weight: 600; color: var(--gray-700);">Pathology Details (optional)</label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">LVI</label>
+                                    <select id="lvi" class="form-select">
+                                        <option value="">Select</option>
+                                        <option value="positive">Positive</option>
+                                        <option value="negative">Negative</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PNI</label>
+                                    <select id="pni" class="form-select">
+                                        <option value="">Select</option>
+                                        <option value="positive">Positive</option>
+                                        <option value="negative">Negative</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Margins</label>
+                                    <select id="margins" class="form-select">
+                                        <option value="">Select</option>
+                                        <option value="positive">Positive</option>
+                                        <option value="negative">Negative</option>
+                                        <option value="close">Close</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem;">
+                                <button type="button" class="btn btn-outline btn-sm" id="openMatchCriteriaStructured" title="Adjust which criteria matter most for matching">
+                                    Match Criteria
+                                </button>
+                                <span class="match-criteria-status" id="matchCriteriaStatusStructured"></span>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-lg" style="width: 100%; margin-top: 0.75rem;">
+                                Find Matching Studies
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="results" class="results-container" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                        <h2 style="margin: 0;">Results</h2>
+                        <button type="button" id="reportBtnPatient" class="btn btn-outline btn-sm" disabled title="Run a search to enable">
+                            Generate report (PDF)
+                        </button>
+                    </div>
+                    <div id="patientSummaryCard" class="card" style="margin-bottom: 1.5rem; display: none;"></div>
+                    <div id="extractedProfileCard" class="card" style="margin-bottom: 1.5rem; display: none;">
+                        <div class="card-body">
+                            <button type="button" id="toggleParsedProfile" class="btn btn-outline btn-sm" style="margin-bottom: 0.75rem;">
+                                Show parsed profile
+                            </button>
+                            <div id="extractedProfileContent" style="display: none;"></div>
+                        </div>
+                    </div>
+                    <div id="resultsList"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Match Criteria Sidebar -->
+    <div class="match-criteria-sidebar" id="matchCriteriaSidebar">
+        <div class="sidebar-header">
+            <h3>Match Criteria</h3>
+            <button class="btn-close-sidebar" id="closeMatchCriteria" aria-label="Close">&times;</button>
+        </div>
+        <div class="sidebar-content">
+            <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 1rem;">
+                Check a category to include it in matching. Use the sliders to set how important each factor is.
+            </p>
+
+            <!-- Patient Demographics -->
+            <div class="preference-section criteria-category" data-category="demographics">
+                <label class="filter-checkbox criteria-category-toggle">
+                    <input type="checkbox" id="cat_demographics" checked>
+                    <span>Patient Demographics</span>
+                </label>
+                <div class="criteria-subfields" id="sub_demographics">
+                    <div class="criteria-slider-item" data-field="age">
+                        <div class="criteria-slider-header">
+                            <label>Age</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="criteria-slider-item" data-field="sex">
+                        <div class="criteria-slider-header">
+                            <label>Sex</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="criteria-slider-item" data-field="performance_status">
+                        <div class="criteria-slider-header">
+                            <label>Performance Status (ECOG)</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnosis -->
+            <div class="preference-section criteria-category" data-category="diagnosis">
+                <label class="filter-checkbox criteria-category-toggle">
+                    <input type="checkbox" id="cat_diagnosis" checked>
+                    <span>Diagnosis</span>
+                </label>
+                <div class="criteria-subfields" id="sub_diagnosis">
+                    <div class="criteria-slider-item" data-field="cancer_type">
+                        <div class="criteria-slider-header">
+                            <label>Cancer Type</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="criteria-slider-item" data-field="site">
+                        <div class="criteria-slider-header">
+                            <label>Site</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="criteria-slider-item" data-field="stage">
+                        <div class="criteria-slider-header">
+                            <label>Stage</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="criteria-slider-item" data-field="histology">
+                        <div class="criteria-slider-header">
+                            <label>Histology</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tumor Characteristics -->
+            <div class="preference-section criteria-category" data-category="tumor">
+                <label class="filter-checkbox criteria-category-toggle">
+                    <input type="checkbox" id="cat_tumor" checked>
+                    <span>Tumor Characteristics</span>
+                </label>
+                <div class="criteria-subfields" id="sub_tumor">
+                    <div class="criteria-slider-item" data-field="location">
+                        <div class="criteria-slider-header">
+                            <label>Location</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Management -->
+            <div class="preference-section criteria-category" data-category="management">
+                <label class="filter-checkbox criteria-category-toggle">
+                    <input type="checkbox" id="cat_management" checked>
+                    <span>Management</span>
+                </label>
+                <div class="criteria-subfields" id="sub_management">
+                    <div class="criteria-slider-item" data-field="prior_treatment">
+                        <div class="criteria-slider-header">
+                            <label>Prior Treatment</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="criteria-slider-item" data-field="current_treatment">
+                        <div class="criteria-slider-header">
+                            <label>Current Treatment</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                    <div class="criteria-slider-item" data-field="treatment_setting">
+                        <div class="criteria-slider-header">
+                            <label>Treatment Setting</label>
+                            <span class="criteria-slider-value">1.0x</span>
+                        </div>
+                        <input type="range" class="criteria-slider" min="0" max="3" step="0.25" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Biomarkers -->
+            <div class="preference-section criteria-category" data-category="biomarkers">
+                <label class="filter-checkbox criteria-category-toggle">
+                    <input type="checkbox" id="cat_biomarkers" checked>
+                    <span>Biomarkers</span>
+                </label>
+                <div class="criteria-subfields" id="sub_biomarkers">
+                    <div class="criteria-biomarker-mode">
+                        <label class="filter-checkbox">
+                            <input type="radio" name="biomarker_mode" value="strict" checked>
+                            <span>All (Strict)</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="radio" name="biomarker_mode" value="partial">
+                            <span>Partial</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="sidebar-divider">
+            <div class="sidebar-actions" style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary btn-sm" id="applyMatchCriteria" style="flex: 1;">Apply</button>
+                <button class="btn btn-outline btn-sm" id="resetMatchCriteria">Reset</button>
+            </div>
+        </div>
+    </div>
+    <div class="sidebar-overlay" id="matchCriteriaOverlay"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <!-- <a href="about.html">About</a> -->
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="js/chartUtils.js?v=2"></script>
+    <script src="js/litAnalyticsPanel.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/studyDetails.js"></script>
+    <script src="js/studyDetailsRenderer.js"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script src="js/patientSignal.js?v=4"></script>
+    <script>DemoBanner.init(); SideNav.init('patient-matching');</script>
+    <script>
+        const apiDocsLink = document.getElementById('apiDocsLink');
+        if (apiDocsLink) apiDocsLink.href = CONFIG.API_DOCS;
+    </script>
+    <script>
+        const api = new PaxisAPI();
+        const resultsContainer = document.getElementById('results');
+        const resultsList = document.getElementById('resultsList');
+        const patientSummaryCard = document.getElementById('patientSummaryCard');
+        const extractedProfileCard = document.getElementById('extractedProfileCard');
+        const extractedProfileContent = document.getElementById('extractedProfileContent');
+        const toggleParsedProfile = document.getElementById('toggleParsedProfile');
+        const panelUnstructured = document.getElementById('panelUnstructured');
+        const panelStructured = document.getElementById('panelStructured');
+        const reportBtnPatient = document.getElementById('reportBtnPatient');
+        let lastPatientMatchResult = null;
+
+        // Check for follow-up context from main query page
+        try {
+            const ctx = JSON.parse(sessionStorage.getItem('followupContext') || 'null');
+            if (ctx && ctx.query && (Date.now() - ctx.timestamp < 300000)) {
+                const patientDescEl = document.getElementById('patientDescription');
+                if (patientDescEl) {
+                    patientDescEl.value = ctx.query;
+                    console.log('[PatientMatching] Pre-filled from follow-up context');
+                }
+                sessionStorage.removeItem('followupContext');
+            }
+        } catch (e) {
+            console.error('[PatientMatching] Error reading follow-up context:', e);
+        }
+
+        // Mode switch: Free text vs Structured form
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                document.querySelectorAll('.mode-btn').forEach(b => { b.classList.remove('active'); b.classList.add('btn-outline'); b.classList.remove('btn-secondary'); });
+                btn.classList.add('active', 'btn-secondary');
+                btn.classList.remove('btn-outline');
+                if (mode === 'unstructured') {
+                    panelUnstructured.style.display = 'block';
+                    panelStructured.style.display = 'none';
+                } else {
+                    panelUnstructured.style.display = 'none';
+                    panelStructured.style.display = 'block';
+                }
+            });
+        });
+        document.getElementById('modeFreeText').classList.remove('btn-outline');
+        document.getElementById('modeStructured').classList.add('btn-outline');
+
+        toggleParsedProfile.addEventListener('click', () => {
+            const isHidden = extractedProfileContent.style.display === 'none';
+            extractedProfileContent.style.display = isHidden ? 'block' : 'none';
+            toggleParsedProfile.textContent = isHidden ? 'Hide parsed profile' : 'Show parsed profile';
+        });
+
+        // Unstructured submit
+        document.getElementById('patientFormUnstructured').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const description = document.getElementById('patientDescription').value.trim();
+            if (description.length < 10) {
+                alert('Please enter at least a short patient description (e.g. cancer type and stage).');
+                return;
+            }
+
+            resultsContainer.style.display = 'block';
+            patientSummaryCard.style.display = 'none';
+            extractedProfileCard.style.display = 'none';
+            showLoading(resultsList, 'Extracting patient details and searching studies...');
+
+            try {
+                const result = await api.matchPatientUnstructured(description, 15, collectCriteriaWeights());
+
+                if (result.matches && result.matches.length > 0) {
+                    lastPatientMatchResult = result;
+                    reportBtnPatient.disabled = false;
+                    reportBtnPatient.removeAttribute('title');
+                    renderPatientSummary(result);
+                    renderExtractedProfile(result);
+                    displayMatches(result);
+
+                    // Show literature analytics button with patient context
+                    if (typeof LitAnalyticsPanel !== 'undefined') {
+                        var lapCtx = description;
+                        if (!lapCtx) {
+                            // Build context from structured fields if available
+                            var ct = (document.getElementById('cancer_type') || {}).value || '';
+                            var hist = (document.getElementById('histology') || {}).value || '';
+                            var pt = (document.getElementById('prior_treatments') || {}).value || '';
+                            lapCtx = [ct, hist, pt].filter(Boolean).join(' ');
+                        }
+                        LitAnalyticsPanel.showButton(lapCtx, document.getElementById('results'));
+                    }
+
+                    // Passive patient-profile capture (patient-centric pivot).
+                    // No-ops if not logged in; never blocks or delays results.
+                    if (typeof PatientSignal !== 'undefined') {
+                        PatientSignal.checkAndPrompt(description);
+                    }
+                } else {
+                    lastPatientMatchResult = null;
+                    reportBtnPatient.disabled = true;
+                    reportBtnPatient.title = 'Run a search to enable';
+                    resultsList.innerHTML = `
+                        <div class="alert alert-info">
+                            No matching studies found. Try adding more detail (cancer type, stage, or biomarkers) or rephrasing.
+                        </div>
+                    `;
+                    if (result.patient_summary) {
+                        patientSummaryCard.style.display = 'block';
+                        patientSummaryCard.querySelector('.card-body').innerHTML = `<p style="margin: 0;"><strong>We searched for:</strong> ${result.patient_summary}</p>`;
+                    }
+                }
+            } catch (error) {
+                const msg = error.message || 'Failed to find matches. Make sure the API server is running.';
+                showError(resultsList, msg);
+            }
+        });
+
+        // Structured submit
+        document.getElementById('patientFormStructured').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const profile = {};
+            const cancerType = document.getElementById('cancer_type').value;
+            if (cancerType) profile.cancer_type = cancerType;
+            const age = document.getElementById('age').value;
+            if (age) profile.age = parseInt(age, 10);
+            const gender = document.getElementById('gender').value;
+            if (gender) profile.gender = gender;
+            const cancerStage = document.getElementById('cancer_stage').value;
+            if (cancerStage) profile.cancer_stage = cancerStage;
+            const histology = document.getElementById('histology').value;
+            if (histology) profile.histology = histology;
+            const markers = document.getElementById('molecular_markers').value;
+            if (markers) profile.molecular_markers = markers.split(',').map(m => m.trim()).filter(m => m);
+            const performanceStatus = document.getElementById('performance_status').value;
+            if (performanceStatus) profile.performance_status = performanceStatus;
+            const comorbidities = document.getElementById('comorbidities').value;
+            if (comorbidities) profile.comorbidities = comorbidities.split(',').map(c => c.trim()).filter(c => c);
+            const smokingStatus = document.getElementById('smoking_status').value;
+            if (smokingStatus) profile.smoking_status = smokingStatus;
+
+            // TNM staging
+            const tnmT = document.getElementById('tnm_t').value.trim();
+            if (tnmT) profile.tnm_t = tnmT;
+            const tnmN = document.getElementById('tnm_n').value.trim();
+            if (tnmN) profile.tnm_n = tnmN;
+            const tnmM = document.getElementById('tnm_m').value.trim();
+            if (tnmM) profile.tnm_m = tnmM;
+
+            // Clinical context
+            const priorTreatments = document.getElementById('prior_treatments').value;
+            if (priorTreatments) profile.prior_treatments = priorTreatments.split(',').map(t => t.trim()).filter(t => t);
+            const recurrenceStatus = document.getElementById('recurrence_status').value;
+            if (recurrenceStatus) profile.recurrence_status = recurrenceStatus;
+            const treatmentSetting = document.getElementById('treatment_setting').value;
+            if (treatmentSetting) profile.treatment_setting = treatmentSetting;
+
+            // Pathology details
+            const lvi = document.getElementById('lvi').value;
+            if (lvi) profile.lvi = lvi;
+            const pni = document.getElementById('pni').value;
+            if (pni) profile.pni = pni;
+            const margins = document.getElementById('margins').value;
+            if (margins) profile.margins = margins;
+
+            resultsContainer.style.display = 'block';
+            patientSummaryCard.style.display = 'none';
+            extractedProfileCard.style.display = 'none';
+            showLoading(resultsList, 'Searching for matching studies...');
+
+            try {
+                const result = await api.matchPatient(profile, collectCriteriaWeights());
+
+                if (result.matches && result.matches.length > 0) {
+                    lastPatientMatchResult = result;
+                    reportBtnPatient.disabled = false;
+                    reportBtnPatient.removeAttribute('title');
+                    if (result.patient_summary) {
+                        patientSummaryCard.style.display = 'block';
+                        patientSummaryCard.innerHTML = `
+                            <div class="card-body">
+                                <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--gray-700);">We searched for</h3>
+                                <p style="margin: 0; font-size: 1rem; color: var(--gray-900);">${result.patient_summary}</p>
+                            </div>
+                        `;
+                    }
+                    displayMatches(result);
+
+                    // Passive patient-profile capture (patient-centric pivot).
+                    // No-ops if not logged in; never blocks or delays results.
+                    if (typeof PatientSignal !== 'undefined') {
+                        var structuredCtx = result.patient_summary ||
+                            Object.values(profile).filter(Boolean).join(' ');
+                        PatientSignal.checkAndPrompt(structuredCtx);
+                    }
+                } else {
+                    lastPatientMatchResult = null;
+                    reportBtnPatient.disabled = true;
+                    reportBtnPatient.title = 'Run a search to enable';
+                    resultsList.innerHTML = `
+                        <div class="alert alert-info">
+                            No matching studies found. Try adjusting your search criteria or use fewer filters.
+                        </div>
+                    `;
+                    if (result.patient_summary) {
+                        patientSummaryCard.style.display = 'block';
+                        patientSummaryCard.querySelector('.card-body').innerHTML = `<p style="margin: 0;"><strong>We searched for:</strong> ${result.patient_summary}</p>`;
+                    }
+                }
+            } catch (error) {
+                const msg = error.message || 'Failed to find matches. Make sure the API server is running.';
+                showError(resultsList, msg);
+            }
+        });
+
+        reportBtnPatient.addEventListener('click', async () => {
+            if (!lastPatientMatchResult) return;
+            reportBtnPatient.disabled = true;
+            try {
+                await api.downloadReport('patient-match', lastPatientMatchResult, 'patient-match-report.pdf');
+            } catch (e) {
+                alert('Could not generate report: ' + (e.message || 'Unknown error'));
+            }
+            reportBtnPatient.disabled = false;
+        });
+
+        function renderPatientSummary(result) {
+            if (!result.patient_summary) return;
+            patientSummaryCard.style.display = 'block';
+            patientSummaryCard.innerHTML = `
+                <div class="card-body">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--gray-700);">We searched for</h3>
+                    <p style="margin: 0; font-size: 1rem; color: var(--gray-900);">${result.patient_summary}</p>
+                </div>
+            `;
+        }
+
+        function renderExtractedProfile(result) {
+            const profile = result.extracted_profile;
+            if (!profile || Object.keys(profile).length === 0) {
+                extractedProfileCard.style.display = 'none';
+                return;
+            }
+            extractedProfileCard.style.display = 'block';
+            const lines = [];
+            if (profile.age != null) lines.push(`<div><strong>Age:</strong> ${profile.age}</div>`);
+            if (profile.gender) lines.push(`<div><strong>Gender:</strong> ${profile.gender}</div>`);
+            if (profile.cancer_type) lines.push(`<div><strong>Cancer type:</strong> ${profile.cancer_type}</div>`);
+            if (profile.anatomical_site) lines.push(`<div><strong>Site:</strong> ${profile.anatomical_site}</div>`);
+            if (profile.cancer_stage) lines.push(`<div><strong>Stage:</strong> ${profile.cancer_stage}</div>`);
+            if (profile.disease_descriptor) lines.push(`<div><strong>Disease:</strong> ${profile.disease_descriptor}</div>`);
+            const tnmParts = [profile.tnm_t, profile.tnm_n, profile.tnm_m].filter(Boolean);
+            if (tnmParts.length) lines.push(`<div><strong>TNM:</strong> ${tnmParts.join('/')}</div>`);
+            if (profile.histology) lines.push(`<div><strong>Histology:</strong> ${profile.histology}</div>`);
+            if (profile.molecular_markers && profile.molecular_markers.length) lines.push(`<div><strong>Markers:</strong> ${profile.molecular_markers.join(', ')}</div>`);
+            if (profile.performance_status != null) lines.push(`<div><strong>Performance status:</strong> ECOG ${profile.performance_status}</div>`);
+            if (profile.smoking_status) lines.push(`<div><strong>Smoking:</strong> ${profile.smoking_status}</div>`);
+            if (profile.prior_treatments && profile.prior_treatments.length) lines.push(`<div><strong>Prior treatments:</strong> ${profile.prior_treatments.join(', ')}</div>`);
+            if (profile.recurrence_status) lines.push(`<div><strong>Recurrence:</strong> ${profile.recurrence_status}</div>`);
+            if (profile.treatment_setting) lines.push(`<div><strong>Setting:</strong> ${profile.treatment_setting}</div>`);
+            if (profile.lvi) lines.push(`<div><strong>LVI:</strong> ${profile.lvi}</div>`);
+            if (profile.pni) lines.push(`<div><strong>PNI:</strong> ${profile.pni}</div>`);
+            if (profile.margins) lines.push(`<div><strong>Margins:</strong> ${profile.margins}</div>`);
+            if (profile.comorbidities && profile.comorbidities.length) lines.push(`<div><strong>Comorbidities:</strong> ${profile.comorbidities.join(', ')}</div>`);
+            extractedProfileContent.innerHTML = '<div style="display: grid; gap: 0.5rem;">' + lines.join('') + '</div>';
+            extractedProfileContent.style.display = 'none';
+            toggleParsedProfile.textContent = 'Show parsed profile';
+        }
+
+        // Store matches globally for study details access
+        window._patientMatchesData = [];
+
+        function displayMatches(result) {
+            resultsList.innerHTML = '';
+            
+            // Store matches for onclick access
+            window._patientMatchesData = result.matches || [];
+
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'alert alert-success';
+            summaryDiv.innerHTML = `<strong>Found ${result.total_matches} matching studies</strong>`;
+            resultsList.appendChild(summaryDiv);
+
+            result.matches.forEach((match, index) => {
+                const matchDiv = document.createElement('div');
+                matchDiv.className = 'card';
+                matchDiv.style.marginBottom = '1rem';
+
+                // Prefer the canonical patient_match_scorer (0-100 axis-weighted)
+                // when present; fall back to the cross-encoder match_score (0-1)
+                // so older payloads still render.
+                const hasPatientMatch = match.patient_match_score != null;
+                const matchPercentage = hasPatientMatch
+                    ? Math.round(match.patient_match_score)
+                    : Math.round((match.match_score || 0) * 100);
+                let scoreColor, tierLabel;
+                if (matchPercentage >= 70)      { scoreColor = '#10b981'; tierLabel = 'Strong match'; }
+                else if (matchPercentage >= 50) { scoreColor = '#3b82f6'; tierLabel = 'Moderate match'; }
+                else if (matchPercentage >= 35) { scoreColor = '#f59e0b'; tierLabel = 'Weak match'; }
+                else                            { scoreColor = '#6b7280'; tierLabel = 'Limited match'; }
+
+                // Build the tooltip exposing axes_used / denominator_mode so a
+                // 100% on 2-of-7 axes is visibly distinct from 100% on 7-of-7.
+                const PATIENT_AXIS_TOTAL = 7;  // cancer_type, sites, histologies, stages, biomarkers, prior_tx, status
+                const breakdown = match.patient_match_breakdown || null;
+                let matchTooltip = `Patient–study match: ${matchPercentage}%`;
+                if (breakdown) {
+                    const axesUsed = Array.isArray(breakdown.axes_used) ? breakdown.axes_used : [];
+                    const mode = breakdown.denominator_mode || 'strict';
+                    matchTooltip = `Patient–study match: ${matchPercentage}% (${mode} mode)\n`
+                        + `Axes scored: ${axesUsed.length}/${PATIENT_AXIS_TOTAL}`
+                        + (axesUsed.length ? ` (${axesUsed.join(', ')})` : '')
+                        + (axesUsed.length < PATIENT_AXIS_TOTAL
+                            ? `\nThe study's metadata only reports ${axesUsed.length} of the ${PATIENT_AXIS_TOTAL} patient axes.`
+                            : '');
+                }
+                const strength = (match.match_strength || '').toLowerCase();
+                const strengthClass = strength === 'strong' ? 'alert-success' : strength === 'partial' ? 'alert-warning' : 'alert-info';
+                const strengthLabel = strength ? strength.charAt(0).toUpperCase() + strength.slice(1) : '';
+
+                const demographics = match.demographics || [];
+                const cancerChars = match.cancer_characteristics || [];
+                const keyMatches = match.key_matches || [];
+
+                let rationaleHtml = '';
+                if (match.match_rationale) {
+                    rationaleHtml = `
+                        <div class="alert ${strengthClass}" style="margin: 0.75rem 0; padding: 0.75rem;">
+                            ${strengthLabel ? `<strong>${strengthLabel} match.</strong> ` : ''}${match.match_rationale}
+                        </div>
+                    `;
+                }
+
+                const isOnline = match.source_type === 'clinicaltrials' || match.source_type === 'pubmed';
+                const onlineLabel = match.source_type === 'clinicaltrials' ? 'ClinicalTrials.gov' : match.source_type === 'pubmed' ? 'PubMed' : '';
+                const onlineBadge = isOnline ? `<span style="display:inline-block;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;padding:0.15rem 0.5rem;border-radius:0.25rem;font-size:0.7rem;font-weight:600;margin-bottom:0.4rem;">Online: ${onlineLabel}</span>` : '';
+
+                matchDiv.innerHTML = `
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                            <div style="flex: 1;">
+                                ${onlineBadge}
+                                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--gray-900);">
+                                    ${match.title || 'Unknown Title'}
+                                </h3>
+                                <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">
+                                    ${match.author || 'Unknown'}${match.year ? ` • ${match.year}` : ''}
+                                </div>
+                                ${(demographics.length > 0 || cancerChars.length > 0 || keyMatches.length > 0) ? `
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.375rem; margin-bottom: 0.5rem;">
+                                    ${demographics.map(d => `<span style="background: #dbeafe; color: #1e40af; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">${escapeHtml(d)}</span>`).join('')}
+                                    ${cancerChars.map(c => `<span style="background: #fef3c7; color: #92400e; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">${escapeHtml(c)}</span>`).join('')}
+                                    ${keyMatches.map(k => `<span style="background: #fce7f3; color: #9f1239; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">${escapeHtml(k)}</span>`).join('')}
+                                </div>
+                                ` : ''}
+                            </div>
+                            <div style="margin-left: 1rem; text-align: right; flex-shrink: 0; cursor: help;" title="${escapeHtml(matchTooltip)}">
+                                <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">Match</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: ${scoreColor};">
+                                    ${matchPercentage}%
+                                </div>
+                                <div style="font-size: 0.7rem; color: var(--gray-500); margin-top: 0.15rem;">
+                                    ${tierLabel}${breakdown && Array.isArray(breakdown.axes_used) ? ` · ${breakdown.axes_used.length}/${PATIENT_AXIS_TOTAL} axes` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        ${rationaleHtml}
+                        <div style="background: var(--gray-50); padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.75rem;">
+                            <div style="font-size: 0.875rem; font-weight: 500; color: var(--gray-700); margin-bottom: 0.5rem;">Treatment</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-900); margin-bottom: 0.75rem;">
+                                ${escapeHtml(match.treatment || 'Treatment information not available')}
+                            </div>
+                            ${match.key_info ? `
+                            <div style="border-top: 1px solid var(--gray-200); padding-top: 0.75rem;">
+                                <div style="font-size: 0.875rem; font-weight: 500; color: var(--gray-700); margin-bottom: 0.5rem;">Key finding</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-800); line-height: 1.5;">${escapeHtml(match.key_info)}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <div style="margin-top: 0.75rem; display: flex; justify-content: flex-end;">
+                            <button class="btn btn-primary btn-sm study-details-btn" 
+                                    onclick="openMatchStudyDetails(${index})"
+                                    title="View detailed study information">
+                                Study Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                resultsList.appendChild(matchDiv);
+            });
+        }
+        
+        /**
+         * Open study details for a patient match result
+         * @param {number} index - Index in the _patientMatchesData array
+         */
+        function openMatchStudyDetails(index) {
+            const match = window._patientMatchesData[index];
+            if (!match) {
+                console.error('Match not found at index:', index);
+                return;
+            }
+            
+            // Pass both the source reference and the full match data for fallback
+            openStudyDetailsFromSource(
+                {
+                    doc_id: match.doc_id || '',
+                    pmid: match.pmid || '',
+                    doi: match.doi || '',
+                    title: match.title || ''
+                },
+                match  // Pass full match data for fallback display
+            );
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        // ============================================
+        // Match Criteria Panel (categories + sliders)
+        // ============================================
+        var matchCriteriaSidebar = document.getElementById('matchCriteriaSidebar');
+        var matchCriteriaOverlay = document.getElementById('matchCriteriaOverlay');
+        var CRITERIA_STORAGE_KEY = 'patientMatchCriteria_v2';
+        var CATEGORIES = ['demographics', 'diagnosis', 'tumor', 'management', 'biomarkers'];
+
+        function openMatchCriteriaSidebar() {
+            if (matchCriteriaSidebar) matchCriteriaSidebar.classList.add('open');
+            if (matchCriteriaOverlay) matchCriteriaOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMatchCriteriaSidebar() {
+            if (matchCriteriaSidebar) matchCriteriaSidebar.classList.remove('open');
+            if (matchCriteriaOverlay) matchCriteriaOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Toggle category: show/hide subfield sliders
+        function handleCategoryToggle(e) {
+            var checkbox = e.target;
+            var catDiv = checkbox.closest('.criteria-category');
+            if (!catDiv) return;
+            var cat = catDiv.dataset.category;
+            var subPanel = document.getElementById('sub_' + cat);
+            if (!subPanel) return;
+            subPanel.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        // Update slider value label on input
+        function handleSliderInput(e) {
+            var slider = e.target;
+            var item = slider.closest('.criteria-slider-item');
+            if (!item) return;
+            var valSpan = item.querySelector('.criteria-slider-value');
+            if (valSpan) {
+                valSpan.textContent = parseFloat(slider.value).toFixed(1) + 'x';
+            }
+        }
+
+        // Collect all criteria for the API call
+        // Flattens the nested category/slider UI into the flat Dict[str, float]
+        // the backend expects. Keys map to backend _USER_KEY_MAP entries.
+        // Subfields without backend support yet are included for future use.
+        // Race, comorbidities, recurrence status, grade, and tumor size were
+        // removed from the sidebar (2026-07-31) — their sliders had no effect
+        // on scoring (_USER_KEY_MAP in structured_study_matcher.py maps them
+        // to empty lists on the backend). Only include fields here that the
+        // backend actually applies.
+        var SUBFIELD_TO_BACKEND_KEY = {
+            // Demographics
+            age: 'age',
+            sex: 'sex',
+            performance_status: 'performance_status',
+            // Diagnosis
+            cancer_type: 'cancer_site',
+            site: 'cancer_site',
+            stage: 'stage',
+            histology: 'histology',
+            // Tumor Characteristics
+            location: 'cancer_site',
+            // Management
+            prior_treatment: 'treatment',
+            current_treatment: 'treatment',
+            treatment_setting: 'treatment_setting'
+        };
+
+        function collectCriteriaWeights() {
+            var flatWeights = {};
+            var hasCustom = false;
+
+            CATEGORIES.forEach(function(cat) {
+                var catCb = document.getElementById('cat_' + cat);
+                if (!catCb || !catCb.checked) return;
+
+                var subPanel = document.getElementById('sub_' + cat);
+                if (!subPanel) return;
+
+                if (cat === 'biomarkers') {
+                    var mode = subPanel.querySelector('input[name="biomarker_mode"]:checked');
+                    flatWeights.biomarkers = 1.0;
+                    flatWeights.biomarker_mode = mode ? mode.value : 'strict';
+                    return;
+                }
+
+                subPanel.querySelectorAll('.criteria-slider-item').forEach(function(item) {
+                    var field = item.dataset.field;
+                    var slider = item.querySelector('.criteria-slider');
+                    if (!field || !slider) return;
+
+                    var val = parseFloat(slider.value);
+                    var backendKey = SUBFIELD_TO_BACKEND_KEY[field] || field;
+
+                    // If multiple subfields map to the same backend key,
+                    // use the highest value (most important wins)
+                    if (flatWeights[backendKey] === undefined || val > flatWeights[backendKey]) {
+                        flatWeights[backendKey] = val;
+                    }
+                    if (val !== 1.0) hasCustom = true;
+                });
+            });
+
+            // If nothing is checked at all, return null
+            if (Object.keys(flatWeights).length === 0) return null;
+
+            // If all sliders are at default 1.0 and no categories are unchecked,
+            // still send the weights so the backend knows which categories are active
+            return flatWeights;
+        }
+
+        function updateAllStatusBadges() {
+            var weights = collectCriteriaWeights();
+            // Count how many categories are actively checked
+            var activeCats = 0;
+            var customSliders = 0;
+            CATEGORIES.forEach(function(cat) {
+                var catCb = document.getElementById('cat_' + cat);
+                if (catCb && catCb.checked) activeCats++;
+            });
+            if (weights) {
+                Object.keys(weights).forEach(function(k) {
+                    if (k !== 'biomarker_mode' && weights[k] !== 1.0) customSliders++;
+                });
+            }
+
+            var statusEls = [
+                document.getElementById('matchCriteriaStatusFreeText'),
+                document.getElementById('matchCriteriaStatusStructured')
+            ];
+            statusEls.forEach(function(el) {
+                if (!el) return;
+                if (activeCats > 0) {
+                    var label = activeCats + '/' + CATEGORIES.length + ' categories';
+                    if (customSliders > 0) label += ', ' + customSliders + ' adjusted';
+                    el.textContent = label;
+                    el.classList.add('active');
+                } else {
+                    el.textContent = '';
+                    el.classList.remove('active');
+                }
+            });
+        }
+
+        function saveCriteriaToStorage() {
+            var data = {};
+            CATEGORIES.forEach(function(cat) {
+                var catCb = document.getElementById('cat_' + cat);
+                data[cat] = { enabled: catCb ? catCb.checked : false };
+                var subPanel = document.getElementById('sub_' + cat);
+                if (!subPanel) return;
+                if (cat === 'biomarkers') {
+                    var mode = subPanel.querySelector('input[name="biomarker_mode"]:checked');
+                    data[cat].mode = mode ? mode.value : 'strict';
+                } else {
+                    data[cat].sliders = {};
+                    subPanel.querySelectorAll('.criteria-slider-item').forEach(function(item) {
+                        var field = item.dataset.field;
+                        var slider = item.querySelector('.criteria-slider');
+                        if (field && slider) {
+                            data[cat].sliders[field] = parseFloat(slider.value);
+                        }
+                    });
+                }
+            });
+            localStorage.setItem(CRITERIA_STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function loadCriteriaFromStorage() {
+            try {
+                var raw = localStorage.getItem(CRITERIA_STORAGE_KEY);
+                if (!raw) {
+                    initSubfieldVisibility();
+                    updateAllStatusBadges();
+                    return;
+                }
+                var data = JSON.parse(raw);
+                CATEGORIES.forEach(function(cat) {
+                    if (!data[cat]) return;
+                    var catCb = document.getElementById('cat_' + cat);
+                    var subPanel = document.getElementById('sub_' + cat);
+                    if (catCb) catCb.checked = !!data[cat].enabled;
+                    if (subPanel) subPanel.style.display = data[cat].enabled ? 'block' : 'none';
+
+                    if (cat === 'biomarkers' && data[cat].mode && subPanel) {
+                        var radio = subPanel.querySelector('input[name="biomarker_mode"][value="' + data[cat].mode + '"]');
+                        if (radio) radio.checked = true;
+                    } else if (data[cat].sliders && subPanel) {
+                        Object.keys(data[cat].sliders).forEach(function(field) {
+                            var item = subPanel.querySelector('.criteria-slider-item[data-field="' + field + '"]');
+                            if (!item) return;
+                            var slider = item.querySelector('.criteria-slider');
+                            var valSpan = item.querySelector('.criteria-slider-value');
+                            if (slider) {
+                                slider.value = data[cat].sliders[field];
+                                if (valSpan) valSpan.textContent = parseFloat(data[cat].sliders[field]).toFixed(1) + 'x';
+                            }
+                        });
+                    }
+                });
+                updateAllStatusBadges();
+            } catch (err) {
+                console.error('[MatchCriteria] Error loading from storage:', err);
+                initSubfieldVisibility();
+            }
+        }
+
+        function initSubfieldVisibility() {
+            CATEGORIES.forEach(function(cat) {
+                var catCb = document.getElementById('cat_' + cat);
+                var subPanel = document.getElementById('sub_' + cat);
+                if (catCb && subPanel) {
+                    subPanel.style.display = catCb.checked ? 'block' : 'none';
+                }
+            });
+        }
+
+        function resetAllCriteria() {
+            CATEGORIES.forEach(function(cat) {
+                var catCb = document.getElementById('cat_' + cat);
+                if (catCb) catCb.checked = true;
+                var subPanel = document.getElementById('sub_' + cat);
+                if (subPanel) {
+                    subPanel.style.display = 'block';
+                    subPanel.querySelectorAll('.criteria-slider').forEach(function(s) {
+                        s.value = 1;
+                    });
+                    subPanel.querySelectorAll('.criteria-slider-value').forEach(function(v) {
+                        v.textContent = '1.0x';
+                    });
+                }
+            });
+            var strictRadio = document.querySelector('input[name="biomarker_mode"][value="strict"]');
+            if (strictRadio) strictRadio.checked = true;
+            saveCriteriaToStorage();
+            updateAllStatusBadges();
+        }
+
+        // Wire up category toggles
+        document.querySelectorAll('.criteria-category-toggle input[type="checkbox"]').forEach(function(cb) {
+            cb.addEventListener('change', handleCategoryToggle);
+        });
+
+        // Wire up all sliders
+        document.querySelectorAll('.criteria-slider').forEach(function(slider) {
+            slider.addEventListener('input', handleSliderInput);
+        });
+
+        // Open sidebar from both form buttons
+        var openBtnFreeText = document.getElementById('openMatchCriteriaFreeText');
+        if (openBtnFreeText) openBtnFreeText.addEventListener('click', openMatchCriteriaSidebar);
+
+        var openBtnStructured = document.getElementById('openMatchCriteriaStructured');
+        if (openBtnStructured) openBtnStructured.addEventListener('click', openMatchCriteriaSidebar);
+
+        var closeMatchCriteriaBtn = document.getElementById('closeMatchCriteria');
+        if (closeMatchCriteriaBtn) closeMatchCriteriaBtn.addEventListener('click', closeMatchCriteriaSidebar);
+
+        if (matchCriteriaOverlay) matchCriteriaOverlay.addEventListener('click', closeMatchCriteriaSidebar);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && matchCriteriaSidebar && matchCriteriaSidebar.classList.contains('open')) {
+                closeMatchCriteriaSidebar();
+            }
+        });
+
+        var applyMatchCriteriaBtn = document.getElementById('applyMatchCriteria');
+        if (applyMatchCriteriaBtn) {
+            applyMatchCriteriaBtn.addEventListener('click', function() {
+                saveCriteriaToStorage();
+                updateAllStatusBadges();
+                closeMatchCriteriaSidebar();
+            });
+        }
+
+        var resetMatchCriteriaBtn = document.getElementById('resetMatchCriteria');
+        if (resetMatchCriteriaBtn) resetMatchCriteriaBtn.addEventListener('click', resetAllCriteria);
+
+        // Load saved criteria on page load
+        loadCriteriaFromStorage();
+        
+        // Restore context from chat if available
+        (function restoreContextFromChat() {
+            try {
+                // Check for patient match context from SplitPanel
+                const patientContext = sessionStorage.getItem('patientMatchContext');
+                if (patientContext) {
+                    const ctx = JSON.parse(patientContext);
+                    console.log('[PatientMatching] Restoring context from chat:', ctx);
+                    
+                    // Fill in the patient description
+                    const descInput = document.getElementById('patientDescription');
+                    if (descInput && ctx.query) {
+                        descInput.value = ctx.query;
+                    }
+                    
+                    // Apply criteria weights if provided
+                    if (ctx.criteria) {
+                        Object.keys(ctx.criteria).forEach(function(key) {
+                            const slider = document.querySelector('.criteria-slider-item[data-field="' + key + '"] .criteria-slider');
+                            if (slider) {
+                                slider.value = ctx.criteria[key];
+                                const valueSpan = slider.parentElement.querySelector('.criteria-slider-value');
+                                if (valueSpan) {
+                                    valueSpan.textContent = ctx.criteria[key].toFixed(2) + 'x';
+                                }
+                            }
+                        });
+                        saveCriteriaToStorage();
+                    }
+                    
+                    // Clear the context so it doesn't persist
+                    sessionStorage.removeItem('patientMatchContext');
+                }
+                
+                // Also check followupContext
+                const followupContext = sessionStorage.getItem('followupContext');
+                if (followupContext && !patientContext) {
+                    const ctx = JSON.parse(followupContext);
+                    const descInput = document.getElementById('patientDescription');
+                    if (descInput && ctx.query && !descInput.value) {
+                        descInput.value = ctx.query;
+                    }
+                }
+            } catch (err) {
+                console.error('[PatientMatching] Error restoring context:', err);
+            }
+        })();
+    </script>
+</body>
+</html>

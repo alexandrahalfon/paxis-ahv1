@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Collections - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .saves-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .login-banner {
+            background: linear-gradient(135deg, var(--primary-light) 0%, #e0e7ff 100%);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .login-banner-text {
+            color: var(--gray-800);
+        }
+        .login-banner-text strong {
+            color: var(--primary);
+        }
+        .saves-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+        .saves-tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            color: var(--gray-600);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .saves-tab:hover {
+            color: var(--gray-900);
+        }
+        .saves-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+        .saves-tab .tab-count {
+            background: var(--gray-200);
+            color: var(--gray-700);
+            padding: 0.1rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+        .saves-tab.active .tab-count {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .saves-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .saves-header h2 {
+            font-size: 1.25rem;
+            color: var(--gray-800);
+            margin: 0;
+        }
+        .saves-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .save-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: box-shadow 0.2s;
+        }
+        .save-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .save-card.session-only {
+            border-left: 3px solid var(--warning, #f59e0b);
+        }
+        .save-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        .save-card-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            line-height: 1.4;
+        }
+        .save-card-meta {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            white-space: nowrap;
+        }
+        .save-card-ids {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-bottom: 0.75rem;
+        }
+        .save-card-summary {
+            color: var(--gray-700);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+        .save-card-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .detail-tag {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        .detail-tag.session-tag {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .save-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--gray-100);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-500);
+        }
+        .empty-state h3 {
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+        }
+        .use-count {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+        /* Response Modal Styles */
+        .response-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .response-modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .response-modal-content {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+        .response-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .response-modal-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--gray-900);
+        }
+        .response-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-500);
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        .response-modal-close:hover {
+            color: var(--gray-700);
+        }
+        .response-modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+        .response-query {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .response-query strong {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+        .response-query p {
+            margin: 0.5rem 0 0;
+            color: var(--gray-600);
+            font-style: italic;
+        }
+        .response-answer {
+            margin-bottom: 1.5rem;
+        }
+        .response-answer strong {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+        .response-text {
+            margin-top: 0.5rem;
+            color: var(--gray-800);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .response-sources {
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        .response-sources strong {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+        .response-sources ul {
+            margin: 0.75rem 0 0;
+            padding-left: 1.25rem;
+        }
+        .response-sources li {
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+        .source-title {
+            display: block;
+            font-weight: 500;
+        }
+        .source-doi, .source-author {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html" class="active">My Collections</a></li>
+                    <li><a href="upload.html">Upload</a></li>
+                    <li><a href="trial-search.html">Trial Finder</a></li>
+                    <!-- <li><a href="about.html">About</a></li> -->
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth">
+                        <span id="authBadge" class="auth-badge" style="display: none;"></span>
+                    </li>
+                    <li class="nav-auth" id="logoutNav" style="display: none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="saves-container">
+        <div id="loginBanner" class="login-banner" style="display: none;">
+            <span class="login-banner-text">
+                <strong>Log in to save your evidence permanently.</strong> 
+                Session saves will be lost when you close the browser.
+            </span>
+            <a href="login.html" class="btn btn-primary btn-sm">Log in</a>
+        </div>
+
+        <h1 style="font-size: 1.75rem; color: var(--gray-900); margin-bottom: 1rem;">My Collections</h1>
+
+        <div class="saves-tabs">
+            <button class="saves-tab active" data-tab="patients" onclick="switchTab('patients')">
+                Patients <span class="tab-count" id="patientsCount">0</span>
+            </button>
+            <button class="saves-tab" data-tab="cases" onclick="switchTab('cases')">
+                Saved Conversations <span class="tab-count" id="casesCount">0</span>
+            </button>
+            <button class="saves-tab" data-tab="studies" onclick="switchTab('studies')">
+                Studies <span class="tab-count" id="studiesCount">0</span>
+            </button>
+            <button class="saves-tab" data-tab="uploads" onclick="switchTab('uploads')">
+                Uploads <span class="tab-count" id="uploadsCount">0</span>
+            </button>
+        </div>
+
+        <div id="patientsTab" class="tab-content active">
+            <div class="saves-header">
+                <h2>Patients</h2>
+            </div>
+            <div id="patientAddCard" class="save-card" style="margin-bottom: 1rem; display: none;">
+                <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--gray-800);">Add a patient</div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="newPatientFirst" placeholder="First name" class="form-input" style="flex: 1; min-width: 140px;">
+                    <input type="text" id="newPatientLast" placeholder="Last name" class="form-input" style="flex: 1; min-width: 140px;">
+                    <button class="btn btn-primary btn-sm" id="newPatientBtn">Add patient</button>
+                </div>
+            </div>
+            <div id="patientsContent"></div>
+        </div>
+
+        <div id="casesTab" class="tab-content">
+            <div class="saves-header">
+                <h2>Saved Conversations</h2>
+                <label id="archivedLabel" style="font-size: 0.9rem; color: var(--gray-600); display: none;">
+                    <input type="checkbox" id="showArchived"> Show archived
+                </label>
+            </div>
+            <div id="casesContent"></div>
+        </div>
+
+        <div id="studiesTab" class="tab-content">
+            <div id="studiesContent"></div>
+        </div>
+
+        <div id="uploadsTab" class="tab-content">
+            <div id="uploadsContent"></div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Paxis</h4>
+                    <p>AI-powered medical literature search platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <a href="patient-matching.html">Patient Matching</a>
+                    <a href="treatment-comparison.html">Evaluate Treatment Options</a>
+                    <a href="study-comparison.html">Review Studies</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Advanced Analytics</h4>
+                    <a href="analytics.html">Knowledge Base Analytics</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <!-- <a href="about.html">About</a> -->
+                    <a href="/docs" target="_blank">API Documentation</a>
+                    <a href="/api/rag/health" target="_blank">API Health</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. All rights reserved. <span style="background:#fef3c7;color:#92400e;font-size:0.7rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;">Beta</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/beta-disclaimer.js?v=2"></script>
+    <script src="js/module-dropdowns.js"></script>
+    <script src="js/demoBanner.js"></script>
+    <script src="js/sideNav.js?v=3"></script>
+    <script src="js/patientSignal.js?v=4"></script>
+    <script>DemoBanner.init(); SideNav.init('saves');</script>
+    <script>
+        const api = new PaxisAPI();
+        const studiesContent = document.getElementById('studiesContent');
+        const casesContent = document.getElementById('casesContent');
+        const uploadsContent = document.getElementById('uploadsContent');
+        const patientsContent = document.getElementById('patientsContent');
+        const showArchivedCheckbox = document.getElementById('showArchived');
+        const loginBanner = document.getElementById('loginBanner');
+        const archivedLabel = document.getElementById('archivedLabel');
+        const studiesCountEl = document.getElementById('studiesCount');
+        const casesCountEl = document.getElementById('casesCount');
+        const uploadsCountEl = document.getElementById('uploadsCount');
+        const patientsCountEl = document.getElementById('patientsCount');
+
+        // Storage keys
+        const SAVED_STUDIES_KEY = 'exueed_saved_studies';
+        const SESSION_CASES_KEY = 'exueed_session_saves';
+        const SESSION_UPLOADS_KEY = 'exueed_session_uploads';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.saves-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById(`${tab}Tab`).classList.add('active');
+        }
+
+        function getSavedStudies() {
+            try {
+                return JSON.parse(sessionStorage.getItem(SAVED_STUDIES_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function getSessionCases() {
+            try {
+                return JSON.parse(sessionStorage.getItem(SESSION_CASES_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function getSessionUploads() {
+            try {
+                return JSON.parse(sessionStorage.getItem(SESSION_UPLOADS_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function removeStudy(studyId) {
+            const studies = getSavedStudies().filter(s => s.id !== studyId);
+            sessionStorage.setItem(SAVED_STUDIES_KEY, JSON.stringify(studies));
+            loadAll();
+        }
+
+        function removeSessionCase(caseId) {
+            const cases = getSessionCases().filter(c => c.id !== caseId);
+            sessionStorage.setItem(SESSION_CASES_KEY, JSON.stringify(cases));
+            loadAll();
+        }
+
+        function removeSessionUpload(uploadId) {
+            const uploads = getSessionUploads().filter(u => u.upload_id !== uploadId);
+            sessionStorage.setItem(SESSION_UPLOADS_KEY, JSON.stringify(uploads));
+            loadAll();
+        }
+
+        async function loadAll() {
+            const token = localStorage.getItem('exueed_token');
+            const isLoggedIn = !!token;
+
+            loginBanner.style.display = isLoggedIn ? 'none' : 'flex';
+            archivedLabel.style.display = isLoggedIn ? 'block' : 'none';
+
+            // Load patients (account-only feature — no session/anonymous fallback)
+            if (isLoggedIn) {
+                document.getElementById('patientAddCard').style.display = 'block';
+                await loadPatients();
+            } else {
+                patientsContent.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Log in to manage patients</h3>
+                        <p>Patient profiles are saved to your account.</p>
+                        <a href="login.html" class="btn btn-primary" style="margin-top: 1rem;">Log in</a>
+                    </div>
+                `;
+                patientsCountEl.textContent = 0;
+            }
+
+            // Load studies
+            if (isLoggedIn) {
+                await loadStudiesFromAPI();
+            } else {
+                loadSessionStudies();
+            }
+
+            // Load cases
+            if (isLoggedIn) {
+                await loadCasesFromAPI();
+            } else {
+                loadSessionCases();
+            }
+
+            // Load uploads
+            if (isLoggedIn) {
+                await loadUploadsFromAPI();
+            } else {
+                loadSessionUploads();
+            }
+        }
+
+        // ============================================
+        // Patients
+        // ============================================
+
+        function escapeAttr(str) {
+            return (str || '').replace(/"/g, '&quot;');
+        }
+
+        async function patientsApiFetch(path, options = {}) {
+            const token = localStorage.getItem('exueed_token');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(options.headers || {}),
+            };
+            const res = await fetch(`${CONFIG.API_BASE}${path}`, { ...options, headers });
+            if (!res.ok) {
+                let detail = res.statusText;
+                try { const body = await res.json(); detail = body.detail || detail; } catch (e) {}
+                throw new Error(detail);
+            }
+            return res.json();
+        }
+
+        async function loadPatients() {
+            patientsContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">Loading...</div>';
+            try {
+                const response = await patientsApiFetch('/patients?limit=100&include_diagnosis=true');
+                const patients = response.patients || [];
+                patientsCountEl.textContent = patients.length;
+
+                if (patients.length === 0) {
+                    patientsContent.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No patients yet</h3>
+                            <p>Add one above, or mention a patient in chat and Paxis will offer to create a profile.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const activeId = (typeof PatientSignal !== 'undefined') ? PatientSignal.getActivePatientId() : null;
+
+                const html = patients.map(p => {
+                    const name = `${p.first_name} ${p.last_name}`;
+                    const isActive = p.id === activeId;
+                    const dx = p.latest_diagnosis;
+                    const dxParts = dx ? [dx.cancer_site, dx.stage ? `Stage ${dx.stage}` : null].filter(Boolean) : [];
+                    const dxLine = dxParts.length ? dxParts.join(' · ') : 'No diagnosis on file yet';
+                    const updatedDate = p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '';
+
+                    return `
+                        <div class="save-card" style="${isActive ? 'border-left: 3px solid var(--secondary, #059669);' : ''}">
+                            <div class="save-card-header">
+                                <div class="save-card-title">${escapeHtml(name)} ${isActive ? '<span class="detail-tag" style="background:#d1fae5;color:#065f46;">Active</span>' : ''}</div>
+                                <div class="save-card-meta">${updatedDate}</div>
+                            </div>
+                            <div class="save-card-summary">${escapeHtml(dxLine)}</div>
+                            <div class="save-card-actions">
+                                ${isActive
+                                    ? `<button class="btn btn-outline btn-sm" onclick="clearActivePatientHere()">Clear active</button>`
+                                    : `<button class="btn btn-primary btn-sm" onclick="setActivePatientHere('${p.id}', '${escapeAttr(name)}')">Set as active</button>`}
+                                <a class="btn btn-outline btn-sm" href="patient-intake.html?patient=${p.id}">View / edit</a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                patientsContent.innerHTML = `<div class="saves-list">${html}</div>`;
+            } catch (error) {
+                console.error('Error loading patients:', error);
+                patientsContent.innerHTML = `<div class="empty-state"><h3>Error loading patients</h3><p>${escapeHtml(error.message)}</p></div>`;
+            }
+        }
+
+        function setActivePatientHere(id, name) {
+            if (typeof PatientSignal !== 'undefined') PatientSignal.setActivePatient(id, name);
+            loadPatients();
+        }
+
+        function clearActivePatientHere() {
+            if (typeof PatientSignal !== 'undefined') PatientSignal.setActivePatient(null, null);
+            loadPatients();
+        }
+
+        document.getElementById('newPatientBtn')?.addEventListener('click', async () => {
+            const first = document.getElementById('newPatientFirst').value.trim();
+            const last = document.getElementById('newPatientLast').value.trim();
+            if (!first || !last) {
+                alert('Enter a first and last name.');
+                return;
+            }
+            try {
+                const result = await patientsApiFetch('/patients', {
+                    method: 'POST',
+                    body: JSON.stringify({ first_name: first, last_name: last }),
+                });
+                document.getElementById('newPatientFirst').value = '';
+                document.getElementById('newPatientLast').value = '';
+                if (result?.patient?.id && typeof PatientSignal !== 'undefined') {
+                    PatientSignal.setActivePatient(result.patient.id, `${first} ${last}`);
+                }
+                await loadPatients();
+            } catch (error) {
+                alert('Error creating patient: ' + (error.message || 'Unknown error'));
+            }
+        });
+
+        function loadSessionStudies() {
+            const studies = getSavedStudies();
+            studiesCountEl.textContent = studies.length;
+
+            if (studies.length === 0) {
+                studiesContent.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No saved studies yet</h3>
+                        <p>Click the ☆ Save button on any study details panel to save it here.</p>
+                        <a href="index.html" class="btn btn-primary" style="margin-top: 1rem;">Start searching</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = studies.map(s => {
+                const savedDate = s.saved_at ? new Date(s.saved_at).toLocaleDateString() : '';
+                const ids = [];
+                if (s.pmid) ids.push(`PMID: ${s.pmid}`);
+                if (s.doi) ids.push(`DOI: ${s.doi}`);
+                
+                return `
+                    <div class="save-card session-only">
+                        <div class="save-card-header">
+                            <div class="save-card-title">${escapeHtml(s.title || 'Untitled Study')}</div>
+                            <div class="save-card-meta">${savedDate}</div>
+                        </div>
+                        ${ids.length ? `<div class="save-card-ids">${ids.join(' • ')}</div>` : ''}
+                        <div class="save-card-details">
+                            <span class="detail-tag session-tag">Session only</span>
+                        </div>
+                        <div class="save-card-actions">
+                            <button class="btn btn-outline btn-sm" style="color: var(--error);" onclick="removeStudy('${escapeHtml(s.id)}')">Remove</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            studiesContent.innerHTML = `<div class="saves-list">${html}</div>`;
+        }
+
+        async function loadStudiesFromAPI() {
+            studiesContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">Loading...</div>';
+
+            try {
+                const response = await api.getSavedStudies(50);
+                const studies = response.studies || [];
+                studiesCountEl.textContent = studies.length;
+
+                if (studies.length === 0) {
+                    studiesContent.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No saved studies yet</h3>
+                            <p>Click the ☆ Save button on any study details panel to save it here.</p>
+                            <a href="index.html" class="btn btn-primary" style="margin-top: 1rem;">Start searching</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = studies.map(s => {
+                    const savedDate = s.created_at ? new Date(s.created_at).toLocaleDateString() : '';
+                    const ids = [];
+                    if (s.pmid) ids.push(`PMID: ${s.pmid}`);
+                    if (s.doi) ids.push(`DOI: ${s.doi}`);
+                    
+                    return `
+                        <div class="save-card">
+                            <div class="save-card-header">
+                                <div class="save-card-title">${escapeHtml(s.title || 'Untitled Study')}</div>
+                                <div class="save-card-meta">${savedDate}</div>
+                            </div>
+                            ${ids.length ? `<div class="save-card-ids">${ids.join(' • ')}</div>` : ''}
+                            <div class="save-card-actions">
+                                <button class="btn btn-outline btn-sm" style="color: var(--error);" onclick="removeStudyFromAPI('${escapeHtml(s.study_id)}')">Remove</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                studiesContent.innerHTML = `<div class="saves-list">${html}</div>`;
+            } catch (error) {
+                console.error('Error loading studies:', error);
+                studiesContent.innerHTML = `<div class="empty-state"><h3>Error loading studies</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        async function removeStudyFromAPI(studyId) {
+            try {
+                await api.deleteSavedStudy(studyId);
+                loadAll();
+            } catch (error) {
+                alert('Error: ' + (error.message || 'Could not remove study'));
+            }
+        }
+
+        function loadSessionCases() {
+            const cases = getSessionCases();
+            casesCountEl.textContent = cases.length;
+
+            if (cases.length === 0) {
+                casesContent.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No saved cases yet</h3>
+                        <p>When you save a case from search results, it will appear here.</p>
+                        <a href="index.html" class="btn btn-primary" style="margin-top: 1rem;">Start searching</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = cases.map(c => {
+                const createdDate = c.created_at ? new Date(c.created_at).toLocaleTimeString() : '';
+                
+                // Check if case has saved response
+                const hasResponse = c.response_answer || (c.response_sources && c.response_sources.length > 0);
+                const responseBadge = hasResponse ? '<span class="detail-tag" style="background: #dbeafe; color: #1e40af;">Has Response</span>' : '';
+                
+                // Build response preview if available
+                let responsePreview = '';
+                if (c.response_answer) {
+                    const truncatedAnswer = c.response_answer.length > 150 
+                        ? c.response_answer.substring(0, 150) + '...' 
+                        : c.response_answer;
+                    responsePreview = `
+                        <div class="case-response-preview" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--gray-50); border-radius: 6px; font-size: 0.85rem;">
+                            <strong style="color: var(--gray-700);">Saved Response:</strong>
+                            <p style="margin: 0.5rem 0 0; color: var(--gray-600); line-height: 1.5;">${escapeHtml(truncatedAnswer)}</p>
+                            ${c.response_sources && c.response_sources.length > 0 ? `<div style="margin-top: 0.5rem; color: var(--gray-500); font-size: 0.8rem;">${c.response_sources.length} source(s) saved</div>` : ''}
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="save-card session-only">
+                        <div class="save-card-header">
+                            <div class="save-card-title">${escapeHtml(c.case_name || 'Unnamed Case')}</div>
+                            <div class="save-card-meta">${createdDate}</div>
+                        </div>
+                        <div class="save-card-summary">${escapeHtml(c.query_summary || c.original_query?.substring(0, 200) || '')}</div>
+                        <div class="save-card-details">
+                            <span class="detail-tag session-tag">Session only</span>
+                            ${responseBadge}
+                        </div>
+                        ${responsePreview}
+                        <div class="save-card-actions">
+                            <button class="btn btn-primary btn-sm" onclick="useSessionCase('${c.id}')">Use for Search</button>
+                            <button class="btn btn-outline btn-sm" style="color: var(--error);" onclick="removeSessionCase('${c.id}')">Remove</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            casesContent.innerHTML = `<div class="saves-list">${html}</div>`;
+        }
+
+        async function loadCasesFromAPI() {
+            casesContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">Loading...</div>';
+
+            try {
+                const includeArchived = showArchivedCheckbox.checked;
+                const response = await api.getSavedCases(50, includeArchived);
+                const cases = response.cases || [];
+                casesCountEl.textContent = cases.length;
+
+                if (cases.length === 0) {
+                    casesContent.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No saved cases yet</h3>
+                            <p>When you save a case from search results, it will appear here.</p>
+                            <a href="index.html" class="btn btn-primary" style="margin-top: 1rem;">Start searching</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = cases.map(c => {
+                    const details = [];
+                    if (c.demographics?.age) details.push(`Age: ${c.demographics.age}`);
+                    if (c.demographics?.gender) details.push(c.demographics.gender);
+                    if (c.diagnosis?.cancer_type) details.push(c.diagnosis.cancer_type);
+                    if (c.staging?.overall_stage) details.push(`Stage ${c.staging.overall_stage}`);
+                    
+                    const detailTags = details.map(d => `<span class="detail-tag">${escapeHtml(d)}</span>`).join('');
+                    const createdDate = c.created_at ? new Date(c.created_at).toLocaleDateString() : '';
+                    const archivedBadge = c.is_archived ? '<span class="detail-tag" style="background: var(--gray-300);">Archived</span>' : '';
+                    
+                    // Check if case has saved response
+                    const hasResponse = c.response_answer || (c.response_sources && c.response_sources.length > 0);
+                    const responseBadge = hasResponse ? '<span class="detail-tag" style="background: #dbeafe; color: #1e40af;">Has Response</span>' : '';
+                    
+                    // Build response preview if available
+                    let responsePreview = '';
+                    if (c.response_answer) {
+                        const truncatedAnswer = c.response_answer.length > 200 
+                            ? c.response_answer.substring(0, 200) + '...' 
+                            : c.response_answer;
+                        responsePreview = `
+                            <div class="case-response-preview" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--gray-50); border-radius: 6px; font-size: 0.85rem;">
+                                <strong style="color: var(--gray-700);">Saved Response:</strong>
+                                <p style="margin: 0.5rem 0 0; color: var(--gray-600); line-height: 1.5;">${escapeHtml(truncatedAnswer)}</p>
+                                ${c.response_sources && c.response_sources.length > 0 ? `<div style="margin-top: 0.5rem; color: var(--gray-500); font-size: 0.8rem;">${c.response_sources.length} source(s) saved</div>` : ''}
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="save-card">
+                            <div class="save-card-header">
+                                <div class="save-card-title">${escapeHtml(c.case_name || 'Unnamed Case')}</div>
+                                <div class="save-card-meta">${createdDate}</div>
+                            </div>
+                            <div class="save-card-summary">${escapeHtml(c.query_summary || c.original_query?.substring(0, 200) || '')}</div>
+                            <div class="save-card-details">${detailTags}${archivedBadge}${responseBadge}</div>
+                            ${responsePreview}
+                            <div class="use-count">Used ${c.use_count || 0} time${c.use_count !== 1 ? 's' : ''}</div>
+                            <div class="case-alert-row" id="alert-row-${c.id}" style="margin-top: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--gray-600); cursor: pointer;">
+                                    <input type="checkbox" class="case-alert-checkbox" data-case-id="${c.id}" onchange="toggleCaseAlert(${c.id}, this.checked)">
+                                    <span class="alert-label-text">Alert me when new matching trials are found</span>
+                                </label>
+                            </div>
+                            <div class="save-card-actions">
+                                <button class="btn btn-primary btn-sm" onclick="useCase(${c.id})">Use for Search</button>
+                                ${hasResponse ? `<button class="btn btn-outline btn-sm" onclick="viewFullResponse(${c.id})">View Response</button>` : ''}
+                                <button class="btn btn-outline btn-sm" onclick="toggleArchive(${c.id}, ${!c.is_archived})">${c.is_archived ? 'Unarchive' : 'Archive'}</button>
+                                <button class="btn btn-outline btn-sm" style="color: var(--error);" onclick="deleteCase(${c.id})">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                casesContent.innerHTML = `<div class="saves-list">${html}</div>`;
+                
+                // Load alert settings for each case
+                loadAlertSettings(cases);
+            } catch (error) {
+                casesContent.innerHTML = `<div class="empty-state"><h3>Error loading cases</h3><p>${error.message}</p></div>`;
+            }
+        }
+        
+        // Load alert settings for all cases
+        async function loadAlertSettings(cases) {
+            for (const c of cases) {
+                try {
+                    const alertSettings = await api.getCaseAlertSettings(c.id);
+                    if (alertSettings && alertSettings.alerts_enabled) {
+                        const checkbox = document.querySelector(`input[data-case-id="${c.id}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            const labelText = checkbox.parentElement.querySelector('.alert-label-text');
+                            if (labelText) {
+                                labelText.textContent = 'Alerts enabled';
+                                labelText.style.color = 'var(--secondary)';
+                                
+                                // Show new matches count if any
+                                if (alertSettings.new_matches_count > 0) {
+                                    labelText.textContent += ` (${alertSettings.new_matches_count} new match${alertSettings.new_matches_count > 1 ? 'es' : ''})`;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // No alerts configured for this case, that's fine
+                }
+            }
+        }
+        
+        // Toggle case alerts
+        async function toggleCaseAlert(caseId, enabled) {
+            const checkbox = document.querySelector(`input[data-case-id="${caseId}"]`);
+            const labelText = checkbox?.parentElement?.querySelector('.alert-label-text');
+            
+            try {
+                if (enabled) {
+                    await api.enableCaseAlerts(caseId, true);
+                    if (labelText) {
+                        labelText.textContent = 'Alerts enabled';
+                        labelText.style.color = 'var(--secondary)';
+                    }
+                } else {
+                    await api.disableCaseAlerts(caseId);
+                    if (labelText) {
+                        labelText.textContent = 'Alert me when new matching trials are found';
+                        labelText.style.color = '';
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling alert:', error);
+                if (checkbox) checkbox.checked = !enabled; // Revert
+                alert('Failed to update alert settings: ' + error.message);
+            }
+        }
+        
+        // View full saved response in a modal
+        async function viewFullResponse(caseId) {
+            try {
+                const caseData = await api.getCase(caseId);
+                
+                // Create modal
+                const modal = document.createElement('div');
+                modal.className = 'response-modal';
+                modal.innerHTML = `
+                    <div class="response-modal-backdrop" onclick="closeResponseModal()"></div>
+                    <div class="response-modal-content">
+                        <div class="response-modal-header">
+                            <h3>${escapeHtml(caseData.case_name || 'Saved Response')}</h3>
+                            <button class="response-modal-close" onclick="closeResponseModal()">&times;</button>
+                        </div>
+                        <div class="response-modal-body">
+                            <div class="response-query">
+                                <strong>Original Query:</strong>
+                                <p>${escapeHtml(caseData.original_query)}</p>
+                            </div>
+                            <div class="response-answer">
+                                <strong>Response:</strong>
+                                <div class="response-text">${escapeHtml(caseData.response_answer || 'No response saved')}</div>
+                            </div>
+                            ${caseData.response_sources && caseData.response_sources.length > 0 ? `
+                                <div class="response-sources">
+                                    <strong>Sources (${caseData.response_sources.length}):</strong>
+                                    <ul>
+                                        ${caseData.response_sources.map(s => `
+                                            <li>
+                                                <span class="source-title">${escapeHtml(s.title || 'Untitled')}</span>
+                                                ${s.doi ? `<span class="source-doi">DOI: ${escapeHtml(s.doi)}</span>` : ''}
+                                                ${s.author ? `<span class="source-author">${escapeHtml(s.author)}</span>` : ''}
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+            } catch (error) {
+                alert('Error loading response: ' + error.message);
+            }
+        }
+        
+        function closeResponseModal() {
+            const modal = document.querySelector('.response-modal');
+            if (modal) modal.remove();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function useSessionCase(caseId) {
+            const cases = getSessionCases();
+            const c = cases.find(x => x.id === caseId);
+            if (c) {
+                sessionStorage.setItem('caseContext', JSON.stringify({ case: c, context_prompt: c.original_query }));
+                window.location.href = 'index.html';
+            }
+        }
+
+        async function useCase(caseId) {
+            try {
+                const response = await api.useCase(caseId);
+                sessionStorage.setItem('caseContext', JSON.stringify(response));
+                window.location.href = 'index.html?case=' + caseId;
+            } catch (error) {
+                alert('Error: ' + (error.message || 'Could not use case'));
+            }
+        }
+
+        async function toggleArchive(caseId, archive) {
+            try {
+                await api.updateCase(caseId, { is_archived: archive });
+                loadAll();
+            } catch (error) {
+                alert('Error: ' + (error.message || 'Could not update case'));
+            }
+        }
+
+        async function deleteCase(caseId) {
+            if (!confirm('Delete this case? This cannot be undone.')) return;
+            try {
+                await api.deleteCase(caseId);
+                loadAll();
+            } catch (error) {
+                alert('Error: ' + (error.message || 'Could not delete case'));
+            }
+        }
+
+        // ============================================
+        // Uploads Functions
+        // ============================================
+
+        function loadSessionUploads() {
+            const uploads = getSessionUploads();
+            uploadsCountEl.textContent = uploads.length;
+
+            if (uploads.length === 0) {
+                uploadsContent.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No uploaded documents yet</h3>
+                        <p>Upload a PDF on the <a href="upload.html">Upload page</a> to process and store it here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = uploads.map(u => {
+                const uploadDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '';
+                return `
+                    <div class="save-card session-only">
+                        <div class="save-card-header">
+                            <div class="save-card-title">${escapeHtml(u.title || u.filename || 'Untitled')}</div>
+                            <div class="save-card-meta">${uploadDate}</div>
+                        </div>
+                        <div class="save-card-ids">${u.chunk_count || 0} chunks</div>
+                        <div class="save-card-details">
+                            <span class="detail-tag session-tag">Session only</span>
+                        </div>
+                        <div class="save-card-actions">
+                            <button class="btn btn-outline btn-sm" style="color: var(--error);" onclick="removeSessionUpload('${escapeHtml(u.upload_id)}')">Remove</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            uploadsContent.innerHTML = `<div class="saves-list">${html}</div>`;
+        }
+
+        async function loadUploadsFromAPI() {
+            uploadsContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">Loading...</div>';
+
+            try {
+                const response = await api.getUserUploads(50);
+                const uploads = response.uploads || [];
+                uploadsCountEl.textContent = uploads.length;
+
+                if (uploads.length === 0) {
+                    uploadsContent.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No uploaded documents yet</h3>
+                            <p>Upload a PDF on the <a href="upload.html">Upload page</a> to process and store it here.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = uploads.map(u => {
+                    const uploadDate = u.created_at ? new Date(u.created_at).toLocaleDateString() : '';
+                    const statusBadge = u.status === 'completed' 
+                        ? '<span class="detail-tag" style="background: #d1fae5; color: #065f46;">Processed</span>'
+                        : `<span class="detail-tag">${u.status}</span>`;
+
+                    return `
+                        <div class="save-card">
+                            <div class="save-card-header">
+                                <div class="save-card-title">${escapeHtml(u.title || u.filename || 'Untitled')}</div>
+                                <div class="save-card-meta">${uploadDate}</div>
+                            </div>
+                            <div class="save-card-ids">${u.chunk_count || 0} chunks • ${escapeHtml(u.filename)}</div>
+                            <div class="save-card-details">${statusBadge}</div>
+                            <div class="save-card-actions">
+                                <button class="btn btn-outline btn-sm" style="color: var(--error);" onclick="deleteUpload('${escapeHtml(u.upload_id)}')">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                uploadsContent.innerHTML = `<div class="saves-list">${html}</div>`;
+            } catch (error) {
+                console.error('Error loading uploads:', error);
+                uploadsContent.innerHTML = `<div class="empty-state"><h3>Error loading uploads</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        async function deleteUpload(uploadId) {
+            if (!confirm('Delete this upload? This cannot be undone.')) return;
+            try {
+                await api.deleteUserUpload(uploadId);
+                loadAll();
+            } catch (error) {
+                alert('Error: ' + (error.message || 'Could not delete upload'));
+            }
+        }
+
+        showArchivedCheckbox?.addEventListener('change', loadAll);
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.location.hash === '#patients') {
+                switchTab('patients');
+            }
+            loadAll();
+        });
+    </script>
+</body>
+</html>

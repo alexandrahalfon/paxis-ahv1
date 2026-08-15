@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paxis for Patients</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Page-specific only; cards, buttons and forms come from styles.css. */
+        .ph-wrap { max-width: 900px; margin: 0 auto; padding: var(--spacing-2xl) var(--spacing-md); }
+
+        /* Hero with an ask box, mirroring the clinician home */
+        .ph-hero { text-align: center; margin-bottom: var(--spacing-2xl); }
+        .ph-hero h1 { font-size: 2.1rem; line-height: 1.25; margin-bottom: var(--spacing-sm); }
+        .ph-hero > p { color: var(--gray-600); max-width: 600px; margin: 0 auto var(--spacing-lg); font-size: 1.02rem; }
+
+        .ph-ask { display: flex; gap: var(--spacing-sm); max-width: 640px; margin: 0 auto var(--spacing-md); }
+        .ph-ask textarea {
+            flex: 1; padding: var(--spacing-md); border: 2px solid var(--gray-300);
+            border-radius: var(--radius-md); font-family: var(--font-sans); font-size: 1rem;
+            resize: none; min-height: 56px; line-height: 1.5;
+        }
+        .ph-ask textarea:focus { outline: none; border-color: var(--primary); }
+
+        .ph-examples { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); justify-content: center; }
+        .ph-example {
+            background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 999px;
+            padding: 0.4rem 0.85rem; font-size: 0.84rem; color: var(--gray-700);
+            cursor: pointer; transition: all 0.15s ease; font-family: inherit;
+        }
+        .ph-example:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Sections */
+        .ph-section { margin-bottom: var(--spacing-2xl); }
+        .ph-section-title { text-align: center; margin-bottom: var(--spacing-lg); }
+        .ph-section-title h2 { font-size: 1.35rem; margin-bottom: var(--spacing-xs); }
+        .ph-section-title p { color: var(--gray-600); margin: 0; font-size: 0.95rem; }
+
+        .ph-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--spacing-md); }
+        .ph-cards .card { padding: var(--spacing-lg); text-decoration: none; display: block; }
+        .ph-cards .card:hover { border-color: var(--primary); }
+        .ph-cards h3 { font-size: 1rem; margin-bottom: var(--spacing-xs); color: var(--gray-900); }
+        .ph-cards p { font-size: 0.875rem; color: var(--gray-600); margin: 0; }
+        .ph-tag { display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--primary); margin-bottom: var(--spacing-xs); }
+
+        /* How it works */
+        .ph-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-lg); }
+        .ph-step { text-align: center; }
+        .ph-step-num {
+            width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #fff;
+            font-weight: 800; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto var(--spacing-sm);
+        }
+        .ph-step h3 { font-size: 0.98rem; margin-bottom: var(--spacing-xs); }
+        .ph-step p { font-size: 0.875rem; color: var(--gray-600); margin: 0; line-height: 1.6; }
+
+        /* Status + answers */
+        .ph-status { display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: var(--spacing-sm); padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-lg); }
+        .ph-status p { margin: 0; font-size: 0.9rem; color: var(--gray-700); }
+        .ph-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            margin-right: var(--spacing-xs); vertical-align: middle; }
+        .ph-dot-on { background: #16a34a; }
+        .ph-dot-off { background: var(--gray-400); }
+
+        .ph-safety { background: var(--gray-50); border-radius: var(--radius-md);
+            padding: var(--spacing-lg); font-size: 0.9rem; color: var(--gray-700); line-height: 1.7; }
+        .ph-safety strong { color: var(--gray-900); }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height: 48px; width: auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="patient-demo.html">See how it works</a></li>
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="ph-wrap">
+
+            <!-- Hero -->
+            <div class="ph-hero">
+                <h1>Understand your cancer care,<br>in plain language</h1>
+                <p>
+                    Ask anything you didn't get to ask at your appointment. Paxis explains it
+                    simply, using the same medical evidence oncologists rely on.
+                </p>
+
+                <div class="ph-ask">
+                    <textarea id="heroInput" rows="1"
+                              placeholder="Ask a question, or tell me what's going on..."></textarea>
+                    <button class="btn btn-primary" id="heroBtn">Ask</button>
+                </div>
+
+                <div class="ph-examples">
+                    <button class="ph-example">What is immunotherapy?</button>
+                    <button class="ph-example">What side effects should I watch for?</button>
+                    <button class="ph-example">What does my report mean by "grade 2"?</button>
+                    <button class="ph-example">I just got diagnosed and I'm overwhelmed</button>
+                </div>
+            </div>
+
+            <!-- Signed-in status -->
+            <div class="card ph-status is-hidden" id="phStatus">
+                <p id="phStatusText"></p>
+                <a href="patient-connect.html" class="btn btn-outline btn-sm is-hidden" id="phConnectBtn">
+                    Connect your doctor
+                </a>
+            </div>
+
+            <!-- Replies from the care team -->
+            <div class="is-hidden" id="phAnswers"></div>
+
+            <!-- What you can do -->
+            <div class="ph-section">
+                <div class="ph-section-title">
+                    <h2>What you can do here</h2>
+                    <p>Everything is free to use, and you don't need a doctor connected.</p>
+                </div>
+                <div class="ph-cards">
+                    <a class="card" href="patient-qa.html">
+                        <span class="ph-tag">Start here</span>
+                        <h3>Ask a question</h3>
+                        <p>Before a visit, to work out what to raise. After one, to make sense of what you were told.</p>
+                    </a>
+                    <a class="card" href="patient-dashboard.html">
+                        <span class="ph-tag">Your record</span>
+                        <h3>My health</h3>
+                        <p>Your diagnosis, treatment, medications, and labs in one place — built as you go, with or without a connected doctor.</p>
+                    </a>
+                    <a class="card" href="patient-documents.html">
+                        <span class="ph-tag">Upload</span>
+                        <h3>Add a document</h3>
+                        <p>A photo or PDF of a lab, pathology, or visit summary. You review what it found before anything is saved.</p>
+                    </a>
+                    <a class="card" href="patient-medication.html">
+                        <span class="ph-tag">Treatment</span>
+                        <h3>About my medication</h3>
+                        <p>What a drug is, how it works, and what the research looks at.</p>
+                    </a>
+                    <a class="card" href="patient-report.html">
+                        <span class="ph-tag">Paperwork</span>
+                        <h3>Explain my report</h3>
+                        <p>Paste a pathology, imaging, or lab report and get the terms explained.</p>
+                    </a>
+                    <a class="card" href="patient-symptoms.html">
+                        <span class="ph-tag">Track</span>
+                        <h3>Symptom diary</h3>
+                        <p>Note how you've been feeling, so you have something specific for your next visit.</p>
+                    </a>
+                </div>
+            </div>
+
+            <!-- How it works -->
+            <div class="ph-section">
+                <div class="ph-section-title">
+                    <h2>How it works</h2>
+                    <p>Three steps, and you can stop after the first.</p>
+                </div>
+                <div class="ph-steps">
+                    <div class="ph-step">
+                        <div class="ph-step-num">1</div>
+                        <h3>Ask in your own words</h3>
+                        <p>No medical terms needed. If you're not sure of the details, that's completely normal.</p>
+                    </div>
+                    <div class="ph-step">
+                        <div class="ph-step-num">2</div>
+                        <h3>Get a clear answer</h3>
+                        <p>Explained simply, with the research it came from, so you can see where it's based.</p>
+                    </div>
+                    <div class="ph-step">
+                        <div class="ph-step-num">3</div>
+                        <h3>Connect your doctor, optionally</h3>
+                        <p>If they give you a code, answers use your actual diagnosis and you can send questions to them.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Safety -->
+            <div class="ph-section">
+                <div class="ph-safety">
+                    <strong>What Paxis will and won't do.</strong><br>
+                    It explains things, helps you prepare questions, and points you to the research
+                    behind an answer. It will <strong>not</strong> diagnose you, tell you what your
+                    results mean for your outlook, or suggest changing anything about your treatment.
+                    Those belong to your care team, who know your full picture.<br><br>
+                    If something feels urgent, contact your care team or your local emergency
+                    number right away rather than asking here.
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Paxis. For educational purposes only, not a substitute for professional medical advice.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+        InterfaceSwitch.init('patient');
+        SideNav.init('home', 'patient');
+
+        (function () {
+            // Hero box hands the question to the chat page, same pattern as
+            // the clinician home. Stored rather than put in the URL so a
+            // health question never ends up in browser history or a log.
+            var input = document.getElementById('heroInput');
+            var btn = document.getElementById('heroBtn');
+
+            function go() {
+                var q = input.value.trim();
+                if (q) sessionStorage.setItem('paxis_pending_question', q);
+                window.location.href = 'patient-qa.html';
+            }
+            btn.addEventListener('click', go);
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); }
+            });
+            input.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            document.querySelectorAll('.ph-example').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    input.value = b.textContent;
+                    go();
+                });
+            });
+        })();
+
+        // Connection status for signed-in patients. Being unconnected is a
+        // normal state, not a problem to fix, so the copy stays neutral.
+        (async function () {
+            var token = localStorage.getItem('exueed_token');
+            if (!token) return;
+            try {
+                var base = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+                var res = await fetch(base + '/portal/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) return;
+                var data = await res.json();
+
+                var status = document.getElementById('phStatus');
+                var text = document.getElementById('phStatusText');
+                var btn = document.getElementById('phConnectBtn');
+                status.classList.remove('is-hidden');
+
+                if (data.linked) {
+                    text.innerHTML = '<span class="ph-dot ph-dot-on"></span>' +
+                        'Connected to your care team, so answers can use your diagnosis.';
+                } else if (data.pending_request) {
+                    text.innerHTML = '<span class="ph-dot ph-dot-off"></span>' +
+                        'Your request to connect is with your doctor.';
+                } else {
+                    text.innerHTML = '<span class="ph-dot ph-dot-off"></span>' +
+                        'Ask anything you like. Connecting a doctor is optional, and makes answers more specific.';
+                    btn.classList.remove('is-hidden');
+                }
+                await loadAnswers(base, token);
+            } catch (e) { /* page works fine without this */ }
+        })();
+
+        // Questions the patient sent to their doctor, and any replies.
+        async function loadAnswers(base, token) {
+            var res = await fetch(base + '/portal/my-questions', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) return;
+            var items = (await res.json()).questions || [];
+            if (!items.length) return;
+
+            function esc(s) {
+                return (s == null ? '' : String(s))
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            var wrap = document.getElementById('phAnswers');
+            wrap.innerHTML = '<h3 style="font-size:1rem;margin:0 0 var(--spacing-sm);">' +
+                             'Questions you sent your doctor</h3>';
+            items.slice(0, 5).forEach(function (q) {
+                var answered = q.status === 'answered' && q.physician_response;
+                var card = document.createElement('div');
+                card.className = 'card';
+                card.style.cssText = 'padding: var(--spacing-md) var(--spacing-lg); margin-bottom: var(--spacing-sm);';
+                card.innerHTML =
+                    '<p style="margin:0 0 var(--spacing-xs);font-size:0.875rem;color:var(--gray-600);">' +
+                        'You asked: ' + esc(q.question) +
+                    '</p>' +
+                    (answered
+                        ? '<p style="margin:0;font-size:0.9rem;color:var(--gray-900);">' +
+                          '<strong>Your doctor replied:</strong> ' + esc(q.physician_response) + '</p>'
+                        : '<p style="margin:0;font-size:0.85rem;color:var(--gray-500);">' +
+                          'Waiting for your doctor to reply.</p>');
+                wrap.appendChild(card);
+            });
+            wrap.classList.remove('is-hidden');
+        }
+    </script>
+</body>
+</html>

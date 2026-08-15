@@ -1,0 +1,27 @@
+{
+  "id": "metastatic_prostate_palliative",
+  "description": "Recurrent/metastatic castration-resistant prostate cancer with painful bone metastases and declining ECOG. Exercises the palliative-care specialist on P4, PSA-as-biomarker, and the recurrence+progression gate that should route to tumor-board surface.",
+  "query": "78 y.o. male with metastatic castration-resistant prostate adenocarcinoma, Gleason 9, multiple painful bone metastases including T12 vertebral lesion with early cord compression concern, PSA 450, ECOG 2, post-docetaxel progression. Patient and family prioritise quality of life. What are the best next-line options balancing life-prolonging therapy and symptom control?",
+  "category": "prostate",
+  "query_type": "treatment_recommendation",
+  "expected": {
+    "min_studies": 2,
+    "max_studies": 8,
+    "required_source_lanes": ["qdrant"],
+    "must_trigger_events": [
+      "has_patient_context",
+      "progression_post_chemo"
+    ],
+    "min_safety_triggers": {
+      "numerical_stripped": 0
+    },
+    "min_eligibility": {
+      "MATCH_plus_POSSIBLE": 1
+    },
+    "forbidden_doc_substrings": [
+      "NCCN-Non-Small_Cell_Lung_Cancer",
+      "breast",
+      "head_neck"
+    ]
+  }
+}

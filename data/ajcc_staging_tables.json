@@ -1,0 +1,797 @@
+{
+  "_metadata": {
+    "version": "AJCC 8th Edition",
+    "source": "AJCC Cancer Staging Manual, 8th Edition (2017)",
+    "last_updated": "2024-01-15",
+    "total_cancer_types": 33,
+    "total_mappings": 619,
+    "notes": [
+      "Anatomic stage groupings based on TNM",
+      "Wildcards: 'any' matches any value for that component",
+      "Substages (T1a, T1b, T1c, N1mi, etc.) preserved for precise matching",
+      "M1 subcategories (M1a, M1b, M1c) included where applicable",
+      "Some cancers have prognostic staging incorporating grade/biomarkers - noted but not fully modeled"
+    ]
+  },
+
+  "breast": {
+    "aliases": ["breast", "breast cancer", "breast carcinoma", "mammary", "ductal", "lobular", "dcis", "idc", "ilc"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "IA": [["1", "0", "0"], ["1mi", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"], ["1c", "0", "0"]],
+      "IB": [["0", "1mi", "0"], ["1", "1mi", "0"]],
+      "IIA": [["0", "1", "0"], ["1", "1", "0"], ["2", "0", "0"]],
+      "IIB": [["2", "1", "0"], ["3", "0", "0"]],
+      "IIIA": [["0", "2", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "1", "0"], ["3", "2", "0"]],
+      "IIIB": [["4", "0", "0"], ["4", "1", "0"], ["4", "2", "0"], ["4a", "0", "0"], ["4a", "1", "0"], ["4a", "2", "0"], ["4b", "0", "0"], ["4b", "1", "0"], ["4b", "2", "0"], ["4c", "0", "0"], ["4c", "1", "0"], ["4c", "2", "0"], ["4d", "0", "0"], ["4d", "1", "0"], ["4d", "2", "0"]],
+      "IIIC": [["0", "3", "0"], ["1", "3", "0"], ["2", "3", "0"], ["3", "3", "0"], ["4", "3", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "Carcinoma in situ (DCIS)",
+      "1": "≤20mm",
+      "1mi": "≤1mm (microinvasion)",
+      "1a": ">1mm but ≤5mm",
+      "1b": ">5mm but ≤10mm",
+      "1c": ">10mm but ≤20mm",
+      "2": ">20mm but ≤50mm",
+      "3": ">50mm",
+      "4": "Any size with direct extension to chest wall and/or skin",
+      "4a": "Extension to chest wall",
+      "4b": "Ulceration, satellite nodules, or edema",
+      "4c": "Both 4a and 4b",
+      "4d": "Inflammatory carcinoma"
+    },
+    "n_definitions": {
+      "0": "No regional LN metastasis",
+      "1mi": "Micrometastasis >0.2mm but ≤2mm",
+      "1": "1-3 axillary LNs",
+      "2": "4-9 axillary LNs",
+      "3": "≥10 axillary or infraclavicular or supraclavicular"
+    }
+  },
+
+  "lung": {
+    "aliases": ["lung", "lung cancer", "pulmonary", "nsclc", "non-small cell", "non small cell lung", "lung adenocarcinoma", "lung squamous"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "IA1": [["1", "0", "0"], ["1mi", "0", "0"], ["1a", "0", "0"]],
+      "IA2": [["1b", "0", "0"]],
+      "IA3": [["1c", "0", "0"]],
+      "IA": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"], ["1c", "0", "0"]],
+      "IB": [["2", "0", "0"], ["2a", "0", "0"]],
+      "IIA": [["2b", "0", "0"]],
+      "IIB": [["1", "1", "0"], ["1a", "1", "0"], ["1b", "1", "0"], ["1c", "1", "0"], ["2", "1", "0"], ["2a", "1", "0"], ["2b", "1", "0"], ["3", "0", "0"]],
+      "IIIA": [["1", "2", "0"], ["1a", "2", "0"], ["1b", "2", "0"], ["1c", "2", "0"], ["2", "2", "0"], ["2a", "2", "0"], ["2b", "2", "0"], ["3", "1", "0"], ["4", "0", "0"], ["4", "1", "0"]],
+      "IIIB": [["1", "3", "0"], ["1a", "3", "0"], ["1b", "3", "0"], ["1c", "3", "0"], ["2", "3", "0"], ["2a", "3", "0"], ["2b", "3", "0"], ["3", "2", "0"], ["4", "2", "0"]],
+      "IIIC": [["3", "3", "0"], ["4", "3", "0"]],
+      "IVA": [["any", "any", "1a"], ["any", "any", "1b"]],
+      "IVB": [["any", "any", "1c"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "Carcinoma in situ",
+      "1": "≤3cm surrounded by lung/visceral pleura",
+      "1mi": "Minimally invasive adenocarcinoma ≤3cm",
+      "1a": "≤1cm",
+      "1b": ">1cm but ≤2cm",
+      "1c": ">2cm but ≤3cm",
+      "2": ">3cm but ≤5cm",
+      "2a": ">3cm but ≤4cm",
+      "2b": ">4cm but ≤5cm",
+      "3": ">5cm but ≤7cm or chest wall/phrenic nerve invasion",
+      "4": ">7cm or mediastinum/heart/great vessels invasion"
+    },
+    "n_definitions": {
+      "0": "No regional LN metastasis",
+      "1": "Ipsilateral peribronchial/hilar LNs",
+      "2": "Ipsilateral mediastinal/subcarinal LNs",
+      "3": "Contralateral mediastinal/hilar or scalene/supraclavicular"
+    },
+    "m_definitions": {
+      "0": "No distant metastasis",
+      "1a": "Contralateral lung nodule or malignant effusion",
+      "1b": "Single extrathoracic metastasis",
+      "1c": "Multiple extrathoracic metastases"
+    }
+  },
+
+  "lung_sclc": {
+    "aliases": ["sclc", "small cell", "small cell lung", "small cell lung cancer"],
+    "staging_table": {
+      "limited": [["1", "0", "0"], ["1", "1", "0"], ["1", "2", "0"], ["2", "0", "0"], ["2", "1", "0"], ["2", "2", "0"], ["3", "0", "0"], ["3", "1", "0"], ["3", "2", "0"], ["4", "0", "0"], ["4", "1", "0"], ["4", "2", "0"]],
+      "extensive": [["any", "3", "0"], ["any", "any", "1"]]
+    },
+    "clinical_definition": "Limited = confined to ipsilateral hemithorax within single radiation port; Extensive = beyond"
+  },
+
+  "colorectal": {
+    "aliases": ["colorectal", "colon", "colon cancer", "rectal", "rectum", "rectal cancer", "crc"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"], ["2", "0", "0"]],
+      "IIA": [["3", "0", "0"]],
+      "IIB": [["4a", "0", "0"]],
+      "IIC": [["4b", "0", "0"]],
+      "IIIA": [["1", "1", "0"], ["2", "1", "0"], ["1", "2a", "0"], ["1", "1a", "0"], ["1", "1b", "0"], ["1", "1c", "0"]],
+      "IIIB": [["3", "1", "0"], ["4a", "1", "0"], ["2", "2a", "0"], ["3", "2a", "0"], ["1", "2b", "0"], ["2", "2b", "0"], ["2", "1a", "0"], ["2", "1b", "0"], ["2", "1c", "0"], ["3", "1a", "0"], ["3", "1b", "0"], ["3", "1c", "0"]],
+      "IIIC": [["4a", "2a", "0"], ["4b", "1", "0"], ["4b", "2", "0"], ["3", "2b", "0"], ["4a", "2b", "0"], ["4b", "2a", "0"], ["4b", "2b", "0"], ["any", "2c", "0"]],
+      "IVA": [["any", "any", "1a"]],
+      "IVB": [["any", "any", "1b"]],
+      "IVC": [["any", "any", "1c"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "Carcinoma in situ",
+      "1": "Submucosa invasion",
+      "2": "Muscularis propria invasion",
+      "3": "Through muscularis propria into pericolorectal tissues",
+      "4": "Visceral peritoneum or adjacent organs",
+      "4a": "Penetrates visceral peritoneum",
+      "4b": "Directly invades adjacent organs"
+    },
+    "n_definitions": {
+      "0": "No regional LN metastasis",
+      "1": "1-3 regional LNs",
+      "1a": "1 regional LN",
+      "1b": "2-3 regional LNs",
+      "1c": "Tumor deposits without LN",
+      "2": "≥4 regional LNs",
+      "2a": "4-6 regional LNs",
+      "2b": "≥7 regional LNs",
+      "2c": "Tumor deposits with N1 or N2"
+    }
+  },
+
+  "prostate": {
+    "aliases": ["prostate", "prostate cancer", "prostatic", "prostate adenocarcinoma"],
+    "staging_table": {
+      "I": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"], ["1c", "0", "0"], ["2", "0", "0"]],
+      "IIA": [["2a", "0", "0"]],
+      "IIB": [["2b", "0", "0"]],
+      "IIC": [["2c", "0", "0"]],
+      "IIIA": [["1", "0", "0"], ["2", "0", "0"]],
+      "IIIB": [["3", "0", "0"], ["3a", "0", "0"], ["3b", "0", "0"]],
+      "IIIC": [["4", "0", "0"]],
+      "IVA": [["any", "1", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "risk_groups": {
+      "very_low": "T1c, Grade Group 1, PSA <10, <3 cores positive, ≤50% cancer in any core",
+      "low": "T1-T2a, Grade Group 1, PSA <10",
+      "intermediate_favorable": "T2b-T2c OR Grade Group 2-3 OR PSA 10-20 (1 factor)",
+      "intermediate_unfavorable": "2-3 intermediate factors or Grade Group 3",
+      "high": "T3a OR Grade Group 4-5 OR PSA >20",
+      "very_high": "T3b-T4 OR primary Gleason 5 OR >4 cores Grade Group 4-5"
+    },
+    "t_definitions": {
+      "1": "Clinically inapparent tumor",
+      "1a": "≤5% of resected tissue",
+      "1b": ">5% of resected tissue",
+      "1c": "Identified by needle biopsy",
+      "2": "Tumor confined within prostate",
+      "2a": "≤1/2 of one lobe",
+      "2b": ">1/2 of one lobe but not both",
+      "2c": "Both lobes",
+      "3": "Extraprostatic extension",
+      "3a": "Extraprostatic extension or bladder neck invasion",
+      "3b": "Seminal vesicle invasion",
+      "4": "Invasion of rectum, levator muscles, or pelvic wall"
+    }
+  },
+
+  "head_neck_oral_cavity": {
+    "aliases": ["oral cavity", "oral", "tongue", "floor of mouth", "buccal", "gingiva", "hard palate", "lip", "retromolar"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "III": [["3", "0", "0"], ["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "IVA": [["4a", "0", "0"], ["4a", "1", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4a", "2", "0"]],
+      "IVB": [["any", "3", "0"], ["4b", "any", "0"], ["4b", "0", "0"], ["4b", "1", "0"], ["4b", "2", "0"], ["4b", "3", "0"]],
+      "IVC": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "Carcinoma in situ",
+      "1": "≤2cm with DOI ≤5mm",
+      "2": ">2cm but ≤4cm with DOI ≤10mm, OR ≤2cm with DOI >5mm but ≤10mm",
+      "3": ">4cm OR DOI >10mm",
+      "4a": "Through cortical bone, maxillary sinus, skin of face",
+      "4b": "Masticator space, pterygoid plates, skull base, or carotid artery"
+    }
+  },
+
+  "head_neck_oropharynx_hpv_positive": {
+    "aliases": ["oropharynx hpv+", "oropharyngeal hpv+", "hpv positive oropharynx", "p16 positive", "hpv+ opc", "tonsil hpv+", "base of tongue hpv+"],
+    "staging_table": {
+      "I": [["0", "0", "0"], ["0", "1", "0"], ["1", "0", "0"], ["1", "1", "0"], ["2", "0", "0"], ["2", "1", "0"]],
+      "II": [["0", "2", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "0", "0"], ["3", "1", "0"], ["3", "2", "0"]],
+      "III": [["any", "3", "0"], ["4", "any", "0"], ["4", "0", "0"], ["4", "1", "0"], ["4", "2", "0"], ["4", "3", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "notes": "HPV-associated (p16+) oropharyngeal SCC has more favorable staging than HPV-negative"
+  },
+
+  "head_neck_oropharynx_hpv_negative": {
+    "aliases": ["oropharynx hpv-", "oropharyngeal hpv-", "hpv negative oropharynx", "p16 negative", "hpv- opc"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "III": [["3", "0", "0"], ["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "IVA": [["4a", "0", "0"], ["4a", "1", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4a", "2", "0"]],
+      "IVB": [["any", "3", "0"], ["4b", "any", "0"]],
+      "IVC": [["any", "any", "1"]]
+    }
+  },
+
+  "head_neck_oropharynx": {
+    "aliases": ["oropharynx", "oropharyngeal", "tonsil", "tonsillar", "base of tongue", "bot", "soft palate", "pharyngeal wall"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "III": [["3", "0", "0"], ["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "IVA": [["4a", "0", "0"], ["4a", "1", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4a", "2", "0"]],
+      "IVB": [["any", "3", "0"], ["4b", "any", "0"]],
+      "IVC": [["any", "any", "1"]]
+    },
+    "notes": "Default to HPV-negative staging when HPV status unknown"
+  },
+
+  "head_neck_larynx": {
+    "aliases": ["larynx", "laryngeal", "glottis", "glottic", "supraglottis", "supraglottic", "subglottis", "subglottic", "vocal cord"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "III": [["3", "0", "0"], ["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "IVA": [["4a", "0", "0"], ["4a", "1", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4a", "2", "0"]],
+      "IVB": [["any", "3", "0"], ["4b", "any", "0"]],
+      "IVC": [["any", "any", "1"]]
+    },
+    "t_definitions_glottis": {
+      "is": "Carcinoma in situ",
+      "1": "Limited to vocal cord(s) with normal mobility",
+      "1a": "Limited to one vocal cord",
+      "1b": "Both vocal cords",
+      "2": "Extends to supraglottis/subglottis or impaired cord mobility",
+      "3": "Vocal cord fixation or invades paraglottic space/thyroid cartilage",
+      "4a": "Through thyroid cartilage or tissues beyond larynx",
+      "4b": "Prevertebral space, carotid artery, or mediastinum"
+    }
+  },
+
+  "head_neck_nasopharynx": {
+    "aliases": ["nasopharynx", "nasopharyngeal", "npc", "nasopharyngeal carcinoma"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "II": [["1", "1", "0"], ["2", "0", "0"], ["2", "1", "0"]],
+      "III": [["1", "2", "0"], ["2", "2", "0"], ["3", "0", "0"], ["3", "1", "0"], ["3", "2", "0"]],
+      "IVA": [["4", "0", "0"], ["4", "1", "0"], ["4", "2", "0"], ["any", "3", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "Nasopharynx, oropharynx, or nasal cavity without parapharyngeal involvement",
+      "2": "Parapharyngeal extension and/or soft tissue involvement",
+      "3": "Skull base and/or paranasal sinuses",
+      "4": "Intracranial, cranial nerve, hypopharynx, orbit, parotid"
+    },
+    "n_definitions": {
+      "0": "No regional LN metastasis",
+      "1": "Unilateral cervical and/or retropharyngeal LN(s) ≤6cm",
+      "2": "Bilateral cervical LN(s) ≤6cm",
+      "3": ">6cm and/or below caudal border of cricoid"
+    }
+  },
+
+  "head_neck_hypopharynx": {
+    "aliases": ["hypopharynx", "hypopharyngeal", "pyriform sinus", "pyriform", "posterior pharyngeal wall", "postcricoid"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "III": [["3", "0", "0"], ["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "IVA": [["4a", "0", "0"], ["4a", "1", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4a", "2", "0"]],
+      "IVB": [["any", "3", "0"], ["4b", "any", "0"]],
+      "IVC": [["any", "any", "1"]]
+    }
+  },
+
+  "head_neck_salivary": {
+    "aliases": ["salivary gland", "salivary", "parotid", "submandibular", "sublingual", "parotid gland"],
+    "staging_table": {
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "III": [["3", "0", "0"], ["0", "1", "0"], ["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "IVA": [["4a", "0", "0"], ["4a", "1", "0"], ["0", "2", "0"], ["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4a", "2", "0"]],
+      "IVB": [["any", "3", "0"], ["4b", "any", "0"]],
+      "IVC": [["any", "any", "1"]]
+    }
+  },
+
+  "head_neck_thyroid_differentiated": {
+    "aliases": ["thyroid", "papillary thyroid", "follicular thyroid", "differentiated thyroid", "ptc", "ftc"],
+    "staging_table_under55": {
+      "I": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"], ["2", "0", "0"], ["3", "0", "0"], ["3a", "0", "0"], ["3b", "0", "0"], ["4a", "0", "0"], ["any", "0", "0"], ["any", "1", "0"]],
+      "II": [["any", "any", "1"]]
+    },
+    "staging_table_55plus": {
+      "I": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"], ["2", "0", "0"]],
+      "II": [["3", "0", "0"], ["3a", "0", "0"], ["3b", "0", "0"], ["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "III": [["4a", "any", "0"]],
+      "IVA": [["4b", "any", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "notes": "Age-dependent staging: <55 years has only Stage I-II; ≥55 years has Stage I-IVB"
+  },
+
+  "head_neck_thyroid_medullary": {
+    "aliases": ["medullary thyroid", "mtc", "medullary thyroid carcinoma"],
+    "staging_table": {
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"], ["3", "0", "0"]],
+      "III": [["1", "1a", "0"], ["2", "1a", "0"], ["3", "1a", "0"]],
+      "IVA": [["4a", "any", "0"], ["1", "1b", "0"], ["2", "1b", "0"], ["3", "1b", "0"]],
+      "IVB": [["4b", "any", "0"]],
+      "IVC": [["any", "any", "1"]]
+    }
+  },
+
+  "head_neck_thyroid_anaplastic": {
+    "aliases": ["anaplastic thyroid", "atc", "anaplastic thyroid carcinoma", "undifferentiated thyroid"],
+    "staging_table": {
+      "IVA": [["1", "0", "0"], ["2", "0", "0"], ["3a", "0", "0"]],
+      "IVB": [["3b", "any", "0"], ["4", "any", "0"], ["any", "1", "0"]],
+      "IVC": [["any", "any", "1"]]
+    },
+    "notes": "All anaplastic thyroid carcinoma is Stage IV by definition"
+  },
+
+  "cervical": {
+    "aliases": ["cervix", "cervical", "cervical cancer", "cervix cancer"],
+    "staging_table": {
+      "IA": [["1a", "0", "0"]],
+      "IA1": [["1a1", "0", "0"]],
+      "IA2": [["1a2", "0", "0"]],
+      "IB": [["1b", "0", "0"]],
+      "IB1": [["1b1", "0", "0"]],
+      "IB2": [["1b2", "0", "0"]],
+      "IB3": [["1b3", "0", "0"]],
+      "IIA": [["2a", "0", "0"]],
+      "IIA1": [["2a1", "0", "0"]],
+      "IIA2": [["2a2", "0", "0"]],
+      "IIB": [["2b", "0", "0"]],
+      "IIIA": [["3a", "0", "0"]],
+      "IIIB": [["3b", "0", "0"]],
+      "IIIC": [["any", "1", "0"]],
+      "IIIC1": [["any", "1", "0"]],
+      "IIIC2": [["any", "2", "0"]],
+      "IVA": [["4a", "any", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "Confined to cervix",
+      "1a": "Invasive carcinoma diagnosed only by microscopy",
+      "1a1": "Stromal invasion ≤3mm depth",
+      "1a2": "Stromal invasion >3mm but ≤5mm depth",
+      "1b": "Clinically visible lesion OR microscopic >5mm depth",
+      "1b1": "≤2cm",
+      "1b2": ">2cm but ≤4cm",
+      "1b3": ">4cm",
+      "2": "Beyond uterus but not pelvic wall or lower third vagina",
+      "2a": "Without parametrial invasion",
+      "2a1": "≤4cm",
+      "2a2": ">4cm",
+      "2b": "With parametrial invasion",
+      "3": "Pelvic wall/lower third vagina/hydronephrosis",
+      "3a": "Lower third vagina",
+      "3b": "Pelvic wall or hydronephrosis",
+      "4": "Beyond true pelvis or bladder/rectum mucosa",
+      "4a": "Bladder or rectum"
+    }
+  },
+
+  "endometrial": {
+    "aliases": ["endometrial", "endometrium", "uterine", "uterine cancer", "endometrial cancer"],
+    "staging_table": {
+      "IA": [["1a", "0", "0"], ["1", "0", "0"]],
+      "IB": [["1b", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "IIIA": [["3a", "0", "0"]],
+      "IIIB": [["3b", "0", "0"]],
+      "IIIC1": [["any", "1", "0"]],
+      "IIIC2": [["any", "2", "0"]],
+      "IVA": [["4a", "any", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "Confined to corpus uteri",
+      "1a": "<50% myometrial invasion",
+      "1b": "≥50% myometrial invasion",
+      "2": "Cervical stromal invasion",
+      "3": "Local and/or regional spread",
+      "3a": "Serosa and/or adnexal involvement",
+      "3b": "Vaginal and/or parametrial involvement",
+      "4": "Bladder/bowel mucosa or distant metastases",
+      "4a": "Bladder and/or bowel mucosal invasion"
+    }
+  },
+
+  "ovarian": {
+    "aliases": ["ovarian", "ovary", "ovarian cancer", "fallopian tube", "primary peritoneal"],
+    "staging_table": {
+      "IA": [["1a", "0", "0"]],
+      "IB": [["1b", "0", "0"]],
+      "IC": [["1c", "0", "0"]],
+      "IC1": [["1c1", "0", "0"]],
+      "IC2": [["1c2", "0", "0"]],
+      "IC3": [["1c3", "0", "0"]],
+      "IIA": [["2a", "0", "0"]],
+      "IIB": [["2b", "0", "0"]],
+      "IIIA1": [["any", "1", "0"]],
+      "IIIA2": [["3a2", "0", "0"], ["3a", "0", "0"]],
+      "IIIB": [["3b", "0", "0"]],
+      "IIIC": [["3c", "0", "0"]],
+      "IVA": [["any", "any", "1a"]],
+      "IVB": [["any", "any", "1b"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "Limited to ovaries or fallopian tubes",
+      "1a": "One ovary/tube, capsule intact, negative washings",
+      "1b": "Both ovaries/tubes, capsules intact, negative washings",
+      "1c": "With surgical spill, capsule rupture, or positive washings",
+      "2": "Pelvic extension",
+      "2a": "Extension to uterus/tubes/ovaries",
+      "2b": "Other pelvic tissues",
+      "3": "Extrapelvic peritoneal metastasis and/or LN metastasis",
+      "3a": "Retroperitoneal LN only",
+      "3a2": "Microscopic extrapelvic peritoneal involvement",
+      "3b": "Macroscopic peritoneal metastasis ≤2cm",
+      "3c": "Macroscopic peritoneal metastasis >2cm"
+    }
+  },
+
+  "testicular": {
+    "aliases": ["testicular", "testis", "testicular cancer", "seminoma", "nonseminoma", "germ cell", "gct"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"], ["2", "0", "0"], ["3", "0", "0"], ["4", "0", "0"]],
+      "IA": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"]],
+      "IB": [["2", "0", "0"], ["3", "0", "0"], ["4", "0", "0"]],
+      "IS": [["any", "0", "0"]],
+      "IIA": [["any", "1", "0"]],
+      "IIB": [["any", "2", "0"]],
+      "IIC": [["any", "3", "0"]],
+      "IIIA": [["any", "any", "1a"], ["any", "any", "1"]],
+      "IIIB": [["any", "any", "1a"]],
+      "IIIC": [["any", "any", "1b"]]
+    },
+    "serum_markers": {
+      "S0": "Markers within normal limits",
+      "S1": "LDH <1.5x ULN AND hCG <5000 AND AFP <1000",
+      "S2": "LDH 1.5-10x ULN OR hCG 5000-50000 OR AFP 1000-10000",
+      "S3": "LDH >10x ULN OR hCG >50000 OR AFP >10000"
+    },
+    "t_definitions": {
+      "is": "Intratubular germ cell neoplasia",
+      "1": "Limited to testis without lymphovascular invasion",
+      "1a": "Limited to testis ≤3cm",
+      "1b": "Limited to testis >3cm",
+      "2": "With lymphovascular invasion or epididymis involvement",
+      "3": "Invades spermatic cord",
+      "4": "Invades scrotum"
+    }
+  },
+
+  "bladder": {
+    "aliases": ["bladder", "bladder cancer", "urothelial", "transitional cell", "urothelial carcinoma"],
+    "staging_table": {
+      "0a": [["a", "0", "0"]],
+      "0is": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"], ["2a", "0", "0"], ["2b", "0", "0"]],
+      "IIIA": [["3a", "0", "0"], ["3b", "0", "0"], ["3", "0", "0"], ["any", "1", "0"]],
+      "IIIB": [["any", "2", "0"], ["any", "3", "0"]],
+      "IVA": [["4a", "any", "0"], ["4b", "any", "0"], ["4", "any", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "a": "Noninvasive papillary carcinoma",
+      "is": "Carcinoma in situ",
+      "1": "Invades lamina propria",
+      "2": "Invades muscularis propria",
+      "2a": "Inner half",
+      "2b": "Outer half",
+      "3": "Perivesical tissue invasion",
+      "3a": "Microscopically",
+      "3b": "Macroscopically",
+      "4": "Extravesical invasion",
+      "4a": "Prostate stroma, seminal vesicles, uterus, vagina",
+      "4b": "Pelvic wall, abdominal wall"
+    }
+  },
+
+  "kidney": {
+    "aliases": ["kidney", "renal", "renal cell", "rcc", "renal cell carcinoma", "kidney cancer"],
+    "staging_table": {
+      "I": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"]],
+      "II": [["2", "0", "0"], ["2a", "0", "0"], ["2b", "0", "0"]],
+      "III": [["1", "1", "0"], ["2", "1", "0"], ["3", "0", "0"], ["3", "1", "0"], ["3a", "0", "0"], ["3a", "1", "0"], ["3b", "0", "0"], ["3b", "1", "0"], ["3c", "0", "0"], ["3c", "1", "0"]],
+      "IV": [["4", "any", "0"], ["any", "2", "0"], ["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "≤7cm, limited to kidney",
+      "1a": "≤4cm",
+      "1b": ">4cm but ≤7cm",
+      "2": ">7cm, limited to kidney",
+      "2a": ">7cm but ≤10cm",
+      "2b": ">10cm",
+      "3": "Major veins or perinephric tissues",
+      "3a": "Renal vein or perirenal/sinus fat",
+      "3b": "IVC below diaphragm",
+      "3c": "IVC above diaphragm or wall invasion",
+      "4": "Beyond Gerota's fascia or adrenal"
+    }
+  },
+
+  "esophageal": {
+    "aliases": ["esophageal", "esophagus", "esophageal cancer", "gej", "gastroesophageal junction"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "IA": [["1", "0", "0"], ["1a", "0", "0"]],
+      "IB": [["1b", "0", "0"]],
+      "IC": [["2", "0", "0"]],
+      "IIA": [["2", "0", "0"]],
+      "IIB": [["3", "0", "0"], ["1", "1", "0"], ["2", "1", "0"]],
+      "IIIA": [["1", "2", "0"], ["2", "2", "0"]],
+      "IIIB": [["3", "1", "0"], ["3", "2", "0"], ["4a", "0", "0"], ["4a", "1", "0"], ["4a", "2", "0"]],
+      "IVA": [["any", "3", "0"], ["4b", "any", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "High-grade dysplasia",
+      "1": "Lamina propria or muscularis mucosae",
+      "1a": "Lamina propria or muscularis mucosae",
+      "1b": "Submucosa",
+      "2": "Muscularis propria",
+      "3": "Adventitia",
+      "4": "Adjacent structures",
+      "4a": "Resectable (pleura, pericardium, diaphragm, azygos vein)",
+      "4b": "Unresectable (aorta, vertebral body, trachea)"
+    }
+  },
+
+  "gastric": {
+    "aliases": ["gastric", "stomach", "gastric cancer", "stomach cancer", "gastric adenocarcinoma"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "IA": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"]],
+      "IB": [["1", "1", "0"], ["2", "0", "0"]],
+      "IIA": [["1", "2", "0"], ["2", "1", "0"], ["3", "0", "0"]],
+      "IIB": [["1", "3a", "0"], ["2", "2", "0"], ["3", "1", "0"], ["4a", "0", "0"]],
+      "IIIA": [["2", "3a", "0"], ["3", "2", "0"], ["4a", "1", "0"], ["4a", "2", "0"]],
+      "IIIB": [["1", "3b", "0"], ["2", "3b", "0"], ["3", "3a", "0"], ["4a", "3a", "0"], ["4b", "0", "0"], ["4b", "1", "0"], ["4b", "2", "0"]],
+      "IIIC": [["3", "3b", "0"], ["4a", "3b", "0"], ["4b", "3a", "0"], ["4b", "3b", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "Carcinoma in situ",
+      "1": "Lamina propria, muscularis mucosae, or submucosa",
+      "1a": "Lamina propria or muscularis mucosae",
+      "1b": "Submucosa",
+      "2": "Muscularis propria",
+      "3": "Subserosa",
+      "4": "Serosa or adjacent structures",
+      "4a": "Serosa (visceral peritoneum)",
+      "4b": "Adjacent structures"
+    }
+  },
+
+  "pancreatic": {
+    "aliases": ["pancreatic", "pancreas", "pancreatic cancer", "pancreatic adenocarcinoma", "pdac"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "IA": [["1", "0", "0"], ["1a", "0", "0"], ["1b", "0", "0"], ["1c", "0", "0"]],
+      "IB": [["2", "0", "0"]],
+      "IIA": [["3", "0", "0"]],
+      "IIB": [["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "III": [["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4", "0", "0"], ["4", "1", "0"], ["4", "2", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "Carcinoma in situ / PanIN-3",
+      "1": "≤2cm",
+      "1a": "≤0.5cm",
+      "1b": ">0.5cm but <1cm",
+      "1c": "≥1cm but <2cm",
+      "2": ">2cm but ≤4cm",
+      "3": ">4cm",
+      "4": "Involves celiac axis, SMA, or common hepatic artery"
+    }
+  },
+
+  "liver": {
+    "aliases": ["liver", "hepatocellular", "hcc", "hepatocellular carcinoma", "liver cancer"],
+    "staging_table": {
+      "IA": [["1", "0", "0"], ["1a", "0", "0"]],
+      "IB": [["1b", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "IIIA": [["3", "0", "0"]],
+      "IIIB": [["4", "0", "0"]],
+      "IVA": [["any", "1", "0"]],
+      "IVB": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "Solitary tumor without vascular invasion",
+      "1a": "≤2cm",
+      "1b": ">2cm",
+      "2": "Solitary with vascular invasion OR multiple tumors ≤5cm",
+      "3": "Multiple tumors, at least one >5cm",
+      "4": "Single or multiple with major portal/hepatic vein invasion"
+    }
+  },
+
+  "melanoma": {
+    "aliases": ["melanoma", "cutaneous melanoma", "skin melanoma", "malignant melanoma"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "IA": [["1a", "0", "0"]],
+      "IB": [["1b", "0", "0"], ["2a", "0", "0"]],
+      "IIA": [["2b", "0", "0"], ["3a", "0", "0"]],
+      "IIB": [["3b", "0", "0"], ["4a", "0", "0"]],
+      "IIC": [["4b", "0", "0"]],
+      "IIIA": [["1a", "1a", "0"], ["1b", "1a", "0"], ["2a", "1a", "0"]],
+      "IIIB": [["0", "1a", "0"], ["0", "1b", "0"], ["1a", "1b", "0"], ["1b", "1b", "0"], ["2a", "1b", "0"], ["2b", "1a", "0"], ["3a", "1a", "0"]],
+      "IIIC": [["1a", "2", "0"], ["1b", "2", "0"], ["2a", "2", "0"], ["2b", "1b", "0"], ["2b", "2", "0"], ["3a", "1b", "0"], ["3a", "2", "0"], ["3b", "1", "0"], ["3b", "2", "0"], ["4a", "1", "0"], ["4a", "2", "0"], ["4b", "1", "0"], ["4b", "2", "0"]],
+      "IIID": [["4b", "3", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "Melanoma in situ",
+      "1": "≤1.0mm",
+      "1a": "≤0.8mm without ulceration",
+      "1b": "≤0.8mm with ulceration OR 0.8-1.0mm",
+      "2": ">1.0-2.0mm",
+      "2a": ">1.0-2.0mm without ulceration",
+      "2b": ">1.0-2.0mm with ulceration",
+      "3": ">2.0-4.0mm",
+      "3a": ">2.0-4.0mm without ulceration",
+      "3b": ">2.0-4.0mm with ulceration",
+      "4": ">4.0mm",
+      "4a": ">4.0mm without ulceration",
+      "4b": ">4.0mm with ulceration"
+    }
+  },
+
+  "sarcoma": {
+    "aliases": ["sarcoma", "soft tissue sarcoma", "sts", "soft tissue"],
+    "staging_table": {
+      "IA": [["1", "0", "0"]],
+      "IB": [["2", "0", "0"], ["3", "0", "0"], ["4", "0", "0"]],
+      "II": [["1", "0", "0"]],
+      "IIIA": [["2", "0", "0"]],
+      "IIIB": [["3", "0", "0"], ["4", "0", "0"]],
+      "IV": [["any", "1", "0"], ["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "≤5cm",
+      "2": ">5cm but ≤10cm",
+      "3": ">10cm but ≤15cm",
+      "4": ">15cm"
+    },
+    "notes": "Grade (G1-3) determines Stage I (G1) vs II-III (G2-3)"
+  },
+
+  "mesothelioma": {
+    "aliases": ["mesothelioma", "pleural mesothelioma", "malignant mesothelioma", "mpm"],
+    "staging_table": {
+      "IA": [["1", "0", "0"]],
+      "IB": [["2", "0", "0"], ["3", "0", "0"]],
+      "II": [["1", "1", "0"], ["2", "1", "0"]],
+      "IIIA": [["3", "1", "0"]],
+      "IIIB": [["1", "2", "0"], ["2", "2", "0"], ["3", "2", "0"], ["4", "0", "0"], ["4", "1", "0"], ["4", "2", "0"]],
+      "IV": [["any", "3", "0"], ["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "Ipsilateral parietal pleura only",
+      "2": "Ipsilateral parietal pleura with diaphragm or visceral pleura",
+      "3": "Locally advanced but resectable",
+      "4": "Locally advanced, unresectable"
+    }
+  },
+
+  "anal": {
+    "aliases": ["anal", "anal canal", "anal cancer", "anal squamous"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "IIA": [["2", "0", "0"]],
+      "IIB": [["3", "0", "0"]],
+      "IIIA": [["1", "1", "0"], ["2", "1", "0"]],
+      "IIIB": [["4", "0", "0"], ["3", "1", "0"]],
+      "IIIC": [["4", "1", "0"], ["any", "2", "0"], ["any", "3", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "is": "High-grade squamous intraepithelial lesion",
+      "1": "≤2cm",
+      "2": ">2cm but ≤5cm",
+      "3": ">5cm",
+      "4": "Invasion of adjacent organs (vagina, urethra, bladder)"
+    }
+  },
+
+  "cholangiocarcinoma": {
+    "aliases": ["cholangiocarcinoma", "bile duct", "biliary", "intrahepatic cholangiocarcinoma", "ihcc", "perihilar", "klatskin"],
+    "staging_table": {
+      "IA": [["1a", "0", "0"]],
+      "IB": [["1b", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "IIIA": [["3", "0", "0"]],
+      "IIIB": [["4", "0", "0"], ["any", "1", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "Solitary tumor without vascular invasion",
+      "1a": "≤5cm",
+      "1b": ">5cm",
+      "2": "Solitary with intrahepatic vascular invasion OR multiple tumors",
+      "3": "Perforates visceral peritoneum",
+      "4": "Local extrahepatic invasion"
+    }
+  },
+
+  "gallbladder": {
+    "aliases": ["gallbladder", "gallbladder cancer", "gallbladder carcinoma"],
+    "staging_table": {
+      "0": [["is", "0", "0"]],
+      "I": [["1", "0", "0"]],
+      "IIA": [["2a", "0", "0"]],
+      "IIB": [["2b", "0", "0"]],
+      "IIIA": [["3", "0", "0"]],
+      "IIIB": [["1", "1", "0"], ["2", "1", "0"], ["3", "1", "0"]],
+      "IVA": [["4", "0", "0"], ["4", "1", "0"]],
+      "IVB": [["any", "2", "0"], ["any", "any", "1"]]
+    }
+  },
+
+  "adrenal": {
+    "aliases": ["adrenal", "adrenocortical", "adrenal cortical", "acc", "adrenal carcinoma"],
+    "staging_table": {
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"]],
+      "III": [["1", "1", "0"], ["2", "1", "0"], ["3", "0", "0"], ["3", "1", "0"], ["4", "0", "0"], ["4", "1", "0"]],
+      "IV": [["any", "any", "1"]]
+    },
+    "t_definitions": {
+      "1": "≤5cm, no extra-adrenal invasion",
+      "2": ">5cm, no extra-adrenal invasion",
+      "3": "Any size with local invasion but not adjacent organs",
+      "4": "Invasion of adjacent organs (kidney, diaphragm, great vessels, liver)"
+    }
+  },
+
+  "neuroendocrine_gi": {
+    "aliases": ["neuroendocrine", "net", "carcinoid", "gi net", "neuroendocrine tumor"],
+    "staging_table": {
+      "I": [["1", "0", "0"]],
+      "II": [["2", "0", "0"], ["3", "0", "0"]],
+      "III": [["4", "0", "0"], ["any", "1", "0"], ["any", "2", "0"]],
+      "IV": [["any", "any", "1"]]
+    }
+  },
+
+  "brain": {
+    "aliases": ["brain", "glioblastoma", "gbm", "glioma", "astrocytoma", "cns"],
+    "who_grades": {
+      "I": "Pilocytic astrocytoma (circumscribed, low proliferative)",
+      "II": "Diffuse astrocytoma, oligodendroglioma (infiltrative, low proliferative)",
+      "III": "Anaplastic astrocytoma, anaplastic oligodendroglioma (high mitotic)",
+      "IV": "Glioblastoma (microvascular proliferation and/or necrosis)"
+    },
+    "notes": "Brain tumors use WHO grading, not TNM. Clinical management based on WHO grade, molecular markers (IDH, MGMT, 1p/19q), resection extent, and performance status"
+  }
+}

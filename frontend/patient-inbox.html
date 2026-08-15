@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Inbox - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Page-specific only. Cards, forms and buttons come from styles.css. */
+        .pi-wrap { max-width: 900px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .pi-head h1 { font-size: 1.6rem; margin-bottom: var(--spacing-xs); }
+        .pi-head p { color: var(--gray-600); margin-bottom: var(--spacing-lg); }
+
+        .pi-tabs { display: flex; gap: var(--spacing-sm); border-bottom: 2px solid var(--gray-200);
+            margin-bottom: var(--spacing-lg); }
+        .pi-tab { padding: var(--spacing-sm) var(--spacing-md); background: none; border: none;
+            cursor: pointer; font-size: 0.9rem; font-weight: 700; color: var(--gray-500);
+            border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .pi-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .pi-count { display: inline-block; background: var(--primary); color: #fff; font-size: 0.7rem;
+            font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 999px; margin-left: var(--spacing-xs); }
+
+        .pi-wrap .card { border-left: 3px solid var(--primary); padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md); }
+        .pi-card-top { display: flex; justify-content: space-between; align-items: flex-start;
+            gap: var(--spacing-md); margin-bottom: var(--spacing-sm); }
+        .pi-q { font-weight: 700; color: var(--gray-900); }
+        .pi-meta { font-size: 0.78rem; color: var(--gray-500); white-space: nowrap; }
+        .pi-urgency { font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; padding: 0.15rem 0.4rem; border-radius: var(--radius-sm);
+            margin-right: var(--spacing-xs); background: var(--gray-100); color: var(--gray-600); }
+        .pi-urgency.urgent { background: #fef2f2; color: var(--danger-dark); }
+        .pi-urgency.soon { background: #fffbeb; color: #92400e; }
+        .pi-context { font-size: 0.82rem; color: var(--gray-600); background: var(--gray-50);
+            padding: var(--spacing-sm); border-radius: var(--radius-sm); margin-bottom: var(--spacing-sm); }
+        .pi-actions { display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-sm); flex-wrap: wrap; }
+        .pi-empty { text-align: center; padding: var(--spacing-2xl) var(--spacing-md); color: var(--gray-500); }
+
+        .pi-msg { padding: var(--spacing-md); border-radius: var(--radius-md); font-size: 0.9rem;
+            margin-bottom: var(--spacing-md); display: none; }
+        .pi-msg.ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; display: block; }
+        .pi-msg.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger-dark); display: block; }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="index.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height:48px;width:auto;">
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="my-saves.html">My Collections</a></li>
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="pi-wrap">
+            <div class="pi-head">
+                <h1>Patient Inbox</h1>
+                <p>Questions your patients sent through Paxis, each with a draft answer you can approve, edit, or replace. Also where you approve patients asking to connect.</p>
+            </div>
+
+            <div class="pi-msg" id="piMsg"></div>
+
+            <div class="pi-tabs">
+                <button class="pi-tab active" id="tabQuestions" data-panel="panelQuestions">
+                    Questions<span class="pi-count is-hidden" id="countQuestions"></span>
+                </button>
+                <button class="pi-tab" id="tabRequests" data-panel="panelRequests">
+                    Connection requests<span class="pi-count is-hidden" id="countRequests"></span>
+                </button>
+            </div>
+
+            <div id="panelQuestions">
+                <div class="pi-empty" id="questionsEmpty">Loading...</div>
+                <div id="questionsList"></div>
+            </div>
+
+            <div id="panelRequests" class="is-hidden">
+                <div class="pi-empty" id="requestsEmpty">Loading...</div>
+                <div id="requestsList"></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=4"></script>
+    <script>
+    InterfaceSwitch.init('clinician');
+    InterfaceSwitch.guardClinicianPage();
+    SideNav.init('inbox');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var msgEl = document.getElementById('piMsg');
+        var patientsCache = null;
+
+        function show(kind, text) { msgEl.className = 'pi-msg ' + kind; msgEl.textContent = text; }
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function headers() {
+            return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+        }
+        function setCount(el, n) {
+            if (n > 0) { el.textContent = n; el.classList.remove('is-hidden'); }
+            else el.classList.add('is-hidden');
+        }
+
+        // Tabs
+        document.querySelectorAll('.pi-tab').forEach(function (t) {
+            t.addEventListener('click', function () {
+                document.querySelectorAll('.pi-tab').forEach(function (x) { x.classList.remove('active'); });
+                t.classList.add('active');
+                document.getElementById('panelQuestions').classList.add('is-hidden');
+                document.getElementById('panelRequests').classList.add('is-hidden');
+                document.getElementById(t.dataset.panel).classList.remove('is-hidden');
+            });
+        });
+
+        if (!token) { show('err', 'Please log in to see your inbox.'); return; }
+
+        // ── Escalated questions ───────────────────────────────────────
+        async function loadQuestions() {
+            var listEl = document.getElementById('questionsList');
+            var emptyEl = document.getElementById('questionsEmpty');
+            try {
+                var res = await fetch(BASE + '/portal/clinician/escalations', { headers: headers() });
+                if (res.status === 403) { show('err', 'This page is for clinician accounts.'); return; }
+                if (!res.ok) throw new Error('Could not load questions');
+                var data = await res.json();
+                var items = data.escalations || [];
+                setCount(document.getElementById('countQuestions'), items.length);
+                listEl.innerHTML = '';
+                if (!items.length) {
+                    emptyEl.textContent = 'No questions waiting. Nice.';
+                    emptyEl.classList.remove('is-hidden');
+                    return;
+                }
+                emptyEl.classList.add('is-hidden');
+                items.forEach(function (it) { listEl.appendChild(renderQuestion(it)); });
+            } catch (e) {
+                emptyEl.textContent = 'Could not load questions.';
+            }
+        }
+
+        function renderQuestion(it) {
+            var card = document.createElement('div');
+            card.className = 'card';
+            var when = it.created_at ? new Date(it.created_at).toLocaleString() : '';
+            card.innerHTML =
+                '<div class="pi-card-top">' +
+                    '<div class="pi-q">' +
+                        '<span class="pi-urgency ' + esc(it.urgency) + '">' + esc(it.urgency) + '</span>' +
+                        esc(it.question) +
+                    '</div>' +
+                    '<div class="pi-meta">' + esc(when) + '</div>' +
+                '</div>' +
+                (it.context_summary ? '<div class="pi-context">' + esc(it.context_summary) + '</div>' : '') +
+                '<div class="form-label">Draft answer (edit before sending)</div>';
+
+            var ta = document.createElement('textarea');
+            ta.className = 'form-textarea';
+            ta.rows = 5;
+            ta.value = it.ai_draft_answer || '';
+            card.appendChild(ta);
+
+            var actions = document.createElement('div');
+            actions.className = 'pi-actions';
+
+            var sendBtn = document.createElement('button');
+            sendBtn.className = 'btn btn-primary btn-sm';
+            sendBtn.textContent = 'Send to patient';
+            sendBtn.addEventListener('click', async function () {
+                var text = ta.value.trim();
+                if (!text) { show('err', 'Write an answer before sending.'); return; }
+                sendBtn.disabled = true; sendBtn.textContent = 'Sending...';
+                try {
+                    var r = await fetch(BASE + '/portal/clinician/escalations/' + it.id + '/respond', {
+                        method: 'POST', headers: headers(), body: JSON.stringify({ response: text })
+                    });
+                    var b = await r.json();
+                    if (!r.ok) throw new Error(b.detail || 'Could not send');
+                    card.remove();
+                    show('ok', 'Answer sent to your patient.');
+                    loadQuestions();
+                } catch (e) {
+                    show('err', e.message);
+                    sendBtn.disabled = false; sendBtn.textContent = 'Send to patient';
+                }
+            });
+            actions.appendChild(sendBtn);
+            card.appendChild(actions);
+            return card;
+        }
+
+        // ── Connection requests ───────────────────────────────────────
+        async function loadPatients() {
+            if (patientsCache) return patientsCache;
+            try {
+                var r = await fetch(BASE + '/patients?limit=500', { headers: headers() });
+                if (!r.ok) return [];
+                var d = await r.json();
+                patientsCache = d.patients || [];
+            } catch (e) { patientsCache = []; }
+            return patientsCache;
+        }
+
+        async function loadRequests() {
+            var listEl = document.getElementById('requestsList');
+            var emptyEl = document.getElementById('requestsEmpty');
+            try {
+                var res = await fetch(BASE + '/portal/clinician/link-requests', { headers: headers() });
+                if (!res.ok) throw new Error('Could not load requests');
+                var data = await res.json();
+                var items = data.requests || [];
+                setCount(document.getElementById('countRequests'), items.length);
+                listEl.innerHTML = '';
+                if (!items.length) {
+                    emptyEl.textContent = 'No pending connection requests.';
+                    emptyEl.classList.remove('is-hidden');
+                    return;
+                }
+                emptyEl.classList.add('is-hidden');
+                var patients = await loadPatients();
+                items.forEach(function (it) { listEl.appendChild(renderRequest(it, patients)); });
+            } catch (e) {
+                emptyEl.textContent = 'Could not load requests.';
+            }
+        }
+
+        function renderRequest(it, patients) {
+            var card = document.createElement('div');
+            card.className = 'card';
+            var name = [it.first_name, it.last_name].filter(Boolean).join(' ') || 'A patient';
+            var when = it.created_at ? new Date(it.created_at).toLocaleDateString() : '';
+            card.innerHTML =
+                '<div class="pi-card-top">' +
+                    '<div><span class="pi-q">' + esc(name) + '</span> asked to connect' +
+                        (it.date_of_birth ? ' <span class="pi-meta">(DOB ' + esc(it.date_of_birth) + ')</span>' : '') +
+                    '</div>' +
+                    '<div class="pi-meta">' + esc(when) + '</div>' +
+                '</div>' +
+                (it.note ? '<div class="pi-context">' + esc(it.note) + '</div>' : '') +
+                '<div class="form-label">Match to one of your patient records</div>';
+
+            var sel = document.createElement('select');
+            sel.className = 'form-select';
+            sel.innerHTML = '<option value="">Choose a patient record...</option>';
+            patients.forEach(function (p) {
+                var o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = [p.first_name, p.last_name].filter(Boolean).join(' ') +
+                                (p.date_of_birth ? ' (' + p.date_of_birth + ')' : '');
+                sel.appendChild(o);
+            });
+            card.appendChild(sel);
+
+            var actions = document.createElement('div');
+            actions.className = 'pi-actions';
+
+            var ok = document.createElement('button');
+            ok.className = 'btn btn-primary btn-sm';
+            ok.textContent = 'Approve and connect';
+            ok.addEventListener('click', async function () {
+                if (!sel.value) { show('err', 'Choose which patient record this is.'); return; }
+                ok.disabled = true;
+                try {
+                    var r = await fetch(BASE + '/portal/clinician/link-requests/' + it.id + '/approve', {
+                        method: 'POST', headers: headers(),
+                        body: JSON.stringify({ patient_record_id: sel.value })
+                    });
+                    var b = await r.json();
+                    if (!r.ok) throw new Error(b.detail || 'Could not approve');
+                    card.remove();
+                    show('ok', 'Connected. They can now get answers based on their record.');
+                    loadRequests();
+                } catch (e) { show('err', e.message); ok.disabled = false; }
+            });
+
+            var no = document.createElement('button');
+            no.className = 'btn btn-outline btn-sm';
+            no.textContent = 'Decline';
+            no.addEventListener('click', async function () {
+                no.disabled = true;
+                try {
+                    await fetch(BASE + '/portal/clinician/link-requests/' + it.id + '/decline', {
+                        method: 'POST', headers: headers()
+                    });
+                    card.remove();
+                    show('ok', 'Request declined.');
+                    loadRequests();
+                } catch (e) { no.disabled = false; }
+            });
+
+            actions.appendChild(ok);
+            actions.appendChild(no);
+            card.appendChild(actions);
+            return card;
+        }
+
+        loadQuestions();
+        loadRequests();
+    })();
+    </script>
+</body>
+</html>

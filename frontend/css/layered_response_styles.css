@@ -1,0 +1,767 @@
+/**
+ * Layered Response Styles
+ * 
+ * Styles for the progressive disclosure response format:
+ * - Brief answer (always visible)
+ * - Expandable structured details
+ * - Explanation text
+ * - Sources list
+ */
+
+/* ==========================================
+   BASE CONTAINER
+   ========================================== */
+
+.layered-response {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-primary, #1a1a1a);
+}
+
+/* ==========================================
+   LAYER 1: BRIEF ANSWER
+   ========================================== */
+
+.brief-answer {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary, #1a1a1a);
+    margin-bottom: 12px;
+}
+
+.brief-answer strong {
+    font-weight: 600;
+}
+
+/* ==========================================
+   EXPAND BUTTON
+   ========================================== */
+
+.expand-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-secondary, #f5f5f5);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary, #666);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 12px;
+}
+
+.expand-btn:hover {
+    background: var(--bg-tertiary, #eaeaea);
+    color: var(--text-primary, #1a1a1a);
+    border-color: var(--border-hover, #ccc);
+}
+
+.expand-arrow {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.hidden {
+    display: none;
+}
+
+/* ==========================================
+   EXPANDABLE CONTENT CONTAINER
+   ========================================== */
+
+.expandable-content {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================
+   LAYER 2: STRUCTURED DETAILS
+   ========================================== */
+
+.structured-details {
+    background: var(--bg-secondary, #f8f9fa);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted, #888);
+    margin-bottom: 10px;
+}
+
+/* Common table styles */
+.structured-details table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 8px 0;
+}
+
+.structured-details th,
+.structured-details td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-light, #eee);
+}
+
+.structured-details th {
+    font-weight: 600;
+    color: var(--text-secondary, #666);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: var(--bg-tertiary, #f0f0f0);
+}
+
+.structured-details tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.structured-details tbody tr:hover {
+    background: var(--bg-hover, rgba(0,0,0,0.02));
+}
+
+/* ==========================================
+   PRESCRIPTION FORMAT
+   ========================================== */
+
+.prescription-format .prescription-table th {
+    width: 120px;
+    background: transparent;
+    text-transform: none;
+    font-size: 14px;
+}
+
+.constraints-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light, #eee);
+}
+
+/* ==========================================
+   RESULTS TABLE FORMAT
+   ========================================== */
+
+.results-format .trial-header {
+    margin-bottom: 12px;
+}
+
+.results-format .trial-header strong {
+    font-size: 16px;
+}
+
+.results-format .trial-design {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+    margin-top: 4px;
+}
+
+.results-format .primary-ep {
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary, #f0f0f0);
+    border-radius: 6px;
+}
+
+.results-format .trial-conclusion {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-info, #e8f4fd);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+/* ==========================================
+   STAGING DERIVATION FORMAT
+   ========================================== */
+
+.staging-format .stage-component {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-light, #eee);
+}
+
+.staging-format .stage-component:last-of-type {
+    border-bottom: none;
+}
+
+.staging-format .stage-label {
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.staging-format .stage-label strong {
+    font-weight: 600;
+    color: var(--accent-color, #2563eb);
+}
+
+.staging-format .stage-reasoning {
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+    padding-left: 16px;
+    border-left: 3px solid var(--border-light, #ddd);
+}
+
+.staging-format .overall-stage {
+    background: var(--bg-success, #e8f5e9);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.staging-format .edition {
+    font-weight: 400;
+    color: var(--text-secondary, #666);
+}
+
+.staging-format .special-factors {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-muted, #888);
+}
+
+/* ==========================================
+   ORDERED CHECKLIST FORMAT
+   ========================================== */
+
+.checklist-format .checklist-section {
+    margin-bottom: 16px;
+}
+
+.checklist-format .section-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--text-primary, #1a1a1a);
+}
+
+.checklist-format .checklist-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.checklist-format .checklist-items li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+.checklist-format .checkbox {
+    color: var(--accent-color, #2563eb);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.checklist-format .conditional {
+    font-size: 12px;
+    color: var(--text-muted, #888);
+    font-style: italic;
+}
+
+/* ==========================================
+   TOXICITY TIMELINE FORMAT
+   ========================================== */
+
+.toxicity-format .toxicity-section {
+    margin-bottom: 20px;
+}
+
+.toxicity-format .toxicity-table td:first-child {
+    font-weight: 500;
+}
+
+/* ==========================================
+   CRITERIA CHECKLIST FORMAT
+   ========================================== */
+
+.criteria-format .criteria-section {
+    margin-bottom: 16px;
+}
+
+.criteria-format ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+}
+
+.criteria-format li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 14px;
+}
+
+.criterion-check {
+    color: var(--success-color, #22c55e);
+    font-weight: 600;
+}
+
+.criterion-consider {
+    color: var(--warning-color, #f59e0b);
+    font-weight: 600;
+}
+
+.criterion-exclude {
+    color: var(--danger-color, #ef4444);
+    font-weight: 600;
+}
+
+.criteria-format .abbrev {
+    font-size: 12px;
+    color: var(--text-muted, #888);
+}
+
+.criteria-format .guideline-info {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light, #eee);
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+    display: flex;
+    gap: 20px;
+}
+
+/* ==========================================
+   COMPARISON TABLE FORMAT
+   ========================================== */
+
+.comparison-format .comparison-table .difference {
+    font-weight: 600;
+    color: var(--accent-color, #2563eb);
+}
+
+.comparison-format .patient-selection {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.comparison-format .favored-section {
+    padding: 12px;
+    background: var(--bg-tertiary, #f0f0f0);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.comparison-format .favored-section strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.comparison-format .favored-section ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.comparison-format .favored-section li {
+    padding: 2px 0;
+}
+
+/* ==========================================
+   ELIGIBILITY CARD FORMAT
+   ========================================== */
+
+.eligibility-format .eligibility-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.eligibility-format .study-title {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.eligibility-format .author-year {
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+}
+
+.eligibility-format .match-score {
+    margin-left: auto;
+    padding: 4px 12px;
+    background: var(--bg-success, #e8f5e9);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--success-color, #22c55e);
+}
+
+.eligibility-format .eligibility-checklist {
+    margin-bottom: 16px;
+}
+
+.eligibility-format .criterion-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 4px 0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.eligibility-format .criterion-row.met {
+    background: var(--bg-success-light, #f0fdf4);
+}
+
+.eligibility-format .criterion-row.not-met {
+    background: var(--bg-danger-light, #fef2f2);
+}
+
+.eligibility-format .criterion-row.unknown {
+    background: var(--bg-warning-light, #fffbeb);
+}
+
+.eligibility-format .criterion-icon {
+    font-weight: 600;
+    width: 20px;
+    text-align: center;
+}
+
+.eligibility-format .criterion-row.met .criterion-icon {
+    color: var(--success-color, #22c55e);
+}
+
+.eligibility-format .criterion-row.not-met .criterion-icon {
+    color: var(--danger-color, #ef4444);
+}
+
+.eligibility-format .criterion-row.unknown .criterion-icon {
+    color: var(--warning-color, #f59e0b);
+}
+
+.eligibility-format .patient-value {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+}
+
+.eligibility-format .study-details {
+    padding: 12px;
+    background: var(--bg-tertiary, #f0f0f0);
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.eligibility-format .study-details > div {
+    padding: 4px 0;
+}
+
+.eligibility-format .fit-summary {
+    padding: 12px;
+    background: var(--bg-info, #e8f4fd);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+/* Eligibility Card with Prose (Trial Match combined format) */
+.eligibility-with-prose .study-outcome {
+    padding: 12px 14px;
+    background: var(--bg-tertiary, #f0f0f0);
+    border-radius: 8px;
+    font-size: 13px;
+    margin: 16px 0;
+}
+
+.eligibility-with-prose .prose-sections {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light, #eee);
+}
+
+.eligibility-with-prose .prose-section {
+    margin-bottom: 16px;
+}
+
+.eligibility-with-prose .prose-section:last-child {
+    margin-bottom: 0;
+}
+
+.eligibility-with-prose .prose-section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a1a);
+    margin-bottom: 6px;
+}
+
+.eligibility-with-prose .prose-section p {
+    font-size: 14px;
+    color: var(--text-secondary, #555);
+    line-height: 1.6;
+    margin: 0 0 8px 0;
+}
+
+.eligibility-with-prose .prose-section p:last-child {
+    margin-bottom: 0;
+}
+
+.eligibility-with-prose .patient-fit-section {
+    background: var(--bg-info, #e8f4fd);
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.eligibility-with-prose .patient-fit-section h4 {
+    color: var(--accent-color, #2563eb);
+}
+
+/* ==========================================
+   RECOMMENDATION CARD FORMAT
+   ========================================== */
+
+.recommendation-format .recommendation-box {
+    background: var(--bg-accent, #eff6ff);
+    border-left: 4px solid var(--accent-color, #2563eb);
+    padding: 16px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 16px;
+}
+
+.recommendation-format .rec-treatment {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.recommendation-format .rec-duration {
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+    margin-top: 4px;
+}
+
+.recommendation-format .rec-section {
+    margin-bottom: 16px;
+}
+
+.recommendation-format .rec-section ul {
+    margin: 8px 0 0 0;
+    padding-left: 20px;
+}
+
+.recommendation-format .rec-section li {
+    padding: 4px 0;
+    font-size: 14px;
+}
+
+.recommendation-format .alternatives {
+    background: var(--bg-tertiary, #f5f5f5);
+    padding: 12px 16px;
+    border-radius: 8px;
+}
+
+/* ==========================================
+   STUDY MATRIX FORMAT
+   ========================================== */
+
+.study-matrix-format .studies-table {
+    font-size: 13px;
+}
+
+.study-matrix-format .studies-table td {
+    padding: 8px 10px;
+}
+
+.study-matrix-format .key-differences {
+    margin-top: 16px;
+}
+
+.study-matrix-format .key-differences ul {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.study-matrix-format .key-differences li {
+    padding: 4px 0;
+    font-size: 14px;
+}
+
+/* ==========================================
+   LAYER 3: EXPLANATION
+   ========================================== */
+
+.explanation {
+    font-size: 14px;
+    color: var(--text-secondary, #555);
+    line-height: 1.7;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light, #eee);
+}
+
+.explanation strong {
+    color: var(--text-primary, #1a1a1a);
+}
+
+/* ==========================================
+   LAYER 4: SOURCES
+   ========================================== */
+
+.sources-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light, #e5e5e5);
+}
+
+.sources-header {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted, #888);
+    margin-bottom: 10px;
+}
+
+.sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.source-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+}
+
+.source-num {
+    background: var(--bg-tertiary, #f0f0f0);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.source-text {
+    flex: 1;
+}
+
+.doi-link {
+    color: var(--accent-color, #2563eb);
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.doi-link:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================
+   FOLLOW-UP SUGGESTIONS
+   ========================================== */
+
+.follow-ups {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.follow-up-btn {
+    background: var(--bg-secondary, #f5f5f5);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.follow-up-btn:hover {
+    background: var(--bg-accent, #eff6ff);
+    border-color: var(--accent-color, #2563eb);
+    color: var(--accent-color, #2563eb);
+}
+
+/* ==========================================
+   DARK MODE SUPPORT
+   ========================================== */
+
+@media (prefers-color-scheme: dark) {
+    .layered-response {
+        --text-primary: #f0f0f0;
+        --text-secondary: #a0a0a0;
+        --text-muted: #707070;
+        --bg-secondary: #2a2a2a;
+        --bg-tertiary: #333;
+        --border-color: #444;
+        --border-light: #3a3a3a;
+        --accent-color: #60a5fa;
+        --success-color: #4ade80;
+        --warning-color: #fbbf24;
+        --danger-color: #f87171;
+        --bg-success: #1a3d1a;
+        --bg-success-light: #1a2e1a;
+        --bg-danger-light: #2e1a1a;
+        --bg-warning-light: #2e2a1a;
+        --bg-info: #1a2a3d;
+        --bg-accent: #1a2a3d;
+    }
+}
+
+/* ==========================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================== */
+
+@media (max-width: 768px) {
+    .structured-details {
+        padding: 16px;
+    }
+    
+    .structured-details table {
+        font-size: 13px;
+    }
+    
+    .structured-details th,
+    .structured-details td {
+        padding: 8px 10px;
+    }
+    
+    .comparison-format .patient-selection {
+        grid-template-columns: 1fr;
+    }
+    
+    .eligibility-format .eligibility-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .eligibility-format .match-score {
+        margin-left: 0;
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "t2n0_glottic_dose",
+  "description": "Simple dose question for early glottic cancer. Exercises the non-patient-context path (no LLM extraction, no inference layer, generic sub-queries).",
+  "query": "What is the standard radiation dose and fractionation for T2N0 glottic cancer?",
+  "category": "head_neck",
+  "query_type": "dose_question",
+  "expected": {
+    "min_studies": 2,
+    "max_studies": 10,
+    "required_source_lanes": ["qdrant"],
+    "must_trigger_events": [],
+    "must_not_trigger_events": [
+      "has_patient_context"
+    ],
+    "min_safety_triggers": {
+      "numerical_stripped": 0
+    },
+    "forbidden_doc_substrings": [
+      "NCCN-Non-Small_Cell_Lung_Cancer",
+      "breast",
+      "prostate"
+    ]
+  }
+}

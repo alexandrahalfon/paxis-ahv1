@@ -1,0 +1,15 @@
+{
+  "audit_summary": {
+    "rows_sampled": 0,
+    "rows_with_biomarker_keys": 0,
+    "total_key_occurrences": 0,
+    "unique_keys_observed": [],
+    "unique_key_count": 0,
+    "note": "Placeholder — no live DB connection available. Run audit_biomarker_status.py with DB access to populate."
+  },
+  "key_frequency": {},
+  "inconsistencies": [],
+  "inconsistency_count": 0,
+  "non_canonical_keys": [],
+  "sample_entries": []
+}

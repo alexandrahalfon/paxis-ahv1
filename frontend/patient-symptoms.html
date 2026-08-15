@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symptom Diary - Paxis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .pt-wrap { max-width: 800px; margin: 0 auto; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl); }
+        .pt-head { margin-bottom: var(--spacing-lg); }
+        .pt-head h1 { font-size: 1.7rem; margin-bottom: var(--spacing-xs); }
+        .pt-head p { color: var(--gray-600); margin: 0; }
+        .pt-row { display: flex; gap: var(--spacing-md); flex-wrap: wrap; }
+        .pt-row .form-group { flex: 1; min-width: 160px; }
+        .pt-note { font-size: 0.85rem; color: var(--gray-600); background: var(--gray-50);
+            border-left: 3px solid var(--primary); border-radius: var(--radius-sm);
+            padding: var(--spacing-sm) var(--spacing-md); margin-top: var(--spacing-md); line-height: 1.55; }
+        .pt-entry { display: flex; justify-content: space-between; align-items: flex-start;
+            gap: var(--spacing-md); padding: var(--spacing-md) 0;
+            border-bottom: 1px solid var(--gray-200); }
+        .pt-entry:last-child { border-bottom: none; }
+        .pt-entry-main strong { color: var(--gray-900); }
+        .pt-entry-meta { font-size: 0.8rem; color: var(--gray-500); margin-top: 2px; }
+        .pt-sev { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.03em; padding: 0.12rem 0.4rem; border-radius: var(--radius-sm);
+            background: var(--gray-100); color: var(--gray-600); margin-left: var(--spacing-xs); }
+        .pt-sev.s4, .pt-sev.s5 { background: #fef2f2; color: var(--danger-dark); }
+        .pt-del { background: none; border: none; cursor: pointer; color: var(--gray-400);
+            font-size: 0.8rem; font-weight: 700; }
+        .pt-del:hover { color: var(--danger); }
+        .pt-msg { padding: var(--spacing-md); border-radius: var(--radius-md); font-size: 0.9rem;
+            margin-top: var(--spacing-md); display: none; line-height: 1.55; }
+        .pt-msg.ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; display: block; }
+        .pt-msg.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger-dark); display: block; }
+        .pt-msg.urgent { background: #fef2f2; border: 2px solid var(--danger); color: var(--danger-dark); display: block; }
+        .pt-empty { text-align: center; padding: var(--spacing-xl); color: var(--gray-500); }
+        .is-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="patient-home.html" class="logo">
+                    <img src="assets/paxis-logo.png" alt="Paxis" style="height:48px;width:auto;">
+                </a>
+                <ul class="nav-links">
+                    <li class="nav-auth">
+                        <a href="login.html" id="authLink" class="btn btn-primary btn-sm">Create account / Login</a>
+                    </li>
+                    <li class="nav-auth"><span id="authBadge" class="auth-badge" style="display:none;"></span></li>
+                    <li class="nav-auth" id="logoutNav" style="display:none;">
+                        <a href="#" id="logoutLink" class="btn btn-outline btn-sm">Logout</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="pt-wrap">
+            <div class="pt-head">
+                <h1>Symptom diary</h1>
+                <p>Keep track of how you've been feeling, so you can tell your care team something specific at your next visit.</p>
+            </div>
+
+            <div class="card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+                <div class="pt-row">
+                    <div class="form-group">
+                        <label class="form-label" for="symInput">What did you notice?</label>
+                        <input class="form-input" type="text" id="symInput" placeholder="e.g. nausea, tiredness, sore mouth">
+                    </div>
+                    <div class="form-group" style="max-width: 180px;">
+                        <label class="form-label" for="symSeverity">How bad?</label>
+                        <select class="form-select" id="symSeverity">
+                            <option value="">Not sure</option>
+                            <option value="1">1 - barely noticeable</option>
+                            <option value="2">2 - mild</option>
+                            <option value="3">3 - moderate</option>
+                            <option value="4">4 - bad</option>
+                            <option value="5">5 - severe</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="max-width: 170px;">
+                        <label class="form-label" for="symDate">When?</label>
+                        <input class="form-input" type="date" id="symDate">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="symNote">Anything else (optional)</label>
+                    <input class="form-input" type="text" id="symNote" placeholder="e.g. worse in the mornings">
+                </div>
+                <button class="btn btn-primary" id="symAdd">Add to diary</button>
+                <div class="pt-note">
+                    This is your own record of how you've been feeling. It isn't checked by anyone
+                    automatically. If something feels urgent, contact your care team right away
+                    rather than logging it here.
+                </div>
+                <div class="pt-msg" id="symMsg"></div>
+            </div>
+
+            <div class="card" style="padding: var(--spacing-lg);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--spacing-md);">
+                    <h2 style="font-size:1.05rem;margin:0;">Your diary</h2>
+                    <button class="btn btn-outline btn-sm" id="symShare">Share with my doctor</button>
+                </div>
+                <div id="symList"><div class="pt-empty">Loading...</div></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/auth-ui.js?v=2"></script>
+    <script src="js/utils.js?v=2"></script>
+    <script src="js/interfaceSwitch.js?v=1"></script>
+    <script src="js/sideNav.js?v=5"></script>
+    <script>
+    InterfaceSwitch.init('patient');
+    SideNav.init('symptoms', 'patient');
+
+    (function () {
+        var BASE = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE) ? CONFIG.API_BASE : '/api';
+        var token = localStorage.getItem('exueed_token');
+        var msg = document.getElementById('symMsg');
+        var listEl = document.getElementById('symList');
+
+        function esc(s) {
+            return (s == null ? '' : String(s))
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function show(kind, text) { msg.className = 'pt-msg ' + kind; msg.textContent = text; }
+        function headers() {
+            return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+        }
+
+        if (!token) { show('err', 'Please log in to use your diary.'); return; }
+
+        document.getElementById('symAdd').addEventListener('click', async function () {
+            var symptom = document.getElementById('symInput').value.trim();
+            if (!symptom) { show('err', 'Describe what you noticed first.'); return; }
+            var sev = document.getElementById('symSeverity').value;
+            var body = {
+                symptom: symptom,
+                severity: sev ? parseInt(sev, 10) : null,
+                noted_on: document.getElementById('symDate').value || null,
+                note: document.getElementById('symNote').value.trim() || null
+            };
+            this.disabled = true;
+            try {
+                var res = await fetch(BASE + '/portal/symptoms', {
+                    method: 'POST', headers: headers(), body: JSON.stringify(body)
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Could not save');
+
+                // Something urgent was logged: say so loudly, but keep the entry.
+                if (data.safety_message) {
+                    show('urgent', data.safety_message.replace(/\*\*/g, ''));
+                } else {
+                    show('ok', 'Added to your diary.');
+                }
+                document.getElementById('symInput').value = '';
+                document.getElementById('symNote').value = '';
+                document.getElementById('symSeverity').value = '';
+                load();
+            } catch (e) {
+                show('err', e.message);
+            } finally {
+                this.disabled = false;
+            }
+        });
+
+        document.getElementById('symShare').addEventListener('click', async function () {
+            this.disabled = true;
+            var original = this.textContent;
+            this.textContent = 'Sending...';
+            try {
+                var res = await fetch(BASE + '/portal/symptoms/share', {
+                    method: 'POST', headers: headers()
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Could not share');
+                show('ok', 'Sent to your care team. They will see it in their Paxis inbox.');
+            } catch (e) {
+                show('err', e.message);
+            } finally {
+                this.disabled = false; this.textContent = original;
+            }
+        });
+
+        async function load() {
+            try {
+                var res = await fetch(BASE + '/portal/symptoms', { headers: headers() });
+                if (res.status === 403) { show('err', 'This page is for patient accounts.'); return; }
+                if (!res.ok) throw new Error('Could not load');
+                var entries = (await res.json()).entries || [];
+                if (!entries.length) {
+                    listEl.innerHTML = '<div class="pt-empty">Nothing logged yet. Add how you\'ve been feeling above.</div>';
+                    return;
+                }
+                listEl.innerHTML = '';
+                entries.forEach(function (e) {
+                    var row = document.createElement('div');
+                    row.className = 'pt-entry';
+                    var sev = e.severity
+                        ? '<span class="pt-sev s' + e.severity + '">' + e.severity + '/5 ' + esc(e.severity_label || '') + '</span>'
+                        : '';
+                    row.innerHTML =
+                        '<div class="pt-entry-main">' +
+                            '<strong>' + esc(e.symptom) + '</strong>' + sev +
+                            '<div class="pt-entry-meta">' + esc(e.noted_on || '') +
+                                (e.note ? ' - ' + esc(e.note) : '') +
+                            '</div>' +
+                        '</div>';
+                    var del = document.createElement('button');
+                    del.className = 'pt-del';
+                    del.textContent = 'Remove';
+                    del.addEventListener('click', async function () {
+                        await fetch(BASE + '/portal/symptoms/' + e.id, { method: 'DELETE', headers: headers() });
+                        load();
+                    });
+                    row.appendChild(del);
+                    listEl.appendChild(row);
+                });
+            } catch (e) {
+                listEl.innerHTML = '<div class="pt-empty">Could not load your diary.</div>';
+            }
+        }
+        load();
+    })();
+    </script>
+</body>
+</html>

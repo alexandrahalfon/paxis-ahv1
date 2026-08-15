@@ -1,0 +1,22 @@
+{
+  "name": "exueed-frontend-tests",
+  "version": "1.0.0",
+  "description": "Property-based tests for Paxis frontend components",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:conversation": "node --experimental-vm-modules node_modules/jest/bin/jest.js test_conversation_manager_properties.js"
+  },
+  "devDependencies": {
+    "fast-check": "^3.15.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "transform": {},
+    "moduleFileExtensions": ["js", "mjs"],
+    "testMatch": ["**/*.test.js", "**/test_*.js"],
+    "verbose": true
+  }
+}
