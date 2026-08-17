@@ -95,7 +95,25 @@ DEFAULT_SOURCES: List[Dict[str, Any]] = [
      "authority_class": "A", "authority_score": 1.0,
      "source_type": "patient_education",
      "collection_setting": "qdrant_patient_education_collection",
-     "allowed_intents": ["nutrition", "symptom_management", "diagnosis_explainer", "general"]},
+     # Was missing treatment_explainer/medication_explainer even though
+     # scripts/ingest_nci_cancer_types.py ingests exactly this ("Breast
+     # Cancer Treatment (PDQ)", etc. -- literally titled "Treatment") and
+     # scripts/ingest_nci_supportive_care.py ingests medication-adjacent
+     # side-effect/interaction content ("Cancer Therapy Interactions With
+     # Foods and Dietary Supplements") under this same source_key. NCI is
+     # also the only source those two scripts populate today, so the
+     # omission silently zeroed out patient-education retrieval for
+     # treatment/medication questions -- the most common shape of patient
+     # question -- for every single patient (see source_governance.py's
+     # allowed_intents enforcement): every candidate got dropped at
+     # retrieval time regardless of how well it matched, and the answer
+     # fell back to the clinician literature corpus instead. Matches
+     # pipeline/patient_education/sources.py's SOURCE["nci"].required_buckets,
+     # which has always listed "treatment" as a bucket this source covers.
+     "allowed_intents": [
+         "nutrition", "symptom_management", "diagnosis_explainer",
+         "treatment_explainer", "medication_explainer", "general",
+     ]},
     {"source_key": "cancer_net", "name": "Cancer.Net (ASCO)", "domain": "cancer.net",
      "authority_class": "A", "authority_score": 0.95,
      "source_type": "patient_education",
@@ -105,7 +123,15 @@ DEFAULT_SOURCES: List[Dict[str, Any]] = [
      "authority_class": "A", "authority_score": 0.95,
      "source_type": "patient_education",
      "collection_setting": "qdrant_patient_education_collection",
-     "allowed_intents": ["diagnosis_explainer", "nutrition", "symptom_management", "general"]},
+     # Same fix as "nci" above, for the same reason: ACS's own
+     # cancer.org/cancer/treatment-types.html is seeded explicitly in
+     # pipeline/patient_education/sources.py, and "treatment" is in that
+     # source's required_buckets there -- treatment_explainer was simply
+     # missing here.
+     "allowed_intents": [
+         "diagnosis_explainer", "nutrition", "symptom_management",
+         "treatment_explainer", "general",
+     ]},
     {"source_key": "nccn_patients", "name": "NCCN Guidelines for Patients", "domain": "nccn.org",
      "authority_class": "A", "authority_score": 0.95,
      "source_type": "patient_education",

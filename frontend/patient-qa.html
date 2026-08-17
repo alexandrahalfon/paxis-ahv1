@@ -46,6 +46,52 @@
             border-bottom: 1px solid var(--gray-200); background: var(--gray-50);
         }
         .pq-chat-head span { font-weight: 700; color: var(--gray-800); }
+
+        /* Citation links (inline [1] superscripts) */
+        .citation-link {
+            text-decoration: none;
+            color: var(--primary);
+            position: relative;
+            cursor: pointer;
+        }
+        .citation-link sup {
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: #fce4ec;
+            color: var(--primary);
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin: 0 1px;
+        }
+        .citation-link:hover sup {
+            background: var(--primary);
+            color: #fff;
+        }
+        /* Native title tooltip is used — no custom CSS tooltip needed.
+           Browsers show it on hover automatically. */
+
+        /* Source list at bottom of message */
+        .source-list {
+            margin: 0.4rem 0 0 0;
+            padding-left: 1.2rem;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+        .source-list li {
+            margin-bottom: 0.2rem;
+        }
+        .source-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .source-link:hover {
+            text-decoration: underline;
+        }
+        .source-origin {
+            color: var(--gray-500);
+            font-size: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -167,6 +213,10 @@
          * .message-content structure from styles.css, so this chat looks
          * identical to the clinician one rather than being a second,
          * smaller design.
+         *
+         * Citations like [1], [2] in the answer are converted to
+         * clickable superscript links with hover tooltips showing the
+         * source title and origin.
          */
         function appendMessage(role, html, disclaimer, sources, extraClass) {
             var isUser = role === 'user';
@@ -179,19 +229,47 @@
 
             var content = document.createElement('div');
             content.className = 'message-content' + (extraClass ? ' ' + extraClass : '');
+
+            // Replace [1], [2] etc. with clickable superscript citation links
+            if (!isUser && sources && sources.length > 0) {
+                html = html.replace(/\[(\d+)\]/g, function(match, num) {
+                    var idx = parseInt(num, 10) - 1;
+                    if (idx < 0 || idx >= sources.length) return match;
+                    var s = sources[idx];
+                    var title = escHtml((s.title || 'Source').substring(0, 80));
+                    var source = escHtml(s.citation || s.source_type || 'NCI');
+                    var url = s.doi ? 'https://doi.org/' + encodeURIComponent(s.doi)
+                            : (s.url || '#');
+                    var tooltip = title + (source ? ' — ' + source : '');
+                    return '<a href="' + url + '" target="_blank" rel="noopener" ' +
+                           'class="citation-link" data-citation="' + num + '" ' +
+                           'title="' + tooltip + '">' +
+                           '<sup>[' + num + ']</sup></a>';
+                });
+            }
+
             content.innerHTML = html;
 
             if (!isUser && sources && sources.length > 0) {
-                var srcHtml = '<div class="message-sources"><strong>Sources:</strong> ';
-                srcHtml += sources.map(function (s) {
-                    var label = (s.title || 'Source').substring(0, 60);
-                    if (s.doi) {
-                        return '<a href="https://doi.org/' + escHtml(s.doi) +
-                               '" target="_blank" rel="noopener">' + escHtml(label) + '</a>';
+                var srcHtml = '<div class="message-sources"><strong>Sources</strong><ol class="source-list">';
+                srcHtml += sources.map(function (s, i) {
+                    var label = escHtml((s.title || 'Source').substring(0, 80));
+                    var source = escHtml(s.citation || s.source_type || '');
+                    var url = s.doi ? 'https://doi.org/' + encodeURIComponent(s.doi)
+                            : (s.url || '');
+                    var yearStr = s.year ? ' (' + s.year + ')' : '';
+                    if (url) {
+                        return '<li><a href="' + url + '" target="_blank" rel="noopener" ' +
+                               'class="source-link">' + label + '</a>' +
+                               (source ? ' <span class="source-origin">' + source + yearStr + '</span>' : yearStr) +
+                               '</li>';
                     }
-                    return escHtml(label) + (s.year ? ' (' + s.year + ')' : '');
-                }).join('; ');
-                content.innerHTML += srcHtml + '</div>';
+                    return '<li>' + label +
+                           (source ? ' <span class="source-origin">' + source + yearStr + '</span>' : yearStr) +
+                           '</li>';
+                }).join('');
+                srcHtml += '</ol></div>';
+                content.innerHTML += srcHtml;
             }
             if (!isUser && disclaimer) {
                 content.innerHTML += '<div class="message-sources">' + escHtml(disclaimer) + '</div>';

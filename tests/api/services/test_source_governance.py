@@ -169,6 +169,57 @@ class TestEnforceSourceGovernanceAsyncWrapper:
         assert out == candidates
 
 
+class TestDefaultSourcesCoverRealPatientQuestions:
+    """Regression test for the bug where DEFAULT_SOURCES itself (not the
+    generic filter logic the rest of this file exercises against
+    synthetic sources) was misconfigured: "nci"'s allowed_intents omitted
+    treatment_explainer and medication_explainer, even though
+    scripts/ingest_nci_cancer_types.py ingests NCI PDQ "Treatment"
+    summaries (e.g. "Breast Cancer Treatment") under source_key="nci" --
+    the only source those ingestion scripts populate today. Every
+    candidate from "nci" was silently dropped by
+    filter_by_source_governance() for any patient question classified as
+    treatment_explainer or medication_explainer (by far the most common
+    shape of patient question -- "what are the side effects of my
+    treatment", "tell me about chemotherapy"), so the multi-corpus
+    retriever came back empty and patient_chat_service.answer() /
+    patient_query.py both fell back to the clinician literature corpus
+    (exueed_kb_latest) instead of ever reaching the patient-education KB.
+    This exercises the actual configured DEFAULT_SOURCES data against the
+    real classify_intent(), so that regression can't come back silently.
+    """
+
+    @pytest.mark.parametrize("question", [
+        "What are the side effects of my treatment?",
+        "Tell me about chemotherapy",
+        "What does immunotherapy do?",
+        "What medication will I be on?",
+        "What should I eat during chemo?",
+        "Is this fatigue normal?",
+        "What does my biomarker report mean?",
+    ])
+    def test_nci_survives_governance_for_common_patient_questions(self, question):
+        from src.api.services.evidence.patient_context_service import classify_intent
+        from src.api.services.evidence.source_registry import DEFAULT_SOURCES
+
+        nci = next(s for s in DEFAULT_SOURCES if s["source_key"] == "nci")
+        sources = {"nci": _source(allowed_intents=nci["allowed_intents"])}
+        candidates = [_candidate("nci")]
+
+        intent = classify_intent(question)
+        out = filter_by_source_governance(
+            candidates, audience="patient", intent=intent, sources_by_key=sources,
+        )
+        assert out == candidates, (
+            f"{question!r} classified as intent={intent!r}, but the 'nci' source "
+            f"(the only patient-education source actually populated by "
+            f"scripts/ingest_nci_cancer_types.py / ingest_nci_supportive_care.py) "
+            f"was excluded -- DEFAULT_SOURCES['nci']['allowed_intents'] "
+            f"({nci['allowed_intents']}) doesn't cover it, so this question would "
+            f"silently fall back to the clinician literature corpus."
+        )
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-v"]))
