@@ -207,6 +207,7 @@ def to_sources(packet: Dict[str, Any], limit: int = 5) -> List[Dict[str, Any]]:
             "title": e.get("title"),
             "citation": e.get("citation"),
             "year": e.get("year"),
+            "url": e.get("url"),
             "source_type": e.get("role"),
             "authority": e.get("authority"),
         })
